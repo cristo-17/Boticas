@@ -1,0 +1,64 @@
+<div class="alertas">
+  <div>
+    <h1 class="alertas__saludo">{{ saludo() }}</h1>
+    <p class="field-hint alertas__fecha">{{ fechaTexto }}</p>
+  </div>
+
+  @if (cargando() && kpis().length === 0) {
+    <div class="alertas__kpis">
+      @for (i of [1, 2, 3, 4]; track i) {
+        <app-card><app-skeleton variant="block"></app-skeleton></app-card>
+      }
+    </div>
+  } @else {
+    <div class="alertas__kpis">
+      @for (k of kpis(); track k.label) {
+        <button type="button" class="alertas__kpi-btn" (click)="irA(k.ruta)">
+          <app-summary-card
+            [label]="k.label"
+            [value]="k.valor"
+            [note]="k.nota"
+            [variant]="k.variant"
+          ></app-summary-card>
+        </button>
+      }
+    </div>
+  }
+
+  <app-card [flat]="false" class="alertas__lista">
+    <div class="alertas__lista-head">
+      <h2 class="alertas__lista-titulo">Alertas priorizadas</h2>
+      <span class="alertas__lista-hint">Orden: urgencia y dinero en riesgo</span>
+    </div>
+
+    @if (cargando() && alertas().length === 0) {
+      <div class="alertas__skeleton-wrap">
+        <app-skeleton [count]="4"></app-skeleton>
+      </div>
+    } @else {
+      @for (a of alertas(); track a.id) {
+        <button
+          type="button"
+          class="alertas__fila"
+          [class]="'alertas__fila--' + a.nivel"
+          (click)="accionar(a)"
+        >
+          <span class="alertas__fila-barra"></span>
+          <span class="alertas__fila-info">
+            <span class="alertas__fila-top">
+              <app-badge [variant]="nivelBadge[a.nivel]">{{ nivelLabel[a.nivel] }}</app-badge>
+              <span class="alertas__fila-titulo">{{ a.titulo }}</span>
+            </span>
+            <span class="alertas__fila-cuerpo">{{ a.cuerpo }}</span>
+          </span>
+          @if (a.monto) {
+            <span class="num alertas__fila-monto">{{ a.monto }}</span>
+          }
+          <span class="alertas__fila-accion">{{ a.accionLabel }}</span>
+        </button>
+      }
+    }
+
+    <div class="alertas__pie">Las alertas se recalculan al sincronizar.</div>
+  </app-card>
+</div>

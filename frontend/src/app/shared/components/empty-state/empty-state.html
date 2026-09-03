@@ -1,0 +1,7 @@
+<div class="empty-state">
+  <div class="empty-state__title">{{ title }}</div>
+  <div class="empty-state__text">{{ text }}</div>
+  @if (actionLabel) {
+    <app-button variant="secondary" (clicked)="actionClick.emit()">{{ actionLabel }}</app-button>
+  }
+</div>

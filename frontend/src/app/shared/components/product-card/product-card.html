@@ -1,0 +1,18 @@
+<div
+  class="bs-card bs-card-product"
+  [class.bs-card-flat]="flat"
+  role="button"
+  tabindex="0"
+  (click)="selected.emit()"
+  (keydown.enter)="selected.emit()"
+  (keydown.space)="selected.emit()"
+>
+  <span class="bs-card-product__info">
+    <span class="name">{{ name }}</span>
+    <span class="meta">{{ meta }}</span>
+  </span>
+  @if (badgeLabel) {
+    <app-badge [variant]="badgeVariant">{{ badgeLabel }}</app-badge>
+  }
+  <span class="price num">{{ price }}</span>
+</div>

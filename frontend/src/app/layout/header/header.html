@@ -1,0 +1,24 @@
+<div class="app-header">
+  <div class="app-header__brand">
+    <div class="app-header__logo">B</div>
+    <div>
+      <div class="app-header__name">BoticaSys</div>
+      <div class="app-header__sede">{{ usuario()?.sede ?? 'Sin sesión iniciada' }}</div>
+    </div>
+  </div>
+
+  <button
+    type="button"
+    class="app-header__conn"
+    title="Cambiar estado de conexión"
+    (click)="alternarConexion()"
+  >
+    <app-conn-status
+      mode="chip"
+      [state]="estadoConexion()"
+      [label]="etiquetaConexion()"
+    ></app-conn-status>
+  </button>
+
+  <app-button variant="secondary" (clicked)="cerrarSesion()">Salir</app-button>
+</div>

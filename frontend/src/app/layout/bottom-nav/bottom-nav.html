@@ -1,0 +1,6 @@
+@for (item of navItems; track item.path) {
+  <a [routerLink]="item.path" routerLinkActive="bottom-nav__item--active" class="bottom-nav__item">
+    <span class="bottom-nav__icon"></span>
+    <span class="bottom-nav__label">{{ item.shortLabel }}</span>
+  </a>
+}

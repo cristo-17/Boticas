@@ -1,0 +1,146 @@
+<div class="inventario">
+  <div class="inventario__head">
+    <div>
+      <h1>Inventario y lotes</h1>
+      <p class="field-hint">
+        Orden FEFO: primero vence, primero sale ·
+        <span class="num">{{ filas().length }} lotes</span>
+      </p>
+    </div>
+  </div>
+
+  <app-card>
+    <div class="inventario__filtros">
+      <div class="inventario__filtro-grupo">
+        <span class="eyebrow">Vencimiento</span>
+        @for (f of filtrosVencimiento; track f.valor) {
+          <app-chip
+            [activo]="vencimientoSeleccionado() === f.valor"
+            (clicked)="seleccionarVencimiento(f.valor)"
+          >
+            {{ f.label }}
+          </app-chip>
+        }
+      </div>
+
+      <div class="inventario__filtro-grupo">
+        <label for="inv-categoria" class="eyebrow">Categoría</label>
+        <select
+          id="inv-categoria"
+          class="bs-field-compact"
+          [value]="categoriaSeleccionada()"
+          (change)="seleccionarCategoria($any($event.target).value)"
+        >
+          @for (c of categorias(); track c) {
+            <option [value]="c">{{ c }}</option>
+          }
+        </select>
+      </div>
+
+      <app-chip variant="danger" [activo]="soloStockBajo()" (clicked)="alternarStockBajo()">
+        Solo stock bajo
+      </app-chip>
+    </div>
+  </app-card>
+
+  @if (cargando()) {
+    <app-card>
+      <app-skeleton [count]="6"></app-skeleton>
+    </app-card>
+  } @else if (error()) {
+    <app-card class="inventario__error">
+      <div class="inventario__error-titulo">No pudimos cargar el inventario</div>
+      <p class="field-hint">{{ error() }}</p>
+      <app-button variant="danger" (clicked)="cargar()">Reintentar</app-button>
+    </app-card>
+  } @else if (vacio()) {
+    <app-empty-state
+      title="Ningún lote coincide con los filtros"
+      text="Prueba con otra categoría o quita el filtro de stock bajo."
+      actionLabel="Limpiar filtros"
+      (actionClick)="limpiarFiltros()"
+    ></app-empty-state>
+  } @else {
+    <app-table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th class="align-end">Stock</th>
+          <th>Lote</th>
+          <th>Vencimiento</th>
+          <th>Ubicación</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (f of filas(); track f.id) {
+          <tr>
+            <td>
+              <div class="inventario__producto">
+                <span class="status-bar" [class]="f.statusClass"></span>
+                <span>
+                  <span class="inventario__nombre">{{ f.productoNombre }}</span>
+                  <span class="inventario__meta">{{ f.categoria }}</span>
+                </span>
+              </div>
+            </td>
+            <td class="align-end num">
+              <span class="inventario__stock">{{ f.stock }}</span>
+              @if (f.stockBajo) {
+                <span class="inventario__stock-bajo">Stock bajo</span>
+              }
+            </td>
+            <td class="num inventario__code">{{ f.codigo }}</td>
+            <td>
+              <span class="num inventario__fecha">{{ f.fechaVencimiento }}</span>
+              <app-badge class="inventario__badge-fecha" [variant]="f.badgeVariant">{{
+                f.textoVencimiento
+              }}</app-badge>
+            </td>
+            <td class="num inventario__code">{{ f.ubicacion }}</td>
+          </tr>
+        }
+      </tbody>
+      <div cards>
+        @for (f of filas(); track f.id) {
+          <app-card
+            [flat]="true"
+            class="inventario__card"
+            [class]="'inventario__card--' + f.badgeVariant"
+          >
+            <div class="inventario__card-top">
+              <div class="bs-card-product__info">
+                <div class="inventario__card-nombre">{{ f.productoNombre }}</div>
+                <div class="inventario__meta">
+                  {{ f.categoria }} · <span class="num">{{ f.ubicacion }}</span>
+                </div>
+              </div>
+              <div class="inventario__card-stock">
+                <div class="num inventario__card-stock-num">{{ f.stock }}</div>
+                <div class="inventario__card-stock-label">en stock</div>
+              </div>
+            </div>
+            <div class="inventario__card-bottom">
+              <span class="num inventario__code">{{ f.codigo }}</span>
+              <span class="num inventario__fecha">{{ f.fechaVencimiento }}</span>
+              <app-badge class="inventario__badge-auto" [variant]="f.badgeVariant">{{
+                f.textoVencimiento
+              }}</app-badge>
+            </div>
+            @if (f.stockBajo) {
+              <div class="inventario__stock-bajo">Stock bajo · reponer</div>
+            }
+          </app-card>
+        }
+      </div>
+    </app-table>
+
+    <div class="inventario__leyenda">
+      @for (g of leyenda; track g.statusClass) {
+        <span class="inventario__leyenda-item">
+          <span class="status-bar inventario__leyenda-swatch" [class]="g.statusClass"></span>
+          {{ g.label }}
+        </span>
+      }
+    </div>
+  }
+</div>

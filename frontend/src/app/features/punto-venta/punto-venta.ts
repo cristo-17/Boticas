@@ -1,0 +1,135 @@
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { BadgeComponent } from '../../shared/components/badge/badge';
+import { CardComponent } from '../../shared/components/card/card';
+import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
+import { ToastComponent } from '../../shared/components/toast/toast';
+import { PresentacionProducto, Producto } from '../../core/models/producto.model';
+import { ProductoService } from '../../core/services/producto.service';
+import { VentaService } from '../../core/services/venta.service';
+import { formatearMoneda } from '../../core/utils/moneda.util';
+import { CarritoPanelComponent } from './carrito-panel/carrito-panel';
+import { PresentacionModalComponent } from './presentacion-modal/presentacion-modal';
+import { EstadoEscaneo, ScannerComponent } from './scanner/scanner';
+import { CarritoService } from './services/carrito.service';
+
+@Component({
+  selector: 'app-punto-venta',
+  providers: [CarritoService], // estado de la venta en curso: se reinicia al salir de la pantalla
+  imports: [
+    BadgeComponent,
+    CardComponent,
+    SkeletonComponent,
+    ToastComponent,
+    CarritoPanelComponent,
+    PresentacionModalComponent,
+    ScannerComponent,
+  ],
+  templateUrl: './punto-venta.html',
+  styleUrl: './punto-venta.scss',
+})
+export class PuntoVentaScreen implements OnInit {
+  private readonly productoService = inject(ProductoService);
+  private readonly ventaService = inject(VentaService);
+  readonly carrito = inject(CarritoService);
+
+  readonly resultados = this.productoService.resultados;
+  readonly masVendidos = this.productoService.masVendidos;
+  readonly productoSeleccionado = this.productoService.seleccionado;
+  readonly buscandoProductos = this.productoService.cargando;
+  readonly cobrando = this.ventaService.cargando;
+
+  readonly query = signal('');
+  readonly estadoEscaneo = signal<EstadoEscaneo>('idle');
+  readonly codigoEscaneado = signal<string | null>(null);
+
+  readonly toastVisible = signal(false);
+  readonly toastMensaje = signal('');
+
+  readonly sinResultados = computed(
+    () => this.query().trim() !== '' && this.resultados().length === 0,
+  );
+
+  readonly formatearMoneda = formatearMoneda;
+  readonly igvLabel = 'IGV 18%';
+
+  ngOnInit(): void {
+    this.productoService.obtenerMasVendidos().subscribe();
+    this.buscar('');
+  }
+
+  buscar(query: string): void {
+    this.query.set(query);
+    this.productoService.buscarProductos(query).subscribe();
+  }
+
+  onQueryInput(event: Event): void {
+    this.buscar((event.target as HTMLInputElement).value);
+  }
+
+  simularEscaneo(): void {
+    const candidatos = this.masVendidos();
+    const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+    if (!elegido) {
+      this.simularFallo();
+      return;
+    }
+    this.estadoEscaneo.set('buscando');
+    this.codigoEscaneado.set(null);
+    this.productoService.buscarPorCodigoBarras(elegido.codigoBarras).subscribe((producto) => {
+      this.codigoEscaneado.set(elegido.codigoBarras);
+      this.estadoEscaneo.set(producto ? 'encontrado' : 'error');
+    });
+  }
+
+  simularFallo(): void {
+    this.productoService.cerrarSeleccion();
+    this.estadoEscaneo.set('error');
+    this.codigoEscaneado.set('error');
+  }
+
+  elegirProducto(producto: Producto): void {
+    this.productoService.seleccionar(producto);
+    this.estadoEscaneo.set('encontrado');
+  }
+
+  cerrarModalPresentacion(): void {
+    this.productoService.cerrarSeleccion();
+    this.estadoEscaneo.set('idle');
+  }
+
+  agregarPresentacion(presentacion: PresentacionProducto): void {
+    const producto = this.productoSeleccionado();
+    if (producto) {
+      this.carrito.agregar(producto, presentacion);
+    }
+    this.productoService.cerrarSeleccion();
+    this.estadoEscaneo.set('idle');
+  }
+
+  precioDesde(producto: Producto): number {
+    return producto.presentaciones[producto.presentaciones.length - 1]?.precio ?? 0;
+  }
+
+  cobrar(): void {
+    if (this.carrito.vacio()) return;
+    const items = this.carrito.lineas().map((l) => ({
+      productoId: l.productoId,
+      presentacionId: l.presentacionId,
+      cantidad: l.cantidad,
+    }));
+    this.ventaService.registrarVenta({ items, metodoPago: 'efectivo' }).subscribe((venta) => {
+      this.carrito.vaciar();
+      this.mostrarToast(
+        venta.sincronizada
+          ? `Venta cobrada · ${formatearMoneda(venta.total)}`
+          : `Venta guardada localmente · ${formatearMoneda(venta.total)}`,
+      );
+    });
+  }
+
+  private mostrarToast(mensaje: string): void {
+    this.toastMensaje.set(mensaje);
+    this.toastVisible.set(false);
+    setTimeout(() => this.toastVisible.set(true));
+  }
+}

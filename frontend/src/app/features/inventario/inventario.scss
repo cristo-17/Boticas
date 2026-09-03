@@ -1,0 +1,162 @@
+.inventario {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.inventario__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.inventario__filtros {
+  display: flex;
+  align-items: center;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.inventario__filtro-grupo {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.inventario__error {
+  border-left: 4px solid var(--rojo-500);
+  text-align: center;
+}
+
+.inventario__error-titulo {
+  font-size: 19px;
+  font-weight: var(--fw-black);
+  color: var(--rojo-600);
+}
+
+// — tabla de escritorio —
+.inventario__producto {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+.inventario__nombre {
+  display: block;
+  font-weight: var(--fw-bold);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.inventario__meta {
+  display: block;
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+
+.inventario__stock {
+  font-size: 19px;
+  font-weight: var(--fw-black);
+}
+
+.inventario__stock-bajo {
+  display: block;
+  font-size: 11px;
+  font-weight: var(--fw-black);
+  color: var(--rojo-600);
+}
+
+.inventario__code {
+  font-weight: var(--fw-bold);
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.inventario__fecha {
+  font-weight: var(--fw-black);
+  font-size: 16px;
+}
+
+.inventario__badge-fecha {
+  margin-left: 8px;
+}
+
+// — tarjetas móviles —
+.inventario__card--ok {
+  border-left: 5px solid var(--verde-500);
+}
+.inventario__card--warn {
+  border-left: 5px solid var(--ambar-500);
+}
+.inventario__card--danger {
+  border-left: 5px solid var(--rojo-500);
+}
+
+.inventario__card-top {
+  display: flex;
+  gap: var(--s-3);
+  align-items: flex-start;
+}
+
+.inventario__card-nombre {
+  font-weight: var(--fw-black);
+  font-size: 17px;
+  line-height: 1.2;
+}
+
+.inventario__card-stock {
+  text-align: right;
+}
+
+.inventario__card-stock-num {
+  font-size: 24px;
+  font-weight: var(--fw-black);
+  line-height: 1;
+}
+
+.inventario__card-stock-label {
+  font-size: 11px;
+  font-weight: var(--fw-bold);
+  color: var(--muted);
+}
+
+.inventario__card-bottom {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.inventario__badge-auto {
+  margin-left: auto;
+}
+
+// — leyenda —
+.inventario__leyenda {
+  display: flex;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+  padding: var(--s-2) var(--s-1);
+}
+
+.inventario__leyenda-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: var(--fw-bold);
+  color: var(--ink-2);
+}
+
+.status-bar.inventario__leyenda-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}

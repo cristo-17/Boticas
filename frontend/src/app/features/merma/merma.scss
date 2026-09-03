@@ -1,0 +1,138 @@
+.merma {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  max-width: 760px;
+  margin: 0 auto;
+}
+
+.merma__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.merma__label {
+  display: block;
+  font-size: 13px;
+  font-weight: var(--fw-black);
+  color: var(--ink-2);
+  margin-bottom: 6px;
+}
+
+.merma__fila {
+  display: flex;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.merma__campo {
+  flex: 1;
+  min-width: 200px;
+}
+
+.merma__campo--cantidad {
+  flex: 0 0 auto;
+  min-width: 180px;
+}
+
+.merma__lote-info {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+  color: var(--muted);
+}
+
+.merma__stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.merma__stepper-btn {
+  width: 52px;
+  height: 52px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  font-size: 22px;
+  font-weight: var(--fw-black);
+  cursor: pointer;
+}
+
+.merma__stepper-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 52px;
+  text-align: center;
+  border-radius: var(--r-md);
+  border: 2px solid var(--line);
+  font-size: 24px;
+  font-weight: var(--fw-black);
+  font-family: inherit;
+}
+.merma__stepper-input--error {
+  border-color: var(--rojo-500);
+}
+
+.merma__motivos {
+  display: flex;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+}
+
+.merma__textarea {
+  width: 100%;
+  border-radius: var(--r-md);
+  border: 2px solid var(--line);
+  font-size: 15px;
+  font-weight: var(--fw-medium);
+  font-family: inherit;
+  padding: var(--s-3);
+}
+.merma__textarea:focus {
+  outline: none;
+  border-color: var(--verde-500);
+  box-shadow: 0 0 0 3px var(--verde-50);
+}
+.merma__textarea--error {
+  border-color: var(--rojo-500);
+}
+
+.merma__error {
+  margin-top: 6px;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+  color: var(--rojo-600);
+}
+
+.merma__resumen {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.merma__resumen-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-bottom: 1px solid var(--line);
+  font-size: 14px;
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+.merma__resumen-fila:last-child {
+  border-bottom: 0;
+}
+
+.merma__resumen-valor {
+  font-size: 16px;
+  font-weight: var(--fw-black);
+  color: var(--ink);
+  text-align: right;
+}
+.merma__resumen-valor--danger {
+  color: var(--rojo-600);
+}

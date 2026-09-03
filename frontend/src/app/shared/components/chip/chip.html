@@ -1,0 +1,10 @@
+<button
+  type="button"
+  class="bs-chip"
+  [class.bs-chip--activo]="activo"
+  [class.bs-chip--danger]="variant === 'danger'"
+  [disabled]="disabled"
+  (click)="onClick()"
+>
+  <ng-content></ng-content>
+</button>

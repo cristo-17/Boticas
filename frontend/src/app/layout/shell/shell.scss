@@ -1,0 +1,23 @@
+:host {
+  display: block;
+  min-height: 100vh;
+  background: var(--bg);
+  padding-bottom: var(--s-7);
+}
+
+.shell-body {
+  display: flex;
+  align-items: flex-start;
+}
+
+.shell-content {
+  flex: 1;
+  min-width: 0;
+  padding: var(--s-5) var(--s-4);
+}
+
+@media (max-width: 1023.98px) {
+  :host {
+    padding-bottom: 76px;
+  }
+}

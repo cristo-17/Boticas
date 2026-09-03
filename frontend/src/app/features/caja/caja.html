@@ -1,0 +1,18 @@
+<div class="caja">
+  <div class="caja__head">
+    <div>
+      <h1>Caja</h1>
+      <p class="field-hint caja__meta">{{ fechaTexto }} · {{ usuarioTexto() }}</p>
+    </div>
+    <div class="caja__tabs">
+      <app-chip [activo]="tab() === 'apertura'" (clicked)="irA('apertura')">Apertura</app-chip>
+      <app-chip [activo]="tab() === 'cierre'" (clicked)="irA('cierre')">Cierre</app-chip>
+    </div>
+  </div>
+
+  @if (tab() === 'apertura') {
+    <app-apertura (irACierre)="irA('cierre')"></app-apertura>
+  } @else {
+    <app-cierre></app-cierre>
+  }
+</div>

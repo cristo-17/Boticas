@@ -1,0 +1,9 @@
+<div class="d-flex flex-column gap-3">
+  @for (item of items; track $index) {
+    <div
+      class="skeleton"
+      [class.skeleton-line-sm]="variant === 'line-sm'"
+      [class.skeleton-block]="variant === 'block'"
+    ></div>
+  }
+</div>

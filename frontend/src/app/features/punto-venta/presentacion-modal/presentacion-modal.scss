@@ -1,0 +1,34 @@
+.presentacion-modal {
+  max-width: 520px;
+}
+
+.presentacion-modal__header {
+  border-bottom: 1px solid var(--line);
+}
+
+.presentacion-modal__eyebrow {
+  color: var(--verde-600);
+}
+
+.presentacion-modal__nombre {
+  margin-top: 4px;
+}
+
+.presentacion-modal__sub {
+  margin-top: 2px;
+}
+
+.presentacion-modal__alerta {
+  margin-top: var(--s-3);
+}
+
+.presentacion-modal__pregunta {
+  margin-bottom: var(--s-2);
+}
+
+.presentacion-modal__opciones {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+}

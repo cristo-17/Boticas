@@ -1,0 +1,107 @@
+<div class="cierre">
+  <section class="cierre__movimientos">
+    <div class="cierre__movimientos-head">
+      <h2 class="cierre__titulo">Movimientos del turno</h2>
+    </div>
+
+    @for (m of movimientosVista(); track m.descripcion + m.nota) {
+      <div class="cierre__mov">
+        <span class="status-bar cierre__barra" [class]="m.colorClass"></span>
+        <span class="cierre__mov-info">
+          <span class="cierre__mov-desc">{{ m.descripcion }}</span>
+          <span class="cierre__mov-nota">{{ m.nota }}</span>
+        </span>
+        <span class="num cierre__mov-monto" [class.cierre__mov-monto--tenue]="!m.afectaEfectivo">
+          {{ m.monto < 0 ? '−' : '' }}{{ formatearMoneda(m.monto < 0 ? -m.monto : m.monto) }}
+        </span>
+      </div>
+    }
+
+    <div class="cierre__esperado">
+      <span class="cierre__esperado-label">Efectivo esperado en caja</span>
+      <span class="num cierre__esperado-valor">{{ formatearMoneda(efectivoEsperado()) }}</span>
+    </div>
+    <div class="cierre__nota-digital">
+      Las ventas con Yape y tarjeta no entran al conteo de efectivo.
+    </div>
+  </section>
+
+  <aside class="cierre__panel">
+    <app-card>
+      <label for="cierre-contado" class="cierre__label">Monto contado en el cajón</label>
+      <div
+        class="cierre__monto-box"
+        [class.cierre__monto-box--error]="contadoTexto().trim() !== '' && !contadoValido()"
+      >
+        <span class="num cierre__monto-prefijo">S/</span>
+        <input
+          id="cierre-contado"
+          class="num cierre__monto-input"
+          inputmode="decimal"
+          [value]="contadoTexto()"
+          (input)="onContadoInput($event)"
+          placeholder="0.00"
+        />
+      </div>
+
+      <div class="cierre__descuadre" [class]="'cierre__descuadre--' + estadoDescuadre().tono">
+        <div class="cierre__descuadre-head">
+          <span class="cierre__descuadre-dot"></span>
+          <span class="cierre__descuadre-titulo">{{ estadoDescuadre().titulo }}</span>
+        </div>
+        <div class="num cierre__descuadre-monto">{{ estadoDescuadre().montoTexto }}</div>
+        <div class="cierre__descuadre-nota">{{ estadoDescuadre().nota }}</div>
+      </div>
+
+      <label for="cierre-obs" class="cierre__label cierre__label--obs"
+        >Observaciones {{ observacionHint() }}</label
+      >
+      <textarea
+        id="cierre-obs"
+        class="cierre__textarea"
+        rows="2"
+        [value]="observacion()"
+        (input)="observacion.set($any($event.target).value)"
+        placeholder="Ej.: se pagó S/ 45 de movilidad al proveedor"
+      ></textarea>
+
+      <app-button
+        variant="action"
+        size="lg"
+        [block]="true"
+        [disabled]="!contadoValido()"
+        (clicked)="pedirCierre()"
+      >
+        Cerrar caja
+      </app-button>
+    </app-card>
+
+    <app-card [flat]="true">
+      <div class="eyebrow cierre__leyenda-titulo">Semáforo de descuadre</div>
+      @for (g of legendaDescuadre; track g.label) {
+        <div class="cierre__leyenda-fila">
+          <span class="status-bar cierre__leyenda-swatch" [class]="g.colorClass"></span>
+          {{ g.label }}
+        </div>
+      }
+    </app-card>
+  </aside>
+</div>
+
+<app-modal
+  [open]="confirmando()"
+  title="¿Cerrar la caja del turno?"
+  message="Después del cierre no se pueden registrar más ventas en este turno."
+  confirmLabel="Sí, cerrar caja"
+  confirmVariant="danger"
+  [confirmando]="cerrando()"
+  (cancelled)="confirmando.set(false)"
+  (confirmed)="confirmarCierre()"
+></app-modal>
+
+<app-toast
+  [visible]="toastVisible()"
+  [variant]="toastVariant()"
+  [message]="toastMensaje()"
+  (closed)="toastVisible.set(false)"
+></app-toast>

@@ -1,0 +1,104 @@
+<div class="carrito-panel__head">
+  <h2 class="carrito-panel__titulo">Venta actual</h2>
+  <button type="button" class="carrito-panel__toggle" (click)="expandido.set(!expandido())">
+    <span class="carrito-panel__count num">{{ resumenTexto }}</span>
+    <span class="carrito-panel__toggle-cta">{{
+      expandido() ? 'Ocultar detalle' : 'Ver detalle'
+    }}</span>
+  </button>
+</div>
+
+<div class="carrito-panel__lineas" [class.carrito-panel__lineas--colapsado]="!expandido()">
+  @if (vacio) {
+    <div class="carrito-panel__vacio">
+      <div class="carrito-panel__vacio-icono"></div>
+      <div class="carrito-panel__vacio-titulo">Carrito vacío</div>
+      <div class="carrito-panel__vacio-texto">
+        Escanea un producto o búscalo por nombre para empezar la venta.
+      </div>
+    </div>
+  }
+  @for (l of lineas; track l.key) {
+    <div class="carrito-panel__linea">
+      <div class="carrito-panel__linea-top">
+        <div class="carrito-panel__linea-info">
+          <div class="carrito-panel__linea-nombre">{{ l.nombre }}</div>
+          <div class="carrito-panel__linea-meta">
+            {{ l.presentacion }} · <span class="num">{{ formatearMoneda(l.precioUnitario) }}</span>
+          </div>
+          @if (l.alerta) {
+            <app-badge variant="warn" class="carrito-panel__linea-alerta">{{ l.alerta }}</app-badge>
+          }
+        </div>
+        <button
+          type="button"
+          class="carrito-panel__quitar"
+          aria-label="Quitar línea"
+          (click)="pedirQuitar(l)"
+        >
+          ×
+        </button>
+      </div>
+      <div class="carrito-panel__linea-bottom">
+        <div class="carrito-panel__qty">
+          <button
+            type="button"
+            class="carrito-panel__qty-btn"
+            aria-label="Menos"
+            (click)="decrementar.emit(l.key)"
+          >
+            −
+          </button>
+          <span class="num carrito-panel__qty-num">{{ l.cantidad }}</span>
+          <button
+            type="button"
+            class="carrito-panel__qty-btn"
+            aria-label="Más"
+            (click)="incrementar.emit(l.key)"
+          >
+            +
+          </button>
+        </div>
+        <span class="num carrito-panel__linea-total">{{
+          formatearMoneda(l.precioUnitario * l.cantidad)
+        }}</span>
+      </div>
+    </div>
+  }
+</div>
+
+<div class="carrito-panel__footer">
+  <div class="carrito-panel__linea-costo">
+    <span>Subtotal</span><span class="num">{{ formatearMoneda(subtotal) }}</span>
+  </div>
+  @if (mostrarIgv) {
+    <div class="carrito-panel__linea-costo">
+      <span>{{ igvLabel }}</span
+      ><span class="num">{{ formatearMoneda(igv) }}</span>
+    </div>
+  }
+  <div class="carrito-panel__total">
+    <span class="carrito-panel__total-label">Total</span>
+    <span class="num carrito-panel__total-valor">{{ formatearMoneda(total) }}</span>
+  </div>
+  <app-button
+    variant="action"
+    size="lg"
+    [block]="true"
+    [disabled]="vacio"
+    [loading]="cobrando"
+    (clicked)="cobrar.emit()"
+  >
+    Cobrar {{ formatearMoneda(total) }}
+  </app-button>
+</div>
+
+<app-modal
+  [open]="!!lineaPendiente()"
+  [title]="'¿Quitar ' + (lineaPendiente()?.nombre ?? '') + ' de la venta?'"
+  message="Esta línea se elimina del carrito. No afecta el stock."
+  confirmLabel="Quitar"
+  confirmVariant="danger"
+  (cancelled)="lineaPendiente.set(null)"
+  (confirmed)="confirmarQuitar()"
+></app-modal>

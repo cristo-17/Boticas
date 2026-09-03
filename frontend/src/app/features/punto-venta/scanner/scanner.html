@@ -1,0 +1,41 @@
+<div class="scanner">
+  <div
+    class="scanner__frame"
+    [class.scanner__frame--found]="estado === 'encontrado'"
+    [class.scanner__frame--error]="estado === 'error'"
+  >
+    <span class="scanner__corner scanner__corner--tl"></span>
+    <span class="scanner__corner scanner__corner--tr"></span>
+    <span class="scanner__corner scanner__corner--bl"></span>
+    <span class="scanner__corner scanner__corner--br"></span>
+    @if (barriendo) {
+      <span class="scanner__sweep"></span>
+    }
+    <div class="scanner__status">
+      <span class="scanner__dot"></span>
+      <span class="scanner__msg">{{ mensaje }}</span>
+      @if (codigo) {
+        <span class="scanner__code num">{{ codigo }}</span>
+      }
+    </div>
+  </div>
+
+  <div class="scanner__actions">
+    <app-button
+      variant="primary"
+      [block]="true"
+      [loading]="buscando"
+      (clicked)="simularEscaneo.emit()"
+    >
+      Simular escaneo
+    </app-button>
+    <app-button variant="secondary" (clicked)="simularFallo.emit()">Código no leído</app-button>
+  </div>
+
+  @if (estado === 'error') {
+    <div class="scanner__error">
+      <div class="scanner__error-titulo">No se pudo leer el código</div>
+      <div class="scanner__error-texto">Limpia el lente o escribe el nombre del producto.</div>
+    </div>
+  }
+</div>

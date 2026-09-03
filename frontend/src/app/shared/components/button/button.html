@@ -1,0 +1,16 @@
+<button
+  [type]="type"
+  class="bs-btn"
+  [class]="variantClass"
+  [class.bs-btn-lg]="size === 'lg'"
+  [class.bs-btn-block]="block"
+  [class.bs-btn-icon]="icon"
+  [disabled]="disabled || loading"
+  [attr.aria-label]="ariaLabel"
+  (click)="onClick()"
+>
+  @if (loading) {
+    <span class="spinner" aria-hidden="true"></span>
+  }
+  <ng-content></ng-content>
+</button>

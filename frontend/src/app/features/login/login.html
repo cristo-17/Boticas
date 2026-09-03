@@ -1,0 +1,89 @@
+<main class="login">
+  <div class="login__wrap">
+    <div class="login__brand">
+      <div class="login__logo">B</div>
+      <div>
+        <div class="login__nombre">BoticaSys</div>
+        <div class="login__sede">Botica San Lucas · Av. Grau 412</div>
+      </div>
+    </div>
+
+    <div class="login__card">
+      <div>
+        <h1 class="login__titulo">Iniciar turno</h1>
+        <p class="login__subtitulo">Ingresa con tu usuario para registrar ventas a tu nombre.</p>
+      </div>
+
+      <form class="login__form" [formGroup]="form" (ngSubmit)="ingresar()">
+        @if (credencialesInvalidas()) {
+          <div class="login__error-banner">
+            <div class="login__error-titulo">Usuario o contraseña incorrectos</div>
+            <div class="login__error-texto">
+              Te quedan <span class="num">{{ intentosRestantes() }}</span> intentos antes de
+              bloquear el acceso.
+            </div>
+          </div>
+        }
+
+        <app-field
+          label="Usuario"
+          [formControl]="form.controls.usuario"
+          errorMessage="Escribe tu usuario."
+        ></app-field>
+
+        <app-field
+          label="Contraseña"
+          tipo="password"
+          autocomplete="current-password"
+          [formControl]="form.controls.password"
+          errorMessage="Escribe tu contraseña."
+        ></app-field>
+
+        <div>
+          <span class="login__label">Turno</span>
+          <div class="login__turnos" role="radiogroup">
+            @for (t of turnos; track t.valor) {
+              <button
+                type="button"
+                class="login__turno"
+                [class.login__turno--activo]="form.controls.turno.value === t.valor"
+                (click)="seleccionarTurno(t.valor)"
+              >
+                <span class="login__turno-label">{{ t.valor }}</span>
+                <span class="num login__turno-horas">{{ t.horas }}</span>
+              </button>
+            }
+          </div>
+        </div>
+
+        <app-button
+          type="submit"
+          variant="primary"
+          size="lg"
+          [block]="true"
+          [loading]="iniciando()"
+        >
+          {{
+            iniciando()
+              ? 'Verificando…'
+              : 'Ingresar al turno ' + form.controls.turno.value.toLowerCase()
+          }}
+        </app-button>
+
+        <div class="login__pie">
+          <a href="#recuperar">Olvidé mi contraseña</a>
+          <span class="login__demo">Demo: contraseña <span class="num">1234</span></span>
+        </div>
+      </form>
+    </div>
+
+    <div class="login__conn">
+      <app-conn-status
+        mode="chip"
+        [state]="estadoConexion()"
+        [label]="etiquetaConexion"
+      ></app-conn-status>
+      <span>· la app funciona sin internet</span>
+    </div>
+  </div>
+</main>

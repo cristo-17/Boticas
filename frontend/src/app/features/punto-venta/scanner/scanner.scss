@@ -1,0 +1,144 @@
+:host {
+  display: block;
+}
+
+.scanner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.scanner__frame {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  background: #0e1512;
+  border-radius: var(--r-md);
+  overflow: hidden;
+  --scanner-accent: #9fb3a9;
+}
+
+.scanner__frame--found {
+  --scanner-accent: var(--verde-500);
+}
+
+.scanner__frame--error {
+  --scanner-accent: var(--rojo-500);
+}
+
+.scanner__corner {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-color: var(--scanner-accent);
+  border-style: solid;
+  border-width: 0;
+}
+.scanner__corner--tl {
+  left: 12%;
+  top: 18%;
+  border-left-width: 3px;
+  border-top-width: 3px;
+  border-radius: 10px 0 0 0;
+}
+.scanner__corner--tr {
+  right: 12%;
+  top: 18%;
+  border-right-width: 3px;
+  border-top-width: 3px;
+  border-radius: 0 10px 0 0;
+}
+.scanner__corner--bl {
+  left: 12%;
+  bottom: 18%;
+  border-left-width: 3px;
+  border-bottom-width: 3px;
+  border-radius: 0 0 0 10px;
+}
+.scanner__corner--br {
+  right: 12%;
+  bottom: 18%;
+  border-right-width: 3px;
+  border-bottom-width: 3px;
+  border-radius: 0 0 10px 0;
+}
+
+.scanner__sweep {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  top: 8%;
+  height: 2px;
+  background: var(--verde-300);
+  box-shadow: 0 0 12px rgba(102, 179, 148, 0.9);
+  animation: scanner-sweep 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes scanner-sweep {
+  0% {
+    top: 8%;
+  }
+  100% {
+    top: 88%;
+  }
+}
+
+.scanner__status {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: var(--s-3);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(to top, rgba(6, 10, 8, 0.85), transparent);
+}
+
+.scanner__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--scanner-accent);
+  animation: bs-pulse 1.4s infinite;
+}
+
+.scanner__msg {
+  color: #fff;
+  font-weight: var(--fw-bold);
+  font-size: 15px;
+}
+
+.scanner__code {
+  margin-left: auto;
+  color: #9fb3a9;
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+}
+
+.scanner__actions {
+  display: flex;
+  gap: var(--s-2);
+}
+.scanner__actions app-button:first-child {
+  display: flex;
+  flex: 1;
+}
+
+.scanner__error {
+  border: 1px solid var(--rojo-100);
+  background: var(--rojo-50);
+  border-radius: var(--r-md);
+  padding: var(--s-3);
+}
+
+.scanner__error-titulo {
+  font-weight: var(--fw-black);
+  color: var(--rojo-600);
+  font-size: 14px;
+}
+
+.scanner__error-texto {
+  font-size: 13px;
+  color: var(--ink-2);
+  margin-top: 2px;
+}

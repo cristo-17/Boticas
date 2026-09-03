@@ -1,0 +1,36 @@
+<div class="sidebar-nav__profile">
+  <div class="sidebar-nav__avatar">{{ iniciales() || '—' }}</div>
+  <div class="sidebar-nav__profile-text">
+    <div class="sidebar-nav__name">{{ usuario()?.nombre ?? 'Sin sesión' }}</div>
+    <div class="sidebar-nav__turno">Turno {{ (usuario()?.turno ?? '').toLowerCase() }}</div>
+  </div>
+</div>
+
+<div class="sidebar-nav__items">
+  @for (item of navItems; track item.path) {
+    <a
+      [routerLink]="item.path"
+      routerLinkActive="sidebar-nav__item--active"
+      class="sidebar-nav__item"
+    >
+      <span class="sidebar-nav__dot"></span>
+      <span class="sidebar-nav__label">{{ item.label }}</span>
+      @if (item.path === '/alertas' && cantidadAlertas() > 0) {
+        <span class="sidebar-nav__badge num">{{ cantidadAlertas() }}</span>
+      }
+    </a>
+  }
+</div>
+
+<div class="sidebar-nav__footer">
+  <div class="sidebar-nav__conn">
+    <span class="sidebar-nav__conn-dot" [attr.data-estado]="estadoConexion()"></span>
+    {{ etiquetaConexion() }}
+  </div>
+  @if (cajaActual()?.abierta && horaApertura()) {
+    <div class="sidebar-nav__caja">Caja abierta desde {{ horaApertura() }}</div>
+  }
+  <app-button variant="secondary" [block]="true" (clicked)="cerrarSesion()"
+    >Cerrar sesión</app-button
+  >
+</div>

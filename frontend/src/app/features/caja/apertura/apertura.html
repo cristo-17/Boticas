@@ -1,0 +1,80 @@
+<div class="apertura">
+  @if (cajaActual()?.abierta) {
+    <app-card class="apertura__bloqueada">
+      <div class="apertura__bloqueada-eyebrow">Apertura bloqueada</div>
+      <div class="apertura__bloqueada-titulo">Ya existe una caja abierta hoy</div>
+      <p class="apertura__bloqueada-texto">
+        Abierta a las {{ horaAperturaTexto() }} por {{ cajaActual()?.usuarioNombre }} con
+        <span class="num">{{ formatearMoneda(cajaActual()?.montoApertura ?? 0) }}</span
+        >. Debes cerrarla antes de abrir una nueva.
+      </p>
+      <app-button variant="action" size="lg" (clicked)="irACierre.emit()"
+        >Ir al cierre de caja</app-button
+      >
+    </app-card>
+  } @else {
+    <app-card class="apertura__form">
+      <div class="apertura__header">
+        <div class="apertura__eyebrow">Turno {{ turnoActivo() }}</div>
+        <h2 class="apertura__titulo">Apertura de caja</h2>
+        <p class="apertura__subtitulo">
+          Cuenta el efectivo del cajón y registra el monto con el que empiezas el turno.
+        </p>
+      </div>
+
+      <div class="apertura__body">
+        <div>
+          <label for="apertura-monto" class="apertura__label">Monto inicial en efectivo</label>
+          <div
+            class="apertura__monto-box"
+            [class.apertura__monto-box--error]="montoTexto().trim() !== '' && !montoValido()"
+          >
+            <span class="num apertura__monto-prefijo">S/</span>
+            <input
+              id="apertura-monto"
+              class="num apertura__monto-input"
+              inputmode="decimal"
+              [value]="montoTexto()"
+              (input)="onMontoInput($event)"
+              placeholder="0.00"
+            />
+          </div>
+          @if (montoTexto().trim() !== '' && !montoValido()) {
+            <div class="apertura__error">{{ montoErrorTexto() }}</div>
+          }
+          <div class="apertura__rapidos">
+            @for (m of montosRapidos; track m) {
+              <button type="button" class="num apertura__rapido" (click)="fijarMonto(m)">
+                {{ formatearMoneda(m) }}
+              </button>
+            }
+          </div>
+        </div>
+
+        <div class="apertura__meta">
+          @for (m of aperturaMeta(); track m.k) {
+            <div class="apertura__meta-fila">
+              <span class="apertura__meta-k">{{ m.k }}</span>
+              <span class="apertura__meta-v">{{ m.v }}</span>
+            </div>
+          }
+        </div>
+
+        <app-button
+          variant="primary"
+          size="lg"
+          [block]="true"
+          [disabled]="!montoValido()"
+          [loading]="abriendo()"
+          (clicked)="abrirCaja()"
+        >
+          Abrir caja
+        </app-button>
+        <p class="apertura__nota">
+          La apertura queda registrada con tu usuario y hora exacta. Si estás sin conexión, se
+          guarda y se sincroniza después.
+        </p>
+      </div>
+    </app-card>
+  }
+</div>

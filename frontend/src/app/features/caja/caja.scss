@@ -1,0 +1,22 @@
+.caja {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.caja__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.caja__meta {
+  text-transform: capitalize;
+}
+
+.caja__tabs {
+  display: flex;
+  gap: 4px;
+}

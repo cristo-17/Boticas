@@ -1,0 +1,152 @@
+<div class="merma">
+  <div>
+    <h1>Registrar merma</h1>
+    <p class="field-hint">
+      Descuenta del stock los productos vencidos, roturas o pérdidas. Queda registrado con tu
+      usuario.
+    </p>
+  </div>
+
+  <app-card>
+    <form class="merma__form" [formGroup]="form" (ngSubmit)="pedirConfirmacion()">
+      <app-field
+        label="Producto"
+        tipo="select"
+        [opciones]="productoOpciones()"
+        [formControl]="form.controls.productoId"
+      ></app-field>
+
+      <div class="merma__fila">
+        <div class="merma__campo merma__campo--lote">
+          <app-field
+            label="Lote"
+            tipo="select"
+            [opciones]="loteOpciones()"
+            [formControl]="form.controls.loteId"
+          ></app-field>
+          @if (loteSeleccionado(); as lote) {
+            <div class="merma__lote-info">
+              Vence el {{ lote.fechaVencimiento }} · {{ lote.stock }} unidades en stock
+            </div>
+          }
+        </div>
+
+        <div class="merma__campo merma__campo--cantidad">
+          <span class="merma__label">Cantidad</span>
+          <div class="merma__stepper">
+            <button
+              type="button"
+              class="merma__stepper-btn"
+              aria-label="Menos"
+              (click)="decrementarCantidad()"
+            >
+              −
+            </button>
+            <input
+              class="num merma__stepper-input"
+              [class.merma__stepper-input--error]="!cantidadValida()"
+              inputmode="numeric"
+              [formControl]="form.controls.cantidad"
+            />
+            <button
+              type="button"
+              class="merma__stepper-btn"
+              aria-label="Más"
+              (click)="incrementarCantidad()"
+            >
+              +
+            </button>
+          </div>
+          @if (!cantidadValida()) {
+            <div class="merma__error">{{ cantidadErrorTexto() }}</div>
+          }
+        </div>
+      </div>
+
+      <div class="merma__campo">
+        <span class="merma__label">Motivo</span>
+        <div class="merma__motivos">
+          @for (m of motivos; track m) {
+            <app-chip [activo]="form.controls.motivo.value === m" (clicked)="seleccionarMotivo(m)">
+              {{ m }}
+            </app-chip>
+          }
+        </div>
+      </div>
+
+      <div class="merma__campo">
+        <label for="merma-obs" class="merma__label">
+          Observación {{ observacionRequerida() ? '(obligatoria)' : '(opcional)' }}
+        </label>
+        <textarea
+          id="merma-obs"
+          class="merma__textarea"
+          [class.merma__textarea--error]="observacionRequerida() && !observacionValida()"
+          rows="3"
+          [formControl]="form.controls.observacion"
+          placeholder="Ej.: caja mojada por filtración en el anaquel B-2"
+        ></textarea>
+        @if (observacionRequerida() && !observacionValida()) {
+          <div class="merma__error">Este motivo requiere una observación.</div>
+        }
+      </div>
+
+      <div class="merma__resumen">
+        <div class="merma__resumen-fila">
+          <span>Valor de la merma</span>
+          <span class="num merma__resumen-valor merma__resumen-valor--danger">{{
+            formatearMoneda(valorMerma())
+          }}</span>
+        </div>
+        <div class="merma__resumen-fila">
+          <span>Stock después del registro</span>
+          <span class="num merma__resumen-valor">{{ stockDespues() }} unidades</span>
+        </div>
+        <div class="merma__resumen-fila">
+          <span>Responsable</span>
+          <span class="num merma__resumen-valor">{{ responsableTexto() }}</span>
+        </div>
+      </div>
+
+      <app-button
+        type="submit"
+        variant="danger"
+        size="lg"
+        [block]="true"
+        [disabled]="!formularioValido()"
+      >
+        Registrar merma
+      </app-button>
+    </form>
+  </app-card>
+</div>
+
+<app-modal
+  [open]="confirmando()"
+  [title]="
+    '¿Dar de baja ' +
+    (form.controls.cantidad.value ?? 0) +
+    ' × ' +
+    (loteSeleccionado()?.productoNombre ?? '') +
+    '?'
+  "
+  [message]="
+    'Se descuenta del lote ' +
+    (loteSeleccionado()?.codigo ?? '') +
+    ' por ' +
+    form.controls.motivo.value +
+    ' y no se puede revertir sin autorización del administrador.'
+  "
+  confirmLabel="Sí, dar de baja"
+  confirmVariant="danger"
+  [confirmando]="registrando()"
+  (cancelled)="confirmando.set(false)"
+  (confirmed)="confirmarMerma()"
+></app-modal>
+
+<app-toast
+  [visible]="toastVisible()"
+  [variant]="toastVariant()"
+  [message]="toastMensaje()"
+  (closed)="toastVisible.set(false)"
+></app-toast>

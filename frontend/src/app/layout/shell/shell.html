@@ -1,0 +1,16 @@
+<app-header></app-header>
+
+<app-conn-status
+  mode="banner"
+  [state]="estadoConexion()"
+  [message]="mensajeBanner()"
+></app-conn-status>
+
+<div class="shell-body">
+  <app-sidebar-nav></app-sidebar-nav>
+  <main class="shell-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>
+
+<app-bottom-nav></app-bottom-nav>

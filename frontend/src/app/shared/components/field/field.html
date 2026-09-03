@@ -1,0 +1,43 @@
+<div class="bs-field" [class.bs-field--error]="showError">
+  <label [for]="inputId" class="bs-field__label">{{ label }}</label>
+
+  @if (tipo === 'select') {
+    <select
+      [id]="inputId"
+      class="bs-field__select"
+      [disabled]="disabled"
+      [value]="value"
+      (change)="onSelectChange($event)"
+      (blur)="onBlur()"
+    >
+      @for (o of opciones; track o.value) {
+        <option [value]="o.value">{{ o.label }}</option>
+      }
+    </select>
+  } @else {
+    <div class="bs-field__control">
+      <input
+        [id]="inputId"
+        class="bs-field__input"
+        [type]="tipoInputReal"
+        [placeholder]="placeholder"
+        [attr.autocomplete]="autocomplete"
+        [disabled]="disabled"
+        [value]="value"
+        (input)="onInput($event)"
+        (blur)="onBlur()"
+      />
+      @if (tipo === 'password') {
+        <button type="button" class="bs-field__toggle" (click)="alternarMostrarPassword()">
+          {{ mostrarPassword ? 'Ocultar' : 'Mostrar' }}
+        </button>
+      }
+    </div>
+  }
+
+  @if (showError && errorMessage) {
+    <div class="field-hint">{{ errorMessage }}</div>
+  } @else if (hint) {
+    <div class="field-hint">{{ hint }}</div>
+  }
+</div>

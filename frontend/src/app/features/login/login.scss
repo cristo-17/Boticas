@@ -1,0 +1,165 @@
+.login {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--s-5) var(--s-4);
+  background: var(--bg);
+}
+
+.login__wrap {
+  width: 100%;
+  max-width: 440px;
+}
+
+.login__brand {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  margin-bottom: var(--s-4);
+}
+
+.login__logo {
+  width: 46px;
+  height: 46px;
+  flex: none;
+  border-radius: var(--r-md);
+  background: var(--verde-500);
+  color: #fff;
+  display: grid;
+  place-items: center;
+  font-weight: var(--fw-black);
+  font-size: 21px;
+}
+
+.login__nombre {
+  font-weight: var(--fw-black);
+  font-size: 22px;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.login__sede {
+  font-size: 13px;
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+
+.login__card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2);
+  padding: var(--s-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.login__titulo {
+  margin: 0;
+  font-size: 22px;
+}
+
+.login__subtitulo {
+  margin: 4px 0 0;
+  font-size: 14px;
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+
+.login__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.login__error-banner {
+  border: 1px solid var(--rojo-100);
+  border-left: 4px solid var(--rojo-500);
+  background: var(--rojo-50);
+  border-radius: var(--r-md);
+  padding: var(--s-3) var(--s-4);
+}
+
+.login__error-titulo {
+  font-size: 15px;
+  font-weight: var(--fw-black);
+  color: var(--rojo-600);
+}
+
+.login__error-texto {
+  font-size: 13px;
+  font-weight: var(--fw-medium);
+  color: var(--ink-2);
+  margin-top: 2px;
+}
+
+.login__label {
+  display: block;
+  font-size: 13px;
+  font-weight: var(--fw-black);
+  color: var(--ink-2);
+  margin-bottom: var(--s-2);
+}
+
+.login__turnos {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--s-2);
+}
+
+.login__turno {
+  min-height: 64px;
+  padding: 8px 12px;
+  border: 2px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+  text-align: left;
+}
+.login__turno--activo {
+  border-color: var(--verde-500);
+  background: var(--verde-50);
+  color: var(--verde-700);
+}
+
+.login__turno-label {
+  display: block;
+  font-size: 15px;
+  font-weight: var(--fw-black);
+}
+
+.login__turno-horas {
+  display: block;
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  opacity: 0.75;
+  margin-top: 2px;
+}
+
+.login__pie {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-3);
+  flex-wrap: wrap;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+}
+
+.login__demo {
+  color: var(--muted);
+  font-weight: var(--fw-medium);
+}
+
+.login__conn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--s-3);
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+  color: var(--ink-2);
+}

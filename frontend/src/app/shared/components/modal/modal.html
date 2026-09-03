@@ -1,0 +1,21 @@
+@if (open) {
+  <div class="modal-backdrop-bs" (click)="!confirmando && cancelled.emit()">
+    <div class="modal-bs" (click)="$event.stopPropagation()">
+      <div class="modal-bs__body">
+        <div class="modal-bs__title">{{ title }}</div>
+        <div class="modal-bs__text">{{ message }}</div>
+      </div>
+      <div class="modal-bs__actions">
+        <app-button variant="secondary" [disabled]="confirmando" (clicked)="cancelled.emit()">{{
+          cancelLabel
+        }}</app-button>
+        <app-button
+          [variant]="confirmVariant"
+          [loading]="confirmando"
+          (clicked)="confirmed.emit()"
+          >{{ confirmLabel }}</app-button
+        >
+      </div>
+    </div>
+  </div>
+}

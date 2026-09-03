@@ -1,0 +1,18 @@
+<div class="field" [class.field-error]="showError">
+  <input
+    [id]="inputId"
+    class="input"
+    [type]="type"
+    placeholder=" "
+    [value]="value"
+    [disabled]="disabled"
+    (input)="onInput($event)"
+    (blur)="onBlur()"
+  />
+  <label [for]="inputId">{{ label }}</label>
+  @if (showError && errorMessage) {
+    <div class="field-hint">{{ errorMessage }}</div>
+  } @else if (hint) {
+    <div class="field-hint">{{ hint }}</div>
+  }
+</div>

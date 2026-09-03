@@ -1,0 +1,104 @@
+<div class="pos">
+  <section class="pos__main">
+    <app-card>
+      <div class="pos__card-head">
+        <h2 class="pos__section-titulo">Escáner</h2>
+        <span class="pos__section-hint">Simulación — la cámara real se integra aparte</span>
+      </div>
+
+      <div class="pos__scan-grid">
+        <app-scanner
+          [estado]="estadoEscaneo()"
+          [codigo]="codigoEscaneado()"
+          [buscando]="estadoEscaneo() === 'buscando'"
+          (simularEscaneo)="simularEscaneo()"
+          (simularFallo)="simularFallo()"
+        ></app-scanner>
+
+        <div class="pos__busqueda">
+          <div>
+            <label for="pos-query" class="pos__label">Búsqueda manual</label>
+            <input
+              id="pos-query"
+              class="bs-field-compact pos__input"
+              [value]="query()"
+              (input)="onQueryInput($event)"
+              placeholder="Nombre, principio activo o código"
+            />
+          </div>
+
+          <div class="pos__resultados">
+            <div class="eyebrow pos__resultados-titulo">Resultados</div>
+            <div class="pos__resultados-lista">
+              @if (buscandoProductos()) {
+                <app-skeleton [count]="3"></app-skeleton>
+              } @else {
+                @for (p of resultados(); track p.id) {
+                  <button type="button" class="pos__resultado" (click)="elegirProducto(p)">
+                    <span class="pos__resultado-info">
+                      <span class="pos__resultado-nombre">{{ p.nombre }}</span>
+                      <span class="pos__resultado-sub"
+                        >{{ p.laboratorio }} · {{ p.categoria }}</span
+                      >
+                    </span>
+                    @if (p.alertaVencimiento) {
+                      <app-badge variant="warn" class="pos__resultado-badge">{{
+                        p.alertaVencimiento
+                      }}</app-badge>
+                    }
+                    <span class="num pos__resultado-precio"
+                      >desde {{ formatearMoneda(precioDesde(p)) }}</span
+                    >
+                  </button>
+                }
+                @if (sinResultados()) {
+                  <div class="pos__sin-resultados">Sin coincidencias para "{{ query() }}"</div>
+                }
+              }
+            </div>
+          </div>
+        </div>
+      </div>
+    </app-card>
+
+    <app-card>
+      <h2 class="pos__section-titulo pos__quick-titulo">Más vendidos del turno</h2>
+      <div class="pos__quick-grid">
+        @for (p of masVendidos(); track p.id) {
+          <button type="button" class="pos__quick" (click)="elegirProducto(p)">
+            <span class="pos__quick-nombre">{{ p.nombre }}</span>
+            <span class="num pos__quick-precio">desde {{ formatearMoneda(precioDesde(p)) }}</span>
+          </button>
+        }
+      </div>
+    </app-card>
+  </section>
+
+  <app-carrito-panel
+    class="pos__carrito"
+    [lineas]="carrito.lineas()"
+    [subtotal]="carrito.subtotal()"
+    [igv]="carrito.igv()"
+    [total]="carrito.total()"
+    [unidades]="carrito.unidades()"
+    [igvLabel]="igvLabel"
+    [cobrando]="cobrando()"
+    (incrementar)="carrito.incrementar($event)"
+    (decrementar)="carrito.decrementar($event)"
+    (lineaQuitada)="carrito.quitar($event)"
+    (cobrar)="cobrar()"
+  ></app-carrito-panel>
+</div>
+
+<app-presentacion-modal
+  [producto]="productoSeleccionado()"
+  (elegida)="agregarPresentacion($event)"
+  (cerrado)="cerrarModalPresentacion()"
+></app-presentacion-modal>
+
+<app-toast
+  [visible]="toastVisible()"
+  variant="success"
+  [message]="toastMensaje()"
+  (closed)="toastVisible.set(false)"
+></app-toast>

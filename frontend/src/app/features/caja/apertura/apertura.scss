@@ -1,0 +1,174 @@
+.apertura {
+  display: flex;
+  justify-content: center;
+}
+
+// — bloqueada —
+.apertura__bloqueada {
+  max-width: 560px;
+  width: 100%;
+  border-left: 5px solid var(--ambar-500);
+}
+
+.apertura__bloqueada-eyebrow {
+  font-size: 12px;
+  font-weight: var(--fw-black);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ambar-600);
+}
+
+.apertura__bloqueada-titulo {
+  font-size: 20px;
+  font-weight: var(--fw-black);
+  line-height: 1.25;
+  margin-top: 6px;
+}
+
+.apertura__bloqueada-texto {
+  font-size: 15px;
+  font-weight: var(--fw-medium);
+  color: var(--ink-2);
+  margin-top: var(--s-2);
+}
+
+// — formulario —
+// app-card es un elemento inline por defecto, pero al ser hijo directo
+// de .apertura (flex) se "blockifica" (CSS Display L3) y max-width sí
+// aplica.
+.apertura__form {
+  max-width: 560px;
+  width: 100%;
+}
+
+.apertura__eyebrow {
+  font-size: 12px;
+  font-weight: var(--fw-black);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--verde-600);
+}
+
+.apertura__titulo {
+  margin: 6px 0 0;
+  font-size: 24px;
+}
+
+.apertura__subtitulo {
+  margin: 6px 0 0;
+  font-size: 15px;
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+
+.apertura__body {
+  margin-top: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.apertura__label {
+  display: block;
+  font-size: 13px;
+  font-weight: var(--fw-black);
+  color: var(--ink-2);
+  margin-bottom: var(--s-2);
+}
+
+.apertura__monto-box {
+  display: flex;
+  align-items: center;
+  border: 2px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 0 var(--s-4);
+  background: var(--surface);
+}
+.apertura__monto-box--error {
+  border-color: var(--rojo-500);
+}
+
+.apertura__monto-prefijo {
+  font-size: 22px;
+  font-weight: var(--fw-black);
+  color: var(--muted);
+}
+
+.apertura__monto-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 38px;
+  font-weight: var(--fw-black);
+  letter-spacing: -0.02em;
+  padding: 14px var(--s-3);
+  min-height: 64px;
+}
+
+.apertura__error {
+  margin-top: 8px;
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  color: var(--rojo-600);
+}
+
+.apertura__rapidos {
+  display: flex;
+  gap: var(--s-2);
+  margin-top: var(--s-3);
+  flex-wrap: wrap;
+}
+
+.apertura__rapido {
+  min-height: var(--tap);
+  padding: 0 var(--s-4);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--surface);
+  font-weight: var(--fw-bold);
+  font-size: 15px;
+  cursor: pointer;
+}
+.apertura__rapido:hover {
+  border-color: var(--verde-300);
+  background: var(--verde-50);
+}
+
+.apertura__meta {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.apertura__meta-fila {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  border-bottom: 1px solid var(--line);
+}
+.apertura__meta-fila:last-child {
+  border-bottom: 0;
+}
+
+.apertura__meta-k {
+  font-size: 14px;
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+
+.apertura__meta-v {
+  font-size: 15px;
+  font-weight: var(--fw-black);
+  text-align: right;
+}
+
+.apertura__nota {
+  font-size: 13px;
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+  margin: 0;
+}
