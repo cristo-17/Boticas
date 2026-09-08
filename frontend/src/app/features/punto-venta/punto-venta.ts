@@ -4,6 +4,7 @@ import { CardComponent } from '../../shared/components/card/card';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
 import { ToastComponent } from '../../shared/components/toast/toast';
 import { PresentacionProducto, Producto } from '../../core/models/producto.model';
+import { MetodoPago } from '../../core/models/venta.model';
 import { ProductoService } from '../../core/services/producto.service';
 import { VentaService } from '../../core/services/venta.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
@@ -110,18 +111,18 @@ export class PuntoVentaScreen implements OnInit {
     return producto.presentaciones[producto.presentaciones.length - 1]?.precio ?? 0;
   }
 
-  cobrar(): void {
+  cobrar(metodo: MetodoPago = 'efectivo'): void {
     if (this.carrito.vacio()) return;
     const items = this.carrito.lineas().map((l) => ({
       productoId: l.productoId,
       presentacionId: l.presentacionId,
       cantidad: l.cantidad,
     }));
-    this.ventaService.registrarVenta({ items, metodoPago: 'efectivo' }).subscribe((venta) => {
+    this.ventaService.registrarVenta({ items, metodoPago: metodo }).subscribe((venta) => {
       this.carrito.vaciar();
       this.mostrarToast(
         venta.sincronizada
-          ? `Venta cobrada · ${formatearMoneda(venta.total)}`
+          ? `Venta cobrada (${metodo.toUpperCase()}) · ${formatearMoneda(venta.total)}`
           : `Venta guardada localmente · ${formatearMoneda(venta.total)}`,
       );
     });

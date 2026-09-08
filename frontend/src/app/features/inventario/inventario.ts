@@ -81,13 +81,22 @@ export class InventarioScreen implements OnInit {
     (this.paramsIniciales.get('vencimiento') as VencimientoFiltro | null) ?? 'todos',
   );
   readonly soloStockBajo = signal(this.paramsIniciales.get('soloStockBajo') === 'true');
+  readonly busqueda = signal('');
 
-  readonly filas = computed<FilaLote[]>(() =>
-    this.inventario
-      .lotes()
-      .map(filaDeLote)
-      .sort((a, b) => a.dias - b.dias),
-  );
+  readonly filas = computed<FilaLote[]>(() => {
+    const q = this.busqueda().trim().toLowerCase();
+    const lista = this.inventario.lotes().map(filaDeLote);
+    const filtradas = q
+      ? lista.filter(
+          (f) =>
+            f.productoNombre.toLowerCase().includes(q) ||
+            f.codigo.toLowerCase().includes(q) ||
+            f.categoria.toLowerCase().includes(q) ||
+            f.ubicacion.toLowerCase().includes(q),
+        )
+      : lista;
+    return filtradas.sort((a, b) => a.dias - b.dias);
+  });
 
   readonly vacio = computed(() => !this.cargando() && !this.error() && this.filas().length === 0);
 
@@ -126,7 +135,12 @@ export class InventarioScreen implements OnInit {
     this.cargar();
   }
 
+  onBusquedaInput(event: Event): void {
+    this.busqueda.set((event.target as HTMLInputElement).value);
+  }
+
   limpiarFiltros(): void {
+    this.busqueda.set('');
     this.categoriaSeleccionada.set('Todas');
     this.vencimientoSeleccionado.set('todos');
     this.soloStockBajo.set(false);

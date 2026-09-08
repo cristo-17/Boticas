@@ -119,6 +119,45 @@
       </app-button>
     </form>
   </app-card>
+
+  @if (mermas().length > 0) {
+    <div class="merma__historial">
+      <h2 style="font-size: 18px; margin-top: var(--s-2);">Mermas del turno</h2>
+      <app-card>
+        <app-table>
+          <thead>
+            <tr>
+              <th>Hora</th>
+              <th>Producto</th>
+              <th>Lote</th>
+              <th>Motivo</th>
+              <th class="align-end">Cant.</th>
+              <th class="align-end">Valor</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (m of mermas(); track m.id) {
+              <tr>
+                <td class="num">{{ formatearHora(m.fecha) }}</td>
+                <td>{{ m.productoNombre }}</td>
+                <td class="num">{{ m.loteCodigo }}</td>
+                <td>
+                  <app-badge variant="neutral">{{ m.motivo }}</app-badge>
+                  @if (m.observacion) {
+                    <div class="field-hint" style="margin-top: 2px;">{{ m.observacion }}</div>
+                  }
+                </td>
+                <td class="align-end num">{{ m.cantidad }}</td>
+                <td class="align-end num" style="color: var(--rojo-600); font-weight: var(--fw-bold);">
+                  {{ formatearMoneda(m.valor) }}
+                </td>
+              </tr>
+            }
+          </tbody>
+        </app-table>
+      </app-card>
+    </div>
+  }
 </div>
 
 <app-modal

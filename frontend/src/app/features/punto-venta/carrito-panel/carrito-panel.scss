@@ -247,3 +247,40 @@ $pos-breakpoint: 1180.98px;
   display: flex;
   margin-top: var(--s-4);
 }
+
+.carrito-panel__metodos {
+  margin-top: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+}
+
+.carrito-panel__metodos-grid {
+  display: flex;
+  gap: var(--s-1);
+  margin-top: 6px;
+}
+
+.carrito-panel__metodo-btn {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+
+  &:hover {
+    border-color: var(--ink);
+  }
+
+  &--activo {
+    background: var(--ink);
+    color: #fff;
+    border-color: var(--ink);
+  }
+}
+

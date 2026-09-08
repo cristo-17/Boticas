@@ -2,6 +2,7 @@ import { Component, EventEmitter, Input, Output, signal } from '@angular/core';
 import { ButtonComponent } from '../../../shared/components/button/button';
 import { BadgeComponent } from '../../../shared/components/badge/badge';
 import { ModalComponent } from '../../../shared/components/modal/modal';
+import { MetodoPago } from '../../../core/models/venta.model';
 import { formatearMoneda } from '../../../core/utils/moneda.util';
 import { LineaCarrito } from '../services/carrito.service';
 
@@ -30,10 +31,11 @@ export class CarritoPanelComponent {
   @Output() incrementar = new EventEmitter<string>();
   @Output() decrementar = new EventEmitter<string>();
   @Output() lineaQuitada = new EventEmitter<string>();
-  @Output() cobrar = new EventEmitter<void>();
+  @Output() cobrar = new EventEmitter<MetodoPago>();
 
   readonly expandido = signal(true);
   readonly lineaPendiente = signal<LineaCarrito | null>(null);
+  readonly metodoSeleccionado = signal<MetodoPago>('efectivo');
 
   readonly formatearMoneda = formatearMoneda;
 

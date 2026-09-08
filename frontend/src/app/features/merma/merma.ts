@@ -1,11 +1,13 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { BadgeComponent } from '../../shared/components/badge/badge';
 import { ButtonComponent } from '../../shared/components/button/button';
 import { CardComponent } from '../../shared/components/card/card';
 import { ChipComponent } from '../../shared/components/chip/chip';
 import { FieldComponent } from '../../shared/components/field/field';
 import { ModalComponent } from '../../shared/components/modal/modal';
+import { TableComponent } from '../../shared/components/table/table';
 import { ToastComponent, ToastVariant } from '../../shared/components/toast/toast';
 import { MotivoMerma } from '../../core/models/merma.model';
 import { AuthService } from '../../core/services/auth.service';
@@ -22,11 +24,13 @@ import { formatearMoneda } from '../../core/utils/moneda.util';
   selector: 'app-merma',
   imports: [
     ReactiveFormsModule,
+    BadgeComponent,
     ButtonComponent,
     CardComponent,
     ChipComponent,
     FieldComponent,
     ModalComponent,
+    TableComponent,
     ToastComponent,
   ],
   templateUrl: './merma.html',
@@ -42,6 +46,7 @@ export class MermaScreen implements OnInit {
   readonly motivos = MOTIVOS_MERMA;
   readonly formatearMoneda = formatearMoneda;
   readonly registrando = this.mermaService.cargando;
+  readonly mermas = this.mermaService.mermas;
 
   // Formulario reactivo para registrar una merma. Se conecta a app-field (ControlValueAccessor) en la plantilla.
   readonly form = new FormGroup({
@@ -171,6 +176,15 @@ export class MermaScreen implements OnInit {
         this.form.controls.productoId.setValue(primerProducto.productoId);
       }
     });
+
+    this.mermaService.listarMermasDelDia().subscribe();
+  }
+
+  formatearHora(iso: string): string {
+    const d = new Date(iso);
+    return isNaN(d.getTime())
+      ? iso
+      : d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
   }
 
   incrementarCantidad(): void {

@@ -136,3 +136,9 @@
 .merma__resumen-valor--danger {
   color: var(--rojo-600);
 }
+
+.merma__historial {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}

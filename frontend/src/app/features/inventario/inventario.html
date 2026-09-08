@@ -11,6 +11,17 @@
 
   <app-card>
     <div class="inventario__filtros">
+      <div class="inventario__busqueda-wrap" style="flex: 1; min-width: 220px;">
+        <input
+          type="text"
+          class="bs-field-compact"
+          style="width: 100%;"
+          placeholder="Buscar producto, lote o ubicación..."
+          [value]="busqueda()"
+          (input)="onBusquedaInput($event)"
+        />
+      </div>
+
       <div class="inventario__filtro-grupo">
         <span class="eyebrow">Vencimiento</span>
         @for (f of filtrosVencimiento; track f.valor) {

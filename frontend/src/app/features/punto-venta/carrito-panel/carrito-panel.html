@@ -77,6 +77,36 @@
       ><span class="num">{{ formatearMoneda(igv) }}</span>
     </div>
   }
+  <div class="carrito-panel__metodos">
+    <span class="eyebrow">Método de pago</span>
+    <div class="carrito-panel__metodos-grid">
+      <button
+        type="button"
+        class="carrito-panel__metodo-btn"
+        [class.carrito-panel__metodo-btn--activo]="metodoSeleccionado() === 'efectivo'"
+        (click)="metodoSeleccionado.set('efectivo')"
+      >
+        Efectivo
+      </button>
+      <button
+        type="button"
+        class="carrito-panel__metodo-btn"
+        [class.carrito-panel__metodo-btn--activo]="metodoSeleccionado() === 'yape'"
+        (click)="metodoSeleccionado.set('yape')"
+      >
+        Yape
+      </button>
+      <button
+        type="button"
+        class="carrito-panel__metodo-btn"
+        [class.carrito-panel__metodo-btn--activo]="metodoSeleccionado() === 'tarjeta'"
+        (click)="metodoSeleccionado.set('tarjeta')"
+      >
+        Tarjeta
+      </button>
+    </div>
+  </div>
+
   <div class="carrito-panel__total">
     <span class="carrito-panel__total-label">Total</span>
     <span class="num carrito-panel__total-valor">{{ formatearMoneda(total) }}</span>
@@ -87,7 +117,7 @@
     [block]="true"
     [disabled]="vacio"
     [loading]="cobrando"
-    (clicked)="cobrar.emit()"
+    (clicked)="cobrar.emit(metodoSeleccionado())"
   >
     Cobrar {{ formatearMoneda(total) }}
   </app-button>
