@@ -13,7 +13,7 @@
       routerLinkActive="sidebar-nav__item--active"
       class="sidebar-nav__item"
     >
-      <span class="sidebar-nav__dot"></span>
+      <i class="bi" [class]="item.icon + ' sidebar-nav__icon'"></i>
       <span class="sidebar-nav__label">{{ item.label }}</span>
       @if (item.path === '/alertas' && cantidadAlertas() > 0) {
         <span class="sidebar-nav__badge num">{{ cantidadAlertas() }}</span>

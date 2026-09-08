@@ -93,16 +93,15 @@
   font-weight: var(--fw-black);
 }
 
-.sidebar-nav__dot {
-  width: 8px;
-  height: 8px;
-  flex: none;
-  border-radius: 2px;
-  background: var(--line);
+.sidebar-nav__icon {
+  font-size: 18px;
+  line-height: 1;
+  color: var(--muted);
+  transition: color var(--t-fast);
 }
 
-.sidebar-nav__item--active .sidebar-nav__dot {
-  background: var(--verde-500);
+.sidebar-nav__item--active .sidebar-nav__icon {
+  color: var(--verde-600);
 }
 
 .sidebar-nav__label {

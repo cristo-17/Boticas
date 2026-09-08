@@ -11,11 +11,12 @@
 
   <app-card>
     <div class="inventario__filtros">
-      <div class="inventario__busqueda-wrap" style="flex: 1; min-width: 220px;">
+      <div class="inventario__busqueda-wrap" style="flex: 1; min-width: 220px; position: relative;">
+        <i class="bi bi-search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none;"></i>
         <input
           type="text"
           class="bs-field-compact"
-          style="width: 100%;"
+          style="width: 100%; padding-left: 36px;"
           placeholder="Buscar producto, lote o ubicación..."
           [value]="busqueda()"
           (input)="onBusquedaInput($event)"

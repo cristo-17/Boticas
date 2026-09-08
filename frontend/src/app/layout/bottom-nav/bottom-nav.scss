@@ -39,15 +39,9 @@
 }
 
 .bottom-nav__icon {
-  width: 20px;
-  height: 20px;
-  border-radius: 5px;
-  border: 2px solid currentColor;
-  background: transparent;
-}
-
-.bottom-nav__item--active .bottom-nav__icon {
-  background: var(--verde-100);
+  font-size: 20px;
+  line-height: 1;
+  color: currentColor;
 }
 
 .bottom-nav__label {

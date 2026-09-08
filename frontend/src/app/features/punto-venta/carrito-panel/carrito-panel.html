@@ -86,7 +86,7 @@
         [class.carrito-panel__metodo-btn--activo]="metodoSeleccionado() === 'efectivo'"
         (click)="metodoSeleccionado.set('efectivo')"
       >
-        Efectivo
+        <i class="bi bi-cash"></i> Efectivo
       </button>
       <button
         type="button"
@@ -94,7 +94,7 @@
         [class.carrito-panel__metodo-btn--activo]="metodoSeleccionado() === 'yape'"
         (click)="metodoSeleccionado.set('yape')"
       >
-        Yape
+        <i class="bi bi-phone"></i> Yape
       </button>
       <button
         type="button"
@@ -102,7 +102,7 @@
         [class.carrito-panel__metodo-btn--activo]="metodoSeleccionado() === 'tarjeta'"
         (click)="metodoSeleccionado.set('tarjeta')"
       >
-        Tarjeta
+        <i class="bi bi-credit-card"></i> Tarjeta
       </button>
     </div>
   </div>
