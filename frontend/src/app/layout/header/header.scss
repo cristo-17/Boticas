@@ -26,17 +26,11 @@
   min-width: 0;
 }
 
-.app-header__logo {
+.app-header__logo-img {
   width: 38px;
   height: 38px;
   flex: none;
-  border-radius: var(--r-md);
-  background: var(--verde-500);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-weight: var(--fw-black);
-  font-size: 17px;
+  object-fit: contain;
 }
 
 .app-header__name {

@@ -19,17 +19,11 @@
   margin-bottom: var(--s-4);
 }
 
-.login__logo {
-  width: 46px;
-  height: 46px;
+.login__logo-img {
+  width: 48px;
+  height: 48px;
   flex: none;
-  border-radius: var(--r-md);
-  background: var(--verde-500);
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-weight: var(--fw-black);
-  font-size: 21px;
+  object-fit: contain;
 }
 
 .login__nombre {
