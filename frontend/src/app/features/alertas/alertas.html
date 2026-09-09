@@ -4,6 +4,8 @@
     <p class="field-hint alertas__fecha">{{ fechaTexto }}</p>
   </div>
 
+  <app-error-banner [mensaje]="error()"></app-error-banner>
+
   @if (cargando() && kpis().length === 0) {
     <div class="alertas__kpis">
       @for (i of [1, 2, 3, 4]; track i) {
@@ -59,6 +61,14 @@
       }
     }
 
-    <div class="alertas__pie">Las alertas se recalculan al sincronizar.</div>
+    @if (pagina(); as p) {
+      <app-paginacion
+        [pagina]="p.pagina"
+        [totalPaginas]="p.totalPaginas"
+        [totalElementos]="p.totalElementos"
+        (anterior)="irAPagina(p.pagina - 1)"
+        (siguiente)="irAPagina(p.pagina + 1)"
+      ></app-paginacion>
+    }
   </app-card>
 </div>

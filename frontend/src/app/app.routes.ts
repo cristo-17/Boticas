@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/guards/auth.guard';
 import { Shell } from './layout/shell/shell';
 
 export const routes: Routes = [
@@ -10,6 +11,7 @@ export const routes: Routes = [
   {
     path: '',
     component: Shell,
+    canActivate: [authGuard],
     children: [
       {
         path: 'alertas',

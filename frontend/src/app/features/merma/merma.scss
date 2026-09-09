@@ -12,6 +12,93 @@
   gap: var(--s-4);
 }
 
+// --- Paso 1: buscar producto (rediseño Bloque C) — mismo patrón visual que .pos__busqueda/.pos__resultado en punto-venta.scss, clases propias (CLAUDE.md: .scss de feature es solo layout local, nunca se copian clases entre pantallas).
+.merma__busqueda {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.merma__busqueda-input {
+  width: 100%;
+  min-height: var(--tap);
+  font-size: 16px;
+}
+
+.merma__resultados {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.merma__resultado {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  min-height: var(--tap);
+  text-align: left;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 8px var(--s-3);
+  cursor: pointer;
+}
+.merma__resultado:hover {
+  background: var(--verde-50);
+  border-color: var(--verde-300);
+}
+
+.merma__resultado-info {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.merma__resultado-info > * {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.merma__resultado-nombre {
+  display: block;
+  font-weight: var(--fw-bold);
+  font-size: 15px;
+  line-height: 1.25;
+}
+
+.merma__resultado-sub {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: var(--fw-semibold);
+}
+
+.merma__sin-resultados {
+  padding: var(--s-4);
+  text-align: center;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  color: var(--muted);
+}
+
+.merma__producto-elegido {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-3) var(--s-4);
+  background: var(--verde-50);
+  border: 1px solid var(--verde-300);
+  border-radius: var(--r-md);
+}
+
+.merma__producto-nombre {
+  font-size: 16px;
+  font-weight: var(--fw-black);
+  color: var(--ink);
+}
+
 .merma__label {
   display: block;
   font-size: 13px;

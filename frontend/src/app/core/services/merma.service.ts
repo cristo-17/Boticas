@@ -1,11 +1,14 @@
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { catchError, finalize, tap } from 'rxjs/operators';
 import { Merma, MotivoMerma, NuevaMermaRequest } from '../models/merma.model';
-import { AuthService } from './auth.service';
+import { PaginaResponse } from '../models/pagina.model';
 import { ConfigService } from './config.service';
-import { InventarioService } from './inventario.service';
-import { nextId, simulate } from './mock-utils';
+import { ErrorTraducido } from '../interceptors/error.interceptor';
+import { environment } from '../../../environments/environment';
+
+const BASE_URL = `${environment.apiUrl}/mermas`;
 
 /** Fallback si /api/config no llegó a cargar todavía (no debería pasar: provideAppInitializer la espera antes de arrancar la app). */
 const MOTIVOS_QUE_REQUIEREN_OBSERVACION_DEFECTO: MotivoMerma[] = ['Robo o pérdida', 'Otro'];
@@ -13,9 +16,8 @@ const MOTIVOS_MERMA_DEFECTO: MotivoMerma[] = ['Vencimiento', 'Rotura', 'Deterior
 
 @Injectable({ providedIn: 'root' })
 export class MermaService {
-  private readonly auth = inject(AuthService);
+  private readonly http = inject(HttpClient);
   private readonly config = inject(ConfigService);
-  private readonly inventario = inject(InventarioService);
 
   private readonly _mermas = signal<Merma[]>([]);
   readonly mermas = this._mermas.asReadonly();
@@ -23,7 +25,11 @@ export class MermaService {
   private readonly _cargando = signal(false);
   readonly cargando = this._cargando.asReadonly();
 
-  /** 'Robo o pérdida' y 'Otro' exigen observación por defecto — se valida también en el backend. */
+  /** Regla de frontend (CLAUDE.md): toda pantalla que llama a este servicio muestra este signal. */
+  private readonly _error = signal<string | null>(null);
+  readonly error = this._error.asReadonly();
+
+  /** 'Robo o pérdida' y 'Otro' exigen observación por defecto — se valida también en el backend, nunca solo acá. */
   get motivosMerma(): MotivoMerma[] {
     return (this.config.config()?.motivosMerma as MotivoMerma[] | undefined) ?? MOTIVOS_MERMA_DEFECTO;
   }
@@ -36,40 +42,31 @@ export class MermaService {
   }
 
   // GET /api/mermas?fecha=hoy
-  listarMermasDelDia(): Observable<Merma[]> {
+  listarMermasDelDia(): Observable<PaginaResponse<Merma>> {
     this._cargando.set(true);
-    return simulate(this._mermas()).pipe(tap(() => this._cargando.set(false)));
+    this._error.set(null);
+    const params = new HttpParams().set('fecha', 'hoy');
+    return this.http.get<PaginaResponse<Merma>>(BASE_URL, { params }).pipe(
+      tap((data) => this._mermas.set(data.contenido)),
+      catchError((err) => this.manejarError(err, 'No se pudieron cargar las mermas del día.')),
+      finalize(() => this._cargando.set(false)),
+    );
   }
 
-  // POST /api/mermas
+  // POST /api/mermas — la cantidad topada al stock real y la observación obligatoria las valida EL SERVIDOR (Regla 8): es destructiva y sin deshacer.
   registrarMerma(request: NuevaMermaRequest): Observable<Merma> {
-    const loteEncontrado = this.inventario.obtenerLotePorId(request.loteId);
-    if (!loteEncontrado) {
-      return throwError(() => new Error('Lote no encontrado'));
-    }
-    if (request.cantidad > loteEncontrado.stock) {
-      return throwError(() => new Error(`El lote solo tiene ${loteEncontrado.stock} unidades.`));
-    }
-    if (this.motivosQueRequierenObservacion.includes(request.motivo) && !request.observacion?.trim()) {
-      return throwError(() => new Error('Este motivo requiere una observación.'));
-    }
-    const merma: Merma = {
-      id: nextId('m'),
-      loteId: request.loteId,
-      productoNombre: loteEncontrado.productoNombre,
-      loteCodigo: loteEncontrado.codigo,
-      cantidad: request.cantidad,
-      motivo: request.motivo,
-      observacion: request.observacion ?? null,
-      valor: request.cantidad * loteEncontrado.precioUnitario,
-      usuarioId: this.auth.usuarioActual()?.id ?? '',
-      fecha: new Date().toISOString(),
-    };
-    return simulate(merma, 500).pipe(
-      tap(() => {
-        this._mermas.update((all) => [merma, ...all]);
-        this.inventario.descontarStock(request.loteId, request.cantidad);
-      }),
+    this._cargando.set(true);
+    this._error.set(null);
+    return this.http.post<Merma>(BASE_URL, request).pipe(
+      tap((merma) => this._mermas.update((all) => [merma, ...all])),
+      catchError((err) => this.manejarError(err, 'No se pudo registrar la merma.')),
+      finalize(() => this._cargando.set(false)),
     );
+  }
+
+  /** Molde único de manejo de error (CLAUDE.md): guarda el mensaje traducido en el signal y vuelve a lanzar. */
+  private manejarError(err: HttpErrorResponse & { traducido?: ErrorTraducido }, mensajeDefecto: string): Observable<never> {
+    this._error.set(err.traducido?.mensaje ?? mensajeDefecto);
+    return throwError(() => err);
   }
 }

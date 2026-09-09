@@ -4,7 +4,8 @@
       <div class="login__logo">B</div>
       <div>
         <div class="login__nombre">BoticaSys</div>
-        <div class="login__sede">Botica San Lucas · Av. Grau 412</div>
+        <!-- Sin sede fija (Tarea 12): antes de loguear no se sabe a qué botica pertenece el usuario -- el login no pide elegir botica, se resuelve desde el usuario (docs/DECISIONES.md). -->
+        <div class="login__sede">Gestión para boticas independientes</div>
       </div>
     </div>
 
@@ -72,7 +73,12 @@
 
         <div class="login__pie">
           <a href="#recuperar">Olvidé mi contraseña</a>
-          <span class="login__demo">Demo: contraseña <span class="num">1234</span></span>
+          @if (esDesarrollo) {
+            <span class="login__demo"
+              >Demo: <span class="num">tecnico123</span> (técnico) ·
+              <span class="num">admin123</span> (administrador)</span
+            >
+          }
         </div>
       </form>
     </div>

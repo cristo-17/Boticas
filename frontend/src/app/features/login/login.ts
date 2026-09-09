@@ -7,6 +7,7 @@ import { ConnStatusComponent } from '../../shared/components/conn-status/conn-st
 import { Turno } from '../../core/models/usuario.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ConexionService } from '../../core/services/conexion.service';
+import { environment } from '../../../environments/environment';
 
 const TURNOS: { valor: Turno; horas: string }[] = [
   { valor: 'Mañana', horas: '07:00–14:00' },
@@ -33,6 +34,12 @@ export class LoginScreen {
 
   readonly turnos = TURNOS;
   readonly estadoConexion = this.conexion.estado;
+  // El hint de contraseñas de demo (login.html) es solo para desarrollo local. isDevMode()
+  // (Angular) NO sirve para esto -- verificado con `npm run build`: sigue devolviendo true
+  // incluso en la configuración "production" por defecto (docs/BITACORA.md [FE-009]).
+  // environment.production sí es confiable: fileReplacements (angular.json) lo intercambia
+  // en tiempo de build, el mismo mecanismo ya verificado que cambia apiUrl entre entornos.
+  readonly esDesarrollo = !environment.production;
 
   get etiquetaConexion(): string {
     return ETIQUETAS_CONEXION[this.estadoConexion()];

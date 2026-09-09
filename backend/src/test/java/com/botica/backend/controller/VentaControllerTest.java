@@ -1,7 +1,6 @@
 package com.botica.backend.controller;
 
 import com.botica.backend.config.GlobalExceptionHandler;
-import com.botica.backend.config.SecurityConfig;
 import com.botica.backend.dto.ItemVentaResponse;
 import com.botica.backend.dto.VentaResponse;
 import com.botica.backend.exception.SinCajaAbiertaException;
@@ -9,6 +8,7 @@ import com.botica.backend.exception.StockInsuficienteException;
 import com.botica.backend.service.VentaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -26,11 +26,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(VentaController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import(GlobalExceptionHandler.class)
+@AutoConfigureMockMvc(addFilters = false) // filtros de seguridad reales apagados a proposito: esto prueba DTO/error-shape, no auth (Tarea 12)
 class VentaControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+    // JwtAuthenticationFilter (Tarea 12) es un Filter, y @WebMvcTest SIEMPRE lo escanea aunque
+    // @AutoConfigureMockMvc(addFilters=false) lo deje sin correr -- sin este mock, el contexto
+    // no arranca (JwtUtil no está en el slice).
+    @MockitoBean
+    private com.botica.backend.util.JwtUtil jwtUtil;
     @MockitoBean
     private VentaService ventaService;
 

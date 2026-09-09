@@ -1,4 +1,7 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Subject } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { BadgeComponent } from '../../shared/components/badge/badge';
 import { CardComponent } from '../../shared/components/card/card';
 import { ErrorBannerComponent } from '../../shared/components/error-banner/error-banner';
@@ -67,18 +70,35 @@ export class PuntoVentaScreen implements OnInit {
   readonly formatearMoneda = formatearMoneda;
   readonly igvLabel = 'IGV 18%';
 
-  ngOnInit(): void {
-    this.productoService.obtenerMasVendidos().subscribe({ error: () => {} });
-    this.buscar('');
+  /**
+   * Búsqueda reactiva (regla CLAUDE.md: debounceTime + switchMap):
+   * sin switchMap, la respuesta de una búsqueda vieja (p. ej. "par")
+   * puede llegar después que la de la búsqueda completa ("paracetamol")
+   * y pisarla en pantalla — el cajero ve el catálogo entero, y un clic
+   * en ese momento agrega al carrito un producto que no buscó.
+   */
+  private readonly busqueda$ = new Subject<string>();
+
+  constructor() {
+    this.busqueda$
+      .pipe(
+        debounceTime(300),
+        distinctUntilChanged(),
+        switchMap((query) => this.productoService.buscarProductos(query)),
+        takeUntilDestroyed(),
+      )
+      .subscribe({ error: () => {} });
   }
 
-  buscar(query: string): void {
-    this.query.set(query);
-    this.productoService.buscarProductos(query).subscribe({ error: () => {} });
+  ngOnInit(): void {
+    this.productoService.obtenerMasVendidos().subscribe({ error: () => {} });
+    this.busqueda$.next('');
   }
 
   onQueryInput(event: Event): void {
-    this.buscar((event.target as HTMLInputElement).value);
+    const valor = (event.target as HTMLInputElement).value;
+    this.query.set(valor);
+    this.busqueda$.next(valor);
   }
 
   simularEscaneo(): void {
