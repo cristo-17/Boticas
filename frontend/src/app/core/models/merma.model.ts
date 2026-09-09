@@ -2,7 +2,7 @@ export type MotivoMerma = 'Vencimiento' | 'Rotura' | 'Deterioro' | 'Robo o pérd
 
 export interface Merma {
   id: string;
-  loteId: string;
+  loteId: number;
   productoNombre: string;
   loteCodigo: string;
   cantidad: number;
@@ -15,7 +15,7 @@ export interface Merma {
 
 /** El motivo 'Robo o pérdida' y 'Otro' exigen observación (se valida también en el backend). */
 export interface NuevaMermaRequest {
-  loteId: string;
+  loteId: number;
   cantidad: number;
   motivo: MotivoMerma;
   observacion?: string;

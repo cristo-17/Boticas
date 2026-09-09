@@ -32,4 +32,7 @@ public interface CajaDao {
     ResumenCierreResponse calcularResumen(Long boticaId, Long cajaId);
 
     PaginaResponse<MovimientoCaja> listarMovimientosPaginado(Long boticaId, Long cajaId, int pagina, int tamano, String orden);
+
+    /** Primer escritor real de movimientos_caja (Tarea 11 Bloque B) — apertura/cierre no generan movimiento propio, solo ventas/egresos/mermas. */
+    void insertarMovimiento(MovimientoCaja movimiento);
 }

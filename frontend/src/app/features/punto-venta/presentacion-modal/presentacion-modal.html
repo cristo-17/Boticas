@@ -7,9 +7,9 @@
         <p class="field-hint presentacion-modal__sub">
           {{ producto.laboratorio }} · {{ producto.categoria }} · {{ producto.codigoBarras }}
         </p>
-        @if (producto.alertaVencimiento) {
+        @if (textoAlertaVencimiento; as texto) {
           <span class="bs-badge bs-badge-warn presentacion-modal__alerta">
-            Lote próximo a vencer · {{ producto.alertaVencimiento }}
+            Lote próximo a vencer · {{ texto }}
           </span>
         }
       </div>
@@ -21,7 +21,7 @@
             <button type="button" class="bs-option-row" (click)="elegida.emit(opcion)">
               <span class="bs-option-row__label">
                 {{ opcion.etiqueta }}
-                <span class="bs-option-row__detail">{{ opcion.detalle }}</span>
+                <span class="bs-option-row__detail">{{ detalleDe(opcion) }}</span>
               </span>
               <span class="bs-option-row__price num">{{ formatearMoneda(opcion.precio) }}</span>
             </button>

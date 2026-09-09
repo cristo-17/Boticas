@@ -25,4 +25,5 @@ public class MovimientoCaja {
     private BigDecimal monto;
     private boolean afectaEfectivo;
     private OffsetDateTime creadoEn;
+    private Long creadoPor;
 }

@@ -182,4 +182,20 @@ public class CajaDaoJdbc implements CajaDao {
 
         return PaginaResponse.de(contenido, paginaSegura, tamanoSeguro, total == null ? 0L : total);
     }
+
+    @Override
+    public void insertarMovimiento(MovimientoCaja movimiento) {
+        String sql = "INSERT INTO movimientos_caja (botica_id, caja_id, tipo, descripcion, nota, monto, afecta_efectivo, creado_por) " +
+                "VALUES (:boticaId, :cajaId, :tipo, :descripcion, :nota, :monto, :afectaEfectivo, :creadoPor)";
+        var params = new MapSqlParameterSource()
+                .addValue("boticaId", movimiento.getBoticaId())
+                .addValue("cajaId", movimiento.getCajaId())
+                .addValue("tipo", movimiento.getTipo())
+                .addValue("descripcion", movimiento.getDescripcion())
+                .addValue("nota", movimiento.getNota())
+                .addValue("monto", movimiento.getMonto())
+                .addValue("afectaEfectivo", movimiento.isAfectaEfectivo())
+                .addValue("creadoPor", movimiento.getCreadoPor());
+        jdbc.update(sql, params);
+    }
 }

@@ -160,3 +160,22 @@
   height: 12px;
   border-radius: 3px;
 }
+
+// — formulario "Registrar lote" (Tarea 11 Bloque A) —
+.inventario__form-modal {
+  width: 100%;
+  max-width: 480px;
+}
+
+.inventario__form-campos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  margin-top: var(--s-4);
+}
+
+.inventario__form-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+}

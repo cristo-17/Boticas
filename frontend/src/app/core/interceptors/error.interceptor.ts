@@ -36,6 +36,9 @@ const MENSAJES_POR_CODIGO: Record<string, string> = {
   ORDEN_INVALIDO: 'No se puede ordenar por ese campo.',
   FORMATO_INVALIDO: 'Revisa los datos ingresados.',
   PRODUCTO_NO_ENCONTRADO: 'No se encontró un producto con ese código.',
+  SIN_CAJA_ABIERTA: 'No hay una caja abierta para registrar la venta.',
+  STOCK_INSUFICIENTE: 'No hay stock suficiente para completar la venta.',
+  PRESENTACION_INVALIDA: 'La presentación seleccionada ya no es válida para ese producto.',
   ERROR_INTERNO: 'Ocurrió un error inesperado. Intenta de nuevo.',
 };
 

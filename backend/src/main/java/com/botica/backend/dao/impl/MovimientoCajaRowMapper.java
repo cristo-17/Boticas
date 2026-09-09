@@ -21,6 +21,7 @@ public class MovimientoCajaRowMapper implements RowMapper<MovimientoCaja> {
                 .monto(rs.getBigDecimal("monto"))
                 .afectaEfectivo(rs.getBoolean("afecta_efectivo"))
                 .creadoEn(rs.getObject("creado_en", OffsetDateTime.class))
+                .creadoPor(rs.getObject("creado_por", Long.class))
                 .build();
     }
 }

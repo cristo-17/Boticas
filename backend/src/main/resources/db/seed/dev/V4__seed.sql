@@ -43,37 +43,40 @@ INSERT INTO usuarios (botica_id, rol_id, nombre, usuario, password_hash, turno) 
 -- producto propio de su botica (D1: catálogos independientes).
 -- ============================================================
 
-INSERT INTO productos (botica_id, nombre, laboratorio, categoria, codigo_barras) VALUES
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Paracetamol 500 mg', 'Genfar', 'Analgésicos', '7751234000118'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Amoxicilina 500 mg', 'Portugal', 'Antibióticos', '7751234000217'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Ibuprofeno 400 mg', 'Medifarma', 'Analgésicos', '7751234000316'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Loratadina 10 mg', 'Genfar', 'Antialérgicos', '7751234000415'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Omeprazol 20 mg', 'Unimed', 'Gastrointestinal', '7751234000514'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Sales de rehidratación', 'Farmindustria', 'Otros', '7751234000613'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Clotrimazol crema 20 g', 'Medifarma', 'Dermatológicos', '7751234000712'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Metformina 850 mg', 'Genfar', 'Crónicos', '7751234000811'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Losartán 50 mg', 'Hersil', 'Crónicos', '7751234000910'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Azitromicina 500 mg', 'Medifarma', 'Antibióticos', '7751234001016'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Diclofenaco 50 mg', 'Genfar', 'Analgésicos', '7751234001115'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Cetirizina 10 mg', 'Portugal', 'Antialérgicos', '7751234001214'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Ranitidina 150 mg', 'Unimed', 'Gastrointestinal', '7751234001313'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Vitamina C 500 mg', 'Farmindustria', 'Vitaminas', '7751234001412'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Salbutamol inhalador', 'Hersil', 'Respiratorio', '7751234001511'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Paracetamol 500 mg', 'Genfar', 'Analgésicos', '7751234000118'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Amoxicilina 500 mg', 'Portugal', 'Antibióticos', '7751234000217'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Ibuprofeno 400 mg', 'Medifarma', 'Analgésicos', '7751234000316'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Loratadina 10 mg', 'Genfar', 'Antialérgicos', '7751234000415'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Omeprazol 20 mg', 'Unimed', 'Gastrointestinal', '7751234000514'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Sales de rehidratación', 'Farmindustria', 'Otros', '7751234000613'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Clotrimazol crema 20 g', 'Medifarma', 'Dermatológicos', '7751234000712'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Metformina 850 mg', 'Genfar', 'Crónicos', '7751234000811'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Losartán 50 mg', 'Hersil', 'Crónicos', '7751234000910'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Azitromicina 500 mg', 'Medifarma', 'Antibióticos', '7751234001016'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Diclofenaco 50 mg', 'Genfar', 'Analgésicos', '7751234001115'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Cetirizina 10 mg', 'Portugal', 'Antialérgicos', '7751234001214'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Ranitidina 150 mg', 'Unimed', 'Gastrointestinal', '7751234001313'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Vitamina C 500 mg', 'Farmindustria', 'Vitaminas', '7751234001412'),
-    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Salbutamol inhalador', 'Hersil', 'Respiratorio', '7751234001511');
+-- unidad_nombre (V3, columna NOT NULL sin default) -- sustantivo real
+-- de la unidad base de cada producto, usado por el frontend para
+-- componer "100 tabletas"/"1 cápsula"/etc. a partir de factorConversion.
+INSERT INTO productos (botica_id, nombre, laboratorio, categoria, codigo_barras, unidad_nombre) VALUES
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Paracetamol 500 mg', 'Genfar', 'Analgésicos', '7751234000118', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Amoxicilina 500 mg', 'Portugal', 'Antibióticos', '7751234000217', 'cápsula'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Ibuprofeno 400 mg', 'Medifarma', 'Analgésicos', '7751234000316', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Loratadina 10 mg', 'Genfar', 'Antialérgicos', '7751234000415', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Omeprazol 20 mg', 'Unimed', 'Gastrointestinal', '7751234000514', 'cápsula'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Sales de rehidratación', 'Farmindustria', 'Otros', '7751234000613', 'sobre'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Clotrimazol crema 20 g', 'Medifarma', 'Dermatológicos', '7751234000712', 'tubo'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Metformina 850 mg', 'Genfar', 'Crónicos', '7751234000811', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Losartán 50 mg', 'Hersil', 'Crónicos', '7751234000910', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Azitromicina 500 mg', 'Medifarma', 'Antibióticos', '7751234001016', 'cápsula'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Diclofenaco 50 mg', 'Genfar', 'Analgésicos', '7751234001115', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Cetirizina 10 mg', 'Portugal', 'Antialérgicos', '7751234001214', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Ranitidina 150 mg', 'Unimed', 'Gastrointestinal', '7751234001313', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Vitamina C 500 mg', 'Farmindustria', 'Vitaminas', '7751234001412', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'), 'Salbutamol inhalador', 'Hersil', 'Respiratorio', '7751234001511', 'inhalador'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Paracetamol 500 mg', 'Genfar', 'Analgésicos', '7751234000118', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Amoxicilina 500 mg', 'Portugal', 'Antibióticos', '7751234000217', 'cápsula'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Ibuprofeno 400 mg', 'Medifarma', 'Analgésicos', '7751234000316', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Loratadina 10 mg', 'Genfar', 'Antialérgicos', '7751234000415', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Omeprazol 20 mg', 'Unimed', 'Gastrointestinal', '7751234000514', 'cápsula'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Sales de rehidratación', 'Farmindustria', 'Otros', '7751234000613', 'sobre'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Clotrimazol crema 20 g', 'Medifarma', 'Dermatológicos', '7751234000712', 'tubo'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Metformina 850 mg', 'Genfar', 'Crónicos', '7751234000811', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Losartán 50 mg', 'Hersil', 'Crónicos', '7751234000910', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Azitromicina 500 mg', 'Medifarma', 'Antibióticos', '7751234001016', 'cápsula'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Diclofenaco 50 mg', 'Genfar', 'Analgésicos', '7751234001115', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Cetirizina 10 mg', 'Portugal', 'Antialérgicos', '7751234001214', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Ranitidina 150 mg', 'Unimed', 'Gastrointestinal', '7751234001313', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Vitamina C 500 mg', 'Farmindustria', 'Vitaminas', '7751234001412', 'tableta'),
+    ((SELECT id FROM boticas WHERE nombre = 'Botica Vida Sana'), 'Salbutamol inhalador', 'Hersil', 'Respiratorio', '7751234001511', 'inhalador');
 
 -- Presentaciones: por código de barras (único por botica), evita depender de ids numéricos.
 -- La fila con factor_conversion=1 ("Unidad") ES el precio de venta por unidad

@@ -9,21 +9,35 @@
 
   <app-card>
     <form class="merma__form" [formGroup]="form" (ngSubmit)="pedirConfirmacion()">
-      <app-field
-        label="Producto"
-        tipo="select"
-        [opciones]="productoOpciones()"
-        [formControl]="form.controls.productoId"
-      ></app-field>
+      <div class="bs-field">
+        <label for="merma-producto" class="bs-field__label">Producto</label>
+        <select
+          id="merma-producto"
+          class="bs-field__select"
+          [value]="productoIdSeleccionado()"
+          (change)="onProductoSeleccionado($event)"
+        >
+          @for (o of productoOpciones(); track o.value) {
+            <option [value]="o.value">{{ o.label }}</option>
+          }
+        </select>
+      </div>
 
       <div class="merma__fila">
         <div class="merma__campo merma__campo--lote">
-          <app-field
-            label="Lote"
-            tipo="select"
-            [opciones]="loteOpciones()"
-            [formControl]="form.controls.loteId"
-          ></app-field>
+          <div class="bs-field">
+            <label for="merma-lote" class="bs-field__label">Lote</label>
+            <select
+              id="merma-lote"
+              class="bs-field__select"
+              [value]="loteIdSeleccionado()"
+              (change)="onLoteSeleccionado($event)"
+            >
+              @for (o of loteOpciones(); track o.value) {
+                <option [value]="o.value">{{ o.label }}</option>
+              }
+            </select>
+          </div>
           @if (loteSeleccionado(); as lote) {
             <div class="merma__lote-info">
               Vence el {{ lote.fechaVencimiento }} · {{ lote.stock }} unidades en stock
