@@ -31,6 +31,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -208,6 +209,32 @@ class CajaServiceTest {
         assertThat(response.totalVentasDigital()).isEqualByComparingTo("20.00");
         assertThat(response.cantidadVentas()).isEqualTo(3L);
         assertThat(response.cantidadMovimientos()).isEqualTo(4L);
+    }
+
+    @Test
+    void abrir_alas11pmHoraLima_usaElDiaDeLima_noElDeUtcQueYaCambioDeDia() {
+        // 2026-09-08 23:00 America/Lima == 2026-09-09 04:00 UTC (Lima es UTC-5 fijo) -- el bug
+        // clásico (docs/BITACORA.md) es que un servidor en UTC ya "cree" que es el día siguiente.
+        LocalDate hoyLima = LocalDate.of(2026, 9, 8);
+        Instant instante2300Lima = hoyLima.atTime(23, 0).atOffset(ZoneOffset.of("-05:00")).toInstant();
+        FechaNegocio fechaNegocio = new FechaNegocio(Clock.fixed(instante2300Lima, FechaNegocio.ZONA_LIMA));
+        CajaService servicioTardio = new CajaService(cajaDao, contexto, fechaNegocio, config);
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(contexto.usuarioId()).thenReturn(USUARIO_ID);
+        when(cajaDao.existeCajaAbierta(BOTICA_ID, USUARIO_ID, "Noche", hoyLima)).thenReturn(false);
+        when(cajaDao.insertar(any())).thenAnswer(inv -> {
+            CajaDiaria c = inv.getArgument(0);
+            c.setId(1L);
+            return c;
+        });
+
+        servicioTardio.abrir(new AbrirCajaRequest(new BigDecimal("50.00"), "Noche"));
+
+        // Si el bug reapareciera (zona horaria UTC en vez de Lima), este mock nunca matchearía
+        // (se llamaría con 2026-09-09, no con hoyLima) y el test fallaría con UnnecessaryStubbing
+        // o un NPE al no encontrar respuesta configurada para esos argumentos.
+        verify(cajaDao).existeCajaAbierta(BOTICA_ID, USUARIO_ID, "Noche", hoyLima);
+        verify(cajaDao).insertar(argThat(c -> c.getFecha().equals(hoyLima)));
     }
 
     private CajaDiaria cajaAbierta() {

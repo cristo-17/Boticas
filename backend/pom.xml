@@ -162,6 +162,30 @@
 				</configuration>
 			</plugin>
 			<plugin>
+				<!-- Cobertura (Tarea 13, sección I): "./mvnw test" ya genera el reporte;
+				     prepare-agent instrumenta antes de correr, report lo arma al final
+				     de la misma fase test. Ver docs/PLAN-DE-PRUEBAS.md para el comando y
+				     la ruta exacta del HTML. -->
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.13</version>
+				<executions>
+					<execution>
+						<id>jacoco-prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>jacoco-report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
 				<executions>

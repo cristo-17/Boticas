@@ -3,6 +3,7 @@ package com.botica.backend.controller;
 import com.botica.backend.config.GlobalExceptionHandler;
 import com.botica.backend.dto.LoteResponse;
 import com.botica.backend.dto.PaginaResponse;
+import com.botica.backend.exception.OrdenInvalidoException;
 import com.botica.backend.exception.ProductoNoEncontradoException;
 import com.botica.backend.service.LoteService;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,18 @@ class LoteControllerTest {
                 .andExpect(jsonPath("$.contenido[0].codigo").value("L-1"))
                 .andExpect(jsonPath("$.contenido[0].costoUnitario").doesNotExist())
                 .andExpect(jsonPath("$.totalElementos").value(1));
+    }
+
+    @Test
+    void listar_conOrdenMalicioso_devuelve400OrdenInvalido() throws Exception {
+        // Anexo D: la columna blanca vive en el DAO -- acá solo se verifica que la excepción
+        // real (no una del test) cruce el controller y salga como 400, nunca como un 500 opaco.
+        when(loteService.listar(any(), any(), eq(false), any(), anyInt(), anyInt(), eq("id; DROP TABLE productos --")))
+                .thenThrow(new OrdenInvalidoException("id; DROP TABLE productos --"));
+
+        mockMvc.perform(get("/api/lotes").param("orden", "id; DROP TABLE productos --"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("ORDEN_INVALIDO"));
     }
 
     @Test
