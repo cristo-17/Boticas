@@ -13,7 +13,7 @@ import { formatearMoneda } from '../../../core/utils/moneda.util';
 
 interface FilaMovimiento {
   descripcion: string;
-  nota: string;
+  nota: string | null;
   monto: number;
   colorClass:
     'cierre__barra--verde' | 'cierre__barra--azul' | 'cierre__barra--ambar' | 'cierre__barra--rojo';

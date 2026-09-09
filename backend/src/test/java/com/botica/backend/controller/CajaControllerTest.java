@@ -25,8 +25,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.security.test.context.support.WithMockUser;
+
 @WebMvcTest(CajaController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@WithMockUser(roles = "ADMINISTRADOR")
 class CajaControllerTest {
 
     @Autowired
@@ -106,6 +109,17 @@ class CajaControllerTest {
                 .andExpect(jsonPath("$.montoEsperado").doesNotExist())
                 .andExpect(jsonPath("$.diferencia").doesNotExist())
                 .andExpect(jsonPath("$.semaforoDescuadre").doesNotExist());
+    }
+
+    @Test
+    @WithMockUser(roles = "TECNICO")
+    void cerrar_rolTecnico_devuelve403Forbidden() throws Exception {
+        mockMvc.perform(post("/api/caja/cerrar")
+                        .contentType("application/json")
+                        .content("""
+                                {"montoContado": 150.00}
+                                """))
+                .andExpect(status().isForbidden());
     }
 
     private CajaResponse cajaResponseAbierta() {

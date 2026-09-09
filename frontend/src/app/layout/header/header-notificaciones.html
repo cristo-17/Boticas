@@ -1,0 +1,129 @@
+<div class="header-notif">
+  <!-- Botón campana disparador -->
+  <button
+    type="button"
+    class="header-notif__btn"
+    [class.header-notif__btn--activo]="abierto()"
+    [class.header-notif__btn--con-alertas]="tieneNoLeidas()"
+    (click)="toggle()"
+    [attr.aria-expanded]="abierto()"
+    aria-label="Notificaciones del sistema"
+    title="Notificaciones"
+  >
+    <i
+      class="bi"
+      [class.bi-bell-fill]="tieneNoLeidas()"
+      [class.bi-bell]="!tieneNoLeidas()"
+    ></i>
+
+    @if (noLeidasCount() > 0) {
+      <span class="header-notif__badge" aria-live="polite">
+        {{ noLeidasCount() > 99 ? '99+' : noLeidasCount() }}
+      </span>
+    }
+  </button>
+
+  <!-- Panel desplegable (Popover) -->
+  @if (abierto()) {
+    <div class="header-notif__popover" role="dialog" aria-label="Bandeja de notificaciones">
+      <!-- Encabezado del Popover -->
+      <div class="header-notif__header">
+        <div class="header-notif__title-row">
+          <span class="header-notif__title">Notificaciones</span>
+          <span
+            class="header-notif__sse-status"
+            [class.header-notif__sse-status--conectado]="conectadoSse()"
+            [title]="conectadoSse() ? 'Conectado a alertas en tiempo real' : 'Reconectando...'"
+          >
+            <span class="header-notif__sse-dot"></span>
+            {{ conectadoSse() ? 'En vivo' : 'Conectando...' }}
+          </span>
+        </div>
+
+        @if (tieneNoLeidas()) {
+          <button
+            type="button"
+            class="header-notif__action-btn"
+            (click)="marcarTodas()"
+          >
+            Marcar todas leídas
+          </button>
+        }
+      </div>
+
+      <!-- Banner de permiso de escritorio -->
+      @if (permisoNativo() === 'default') {
+        <div class="header-notif__native-banner">
+          <div class="header-notif__native-info">
+            <i class="bi bi-display header-notif__native-icon"></i>
+            <div>
+              <div class="header-notif__native-title">Avisos en Windows / Escritorio</div>
+              <div class="header-notif__native-desc">
+                Recibe alertas de descuadre y stock crítico aun con la pestaña en segundo plano.
+              </div>
+            </div>
+          </div>
+          <button
+            type="button"
+            class="header-notif__native-btn"
+            (click)="solicitarPermiso()"
+          >
+            Activar avisos
+          </button>
+        </div>
+      }
+
+      <!-- Lista de notificaciones -->
+      <div class="header-notif__list">
+        @if (notificaciones().length === 0) {
+          <div class="header-notif__empty">
+            <i class="bi bi-bell-slash header-notif__empty-icon"></i>
+            <p class="header-notif__empty-text">No hay notificaciones</p>
+            <p class="header-notif__empty-sub">
+              Los avisos automáticos de stock y caja aparecerán aquí.
+            </p>
+          </div>
+        } @else {
+          @for (item of notificaciones(); track item.id) {
+            <div
+              class="header-notif__item"
+              [ngClass]="claseTipo(item.tipo)"
+              [class.header-notif__item--no-leida]="!item.leido"
+              (click)="marcarLeida(item, $event)"
+              tabindex="0"
+              role="button"
+              (keydown.enter)="marcarLeida(item)"
+            >
+              <div class="header-notif__item-icon-box">
+                <i class="bi" [ngClass]="iconoTipo(item.tipo)"></i>
+              </div>
+
+              <div class="header-notif__item-content">
+                <div class="header-notif__item-head">
+                  <span class="header-notif__item-title">{{ item.titulo }}</span>
+                  <span class="header-notif__item-time">{{ formatearHora(item.fechaCreacion) }}</span>
+                </div>
+                <div class="header-notif__item-msg">{{ item.mensaje }}</div>
+              </div>
+
+              @if (!item.leido) {
+                <span class="header-notif__item-unread-dot" title="No leída"></span>
+              }
+            </div>
+          }
+        }
+      </div>
+
+      <!-- Pie del Popover -->
+      <div class="header-notif__footer">
+        <button
+          type="button"
+          class="header-notif__footer-link"
+          (click)="verTodas()"
+        >
+          Ir al panel de alertas generales <i class="bi bi-arrow-right"></i>
+        </button>
+      </div>
+    </div>
+  }
+</div>

@@ -1,5 +1,6 @@
 import { Routes } from '@angular/router';
 import { Shell } from './layout/shell/shell';
+import { authGuard } from './core/guards/auth.guard';
 
 export const routes: Routes = [
   {
@@ -10,6 +11,7 @@ export const routes: Routes = [
   {
     path: '',
     component: Shell,
+    canActivate: [authGuard],
     children: [
       {
         path: 'alertas',
@@ -19,6 +21,11 @@ export const routes: Routes = [
         path: 'punto-venta',
         loadComponent: () =>
           import('./features/punto-venta/punto-venta').then((m) => m.PuntoVentaScreen),
+      },
+      {
+        path: 'ventas',
+        loadComponent: () =>
+          import('./features/ventas/historial-ventas').then((m) => m.HistorialVentasScreen),
       },
       {
         path: 'inventario',

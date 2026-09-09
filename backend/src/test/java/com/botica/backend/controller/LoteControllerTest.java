@@ -26,8 +26,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.security.test.context.support.WithMockUser;
+
 @WebMvcTest(LoteController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@WithMockUser(roles = "ADMINISTRADOR")
 class LoteControllerTest {
 
     @Autowired

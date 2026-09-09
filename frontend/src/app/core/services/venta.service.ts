@@ -1,8 +1,9 @@
-import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
 import { catchError, finalize, tap } from 'rxjs/operators';
 import { NuevaVentaRequest, Venta } from '../models/venta.model';
+import { PaginaResponse } from '../models/pagina.model';
 import { ErrorTraducido } from '../interceptors/error.interceptor';
 import { environment } from '../../../environments/environment';
 
@@ -18,6 +19,9 @@ export class VentaService {
   /** Regla de frontend (CLAUDE.md): toda pantalla que llama a este servicio muestra este signal. */
   private readonly _error = signal<string | null>(null);
   readonly error = this._error.asReadonly();
+
+  private readonly _pagina = signal<PaginaResponse<Venta> | null>(null);
+  readonly pagina = this._pagina.asReadonly();
 
   /**
    * Se genera al confirmar el carrito (la primera vez que se llama a
@@ -42,6 +46,32 @@ export class VentaService {
     return this.http.post<Venta>(BASE_URL, cuerpo).pipe(
       tap(() => this._claveIdempotencia.set(null)), // solo se limpia en éxito -- el reintento tras un error reusa la misma clave
       catchError((err) => this.manejarError(err, 'No se pudo registrar la venta.')),
+      finalize(() => this._cargando.set(false)),
+    );
+  }
+
+  // GET /api/ventas
+  listarVentas(pagina = 0, tamano = 20, orden = 'fecha,desc'): Observable<PaginaResponse<Venta>> {
+    this._cargando.set(true);
+    this._error.set(null);
+    const params = new HttpParams()
+      .set('pagina', pagina.toString())
+      .set('tamano', tamano.toString())
+      .set('orden', orden);
+
+    return this.http.get<PaginaResponse<Venta>>(BASE_URL, { params }).pipe(
+      tap((resp) => this._pagina.set(resp)),
+      catchError((err) => this.manejarError(err, 'No se pudieron cargar las ventas.')),
+      finalize(() => this._cargando.set(false)),
+    );
+  }
+
+  // GET /api/ventas/:id
+  obtenerVenta(id: number): Observable<Venta> {
+    this._cargando.set(true);
+    this._error.set(null);
+    return this.http.get<Venta>(`${BASE_URL}/${id}`).pipe(
+      catchError((err) => this.manejarError(err, 'No se pudo obtener la venta.')),
       finalize(() => this._cargando.set(false)),
     );
   }

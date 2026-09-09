@@ -4,6 +4,10 @@
     <p class="field-hint alertas__fecha">{{ fechaTexto }}</p>
   </div>
 
+  @if (error()) {
+    <app-error-banner [mensaje]="error()" />
+  }
+
   @if (cargando() && kpis().length === 0) {
     <div class="alertas__kpis">
       @for (i of [1, 2, 3, 4]; track i) {

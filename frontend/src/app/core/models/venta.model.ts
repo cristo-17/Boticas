@@ -23,6 +23,7 @@ export interface Venta {
   total: number;
   metodoPago: MetodoPago;
   sincronizada: boolean;
+  claveIdempotencia: string;
 }
 
 /**

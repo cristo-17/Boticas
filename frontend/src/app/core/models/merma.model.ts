@@ -1,15 +1,16 @@
 export type MotivoMerma = 'Vencimiento' | 'Rotura' | 'Deterioro' | 'Robo o pérdida' | 'Otro';
 
 export interface Merma {
-  id: string;
+  id: number;
   loteId: number;
   productoNombre: string;
   loteCodigo: string;
   cantidad: number;
   motivo: MotivoMerma;
   observacion: string | null;
-  valor: number;
-  usuarioId: string;
+  /** Precio de venta × cantidad al momento del registro. */
+  valorVenta: number;
+  usuarioId: number;
   fecha: string; // ISO datetime
 }
 

@@ -12,6 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import com.botica.backend.dto.PaginaResponse;
+import com.botica.backend.exception.VentaNoEncontradaException;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
@@ -20,13 +22,20 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.security.test.context.support.WithMockUser;
+
 @WebMvcTest(VentaController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@WithMockUser(roles = "ADMINISTRADOR")
 class VentaControllerTest {
 
     @Autowired
@@ -70,7 +79,7 @@ class VentaControllerTest {
         when(ventaService.registrar(any())).thenThrow(new StockInsuficienteException("Paracetamol 500 mg", 3, 10));
 
         mockMvc.perform(post("/api/ventas").contentType("application/json").content(CUERPO_VALIDO))
-                .andExpect(status().isUnprocessableEntity())
+                .andExpect(status().isUnprocessableContent())
                 .andExpect(jsonPath("$.error").value("STOCK_INSUFICIENTE"));
     }
 
@@ -102,5 +111,44 @@ class VentaControllerTest {
         mockMvc.perform(post("/api/ventas").contentType("application/json").content(cuerpo))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
+    }
+
+    @Test
+    void listar_devuelve200ConPaginaDeVentas() throws Exception {
+        VentaResponse venta = new VentaResponse(1L, OffsetDateTime.now(), 1L,
+                List.of(new ItemVentaResponse(1L, 1L, "Paracetamol 500 mg", "Unidad", new BigDecimal("0.20"), 2, "BUSQUEDA")),
+                new BigDecimal("0.34"), new BigDecimal("0.06"), new BigDecimal("0.40"), "efectivo", true,
+                UUID.randomUUID());
+        PaginaResponse<VentaResponse> pagina = PaginaResponse.de(List.of(venta), 0, 20, 1L);
+        when(ventaService.listar(anyInt(), anyInt(), anyString())).thenReturn(pagina);
+
+        mockMvc.perform(get("/api/ventas"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElementos").value(1))
+                .andExpect(jsonPath("$.contenido[0].id").value(1L))
+                .andExpect(jsonPath("$.contenido[0].total").value(0.40));
+    }
+
+    @Test
+    void obtenerPorId_cuandoExiste_devuelve200() throws Exception {
+        VentaResponse venta = new VentaResponse(10L, OffsetDateTime.now(), 1L,
+                List.of(new ItemVentaResponse(1L, 1L, "Ibuprofeno 400 mg", "Unidad", new BigDecimal("0.50"), 1, "BUSQUEDA")),
+                new BigDecimal("0.42"), new BigDecimal("0.08"), new BigDecimal("0.50"), "efectivo", true,
+                UUID.randomUUID());
+        when(ventaService.obtenerPorId(10L)).thenReturn(venta);
+
+        mockMvc.perform(get("/api/ventas/10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(10L))
+                .andExpect(jsonPath("$.total").value(0.50));
+    }
+
+    @Test
+    void obtenerPorId_cuandoNoExiste_devuelve404() throws Exception {
+        when(ventaService.obtenerPorId(999L)).thenThrow(new VentaNoEncontradaException());
+
+        mockMvc.perform(get("/api/ventas/999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("VENTA_NO_ENCONTRADA"));
     }
 }

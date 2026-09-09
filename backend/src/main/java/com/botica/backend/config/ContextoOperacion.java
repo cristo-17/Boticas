@@ -18,4 +18,6 @@ public interface ContextoOperacion {
     Long boticaId();
 
     String turno();
+
+    String rol();
 }

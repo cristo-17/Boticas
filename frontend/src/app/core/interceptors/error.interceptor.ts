@@ -25,10 +25,12 @@ export interface ErrorTraducido {
  * de Venta) aunque ese módulo recién se conecta en la Tarea 11 — la lista
  * queda preparada desde ahora.
  */
-const CODIGOS_SILENCIOSOS = new Set<string>(['PRODUCTO_NO_ENCONTRADO']);
+const CODIGOS_SILENCIOSOS = new Set<string>(['PRODUCTO_NO_ENCONTRADO', 'CREDENCIALES_INVALIDAS']);
 
 /** Traduce el código "error" del backend al mensaje que cada pantalla muestra. Un solo lugar, no ifs desperdigados. */
 const MENSAJES_POR_CODIGO: Record<string, string> = {
+  CREDENCIALES_INVALIDAS: 'Usuario o contraseña incorrectos.',
+  NO_AUTENTICADO: 'Tu sesión ha expirado o no estás autenticado.',
   CAJA_YA_ABIERTA: 'Ya existe una caja abierta hoy.',
   CAJA_NO_ABIERTA: 'No hay una caja abierta para esta operación.',
   CAJA_NO_ENCONTRADA: 'La caja indicada no existe.',
@@ -39,6 +41,9 @@ const MENSAJES_POR_CODIGO: Record<string, string> = {
   SIN_CAJA_ABIERTA: 'No hay una caja abierta para registrar la venta.',
   STOCK_INSUFICIENTE: 'No hay stock suficiente para completar la venta.',
   PRESENTACION_INVALIDA: 'La presentación seleccionada ya no es válida para ese producto.',
+  LOTE_NO_ENCONTRADO: 'El lote indicado no existe o no pertenece a esta botica.',
+  STOCK_INSUFICIENTE_MERMA: 'El lote no tiene stock suficiente para esa cantidad.',
+  OBSERVACION_REQUERIDA: 'Este motivo de merma requiere una observación.',
   ERROR_INTERNO: 'Ocurrió un error inesperado. Intenta de nuevo.',
 };
 

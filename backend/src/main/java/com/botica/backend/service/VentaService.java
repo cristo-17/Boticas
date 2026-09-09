@@ -3,10 +3,14 @@ package com.botica.backend.service;
 import com.botica.backend.config.ContextoOperacion;
 import com.botica.backend.dao.VentaDao;
 import com.botica.backend.dto.NuevaVentaRequest;
+import com.botica.backend.dto.PaginaResponse;
 import com.botica.backend.dto.VentaResponse;
+import com.botica.backend.exception.VentaNoEncontradaException;
 import com.botica.backend.model.Venta;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * Punto de entrada público de Ventas (Tarea 11 Bloque B) — deliberadamente
@@ -45,5 +49,19 @@ public class VentaService {
                     .orElseThrow(() -> e);
             return transaccion.construirRespuestaDesdeVentaExistente(existente);
         }
+    }
+
+    public PaginaResponse<VentaResponse> listar(int pagina, int tamano, String orden) {
+        PaginaResponse<Venta> paginaVentas = ventaDao.listarPaginado(contexto.boticaId(), pagina, tamano, orden);
+        List<VentaResponse> respuestas = paginaVentas.contenido().stream()
+                .map(transaccion::construirRespuestaDesdeVentaExistente)
+                .toList();
+        return PaginaResponse.de(respuestas, paginaVentas.pagina(), paginaVentas.tamano(), paginaVentas.totalElementos());
+    }
+
+    public VentaResponse obtenerPorId(Long id) {
+        Venta venta = ventaDao.buscarPorId(contexto.boticaId(), id)
+                .orElseThrow(VentaNoEncontradaException::new);
+        return transaccion.construirRespuestaDesdeVentaExistente(venta);
     }
 }

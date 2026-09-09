@@ -12,10 +12,13 @@ import com.botica.backend.exception.CajaNoAbiertaException;
 import com.botica.backend.exception.CajaNoEncontradaException;
 import com.botica.backend.exception.CajaYaAbiertaException;
 import com.botica.backend.exception.MontoInvalidoException;
+import com.botica.backend.event.DescuadreGraveEvent;
 import com.botica.backend.model.CajaDiaria;
 import com.botica.backend.model.MovimientoCaja;
 import com.botica.backend.util.Dinero;
 import com.botica.backend.util.FechaNegocio;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,12 +36,19 @@ public class CajaService {
     private final ContextoOperacion contexto;
     private final FechaNegocio fechaNegocio;
     private final ConfigNegocioProperties config;
+    private final ApplicationEventPublisher eventPublisher;
 
     public CajaService(CajaDao cajaDao, ContextoOperacion contexto, FechaNegocio fechaNegocio, ConfigNegocioProperties config) {
+        this(cajaDao, contexto, fechaNegocio, config, null);
+    }
+
+    public CajaService(CajaDao cajaDao, ContextoOperacion contexto, FechaNegocio fechaNegocio,
+                       ConfigNegocioProperties config, @Autowired(required = false) ApplicationEventPublisher eventPublisher) {
         this.cajaDao = cajaDao;
         this.contexto = contexto;
         this.fechaNegocio = fechaNegocio;
         this.config = config;
+        this.eventPublisher = eventPublisher;
     }
 
     public CajaResponse obtenerCajaDeHoy() {
@@ -100,12 +110,25 @@ public class CajaService {
         caja.setMontoContado(montoContado);
         caja.setMontoEsperado(montoEsperado);
         caja.setDiferencia(diferencia);
-        caja.setSemaforoDescuadre(calcularSemaforo(diferencia));
+        String semaforo = calcularSemaforo(diferencia);
+        caja.setSemaforoDescuadre(semaforo);
         caja.setHoraCierre(fechaNegocio.ahora());
         caja.setObservaciones(request.observaciones());
         caja.setEstado(CajaDiaria.CERRADA);
 
         cajaDao.actualizarCierre(caja);
+
+        if ("GRAVE".equals(semaforo) && eventPublisher != null) {
+            eventPublisher.publishEvent(new DescuadreGraveEvent(
+                    caja.getBoticaId(),
+                    caja.getId(),
+                    caja.getUsuarioNombre() != null ? caja.getUsuarioNombre() : "Usuario #" + caja.getUsuarioId(),
+                    diferencia,
+                    montoEsperado,
+                    montoContado
+            ));
+        }
+
         return CajaResponse.desde(caja);
     }
 

@@ -1,7 +1,5 @@
 package com.botica.backend.config;
 
-import org.springframework.stereotype.Component;
-
 /**
  * Implementación de desarrollo: valores fijos de V2__seed.sql (Rosa
  * Quispe / Botica San Lucas / turno Tarde). id=1 para ambos porque son
@@ -13,7 +11,7 @@ import org.springframework.stereotype.Component;
  * turno del JWT — no crea la interfaz {@link ContextoOperacion}, ya
  * existe desde aquí, y ningún Service cambia una línea al reemplazarla.
  */
-@Component
+// @Component -- Reemplazada por ContextoOperacionJwt (Tarea 12)
 public class ContextoOperacionDev implements ContextoOperacion {
 
     private static final Long USUARIO_ID = 1L;
@@ -33,5 +31,10 @@ public class ContextoOperacionDev implements ContextoOperacion {
     @Override
     public String turno() {
         return TURNO;
+    }
+
+    @Override
+    public String rol() {
+        return "ADMINISTRADOR";
     }
 }

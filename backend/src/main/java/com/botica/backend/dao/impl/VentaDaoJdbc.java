@@ -47,6 +47,15 @@ public class VentaDaoJdbc implements VentaDao {
     }
 
     @Override
+    public Optional<Venta> buscarPorId(Long boticaId, Long id) {
+        String sql = "SELECT * FROM ventas WHERE botica_id = :boticaId AND id = :id";
+        var params = new MapSqlParameterSource()
+                .addValue("boticaId", boticaId)
+                .addValue("id", id);
+        return jdbc.query(sql, params, ventaRowMapper).stream().findFirst();
+    }
+
+    @Override
     public Venta insertarCabecera(Venta venta) {
         String sql = "INSERT INTO ventas (botica_id, usuario_id, caja_id, subtotal, igv, igv_tasa, total, metodo_pago, clave_idempotencia, sincronizada) " +
                 "VALUES (:boticaId, :usuarioId, :cajaId, :subtotal, :igv, :igvTasa, :total, :metodoPago, :claveIdempotencia, :sincronizada)";

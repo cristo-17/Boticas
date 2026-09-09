@@ -156,11 +156,6 @@ export class MermaScreen implements OnInit {
   readonly toastVariant = signal<ToastVariant>('success');
 
   ngOnInit(): void {
-    // tamano grande a propósito: este flujo todavía asume "todos los lotes" en
-    // memoria para armar el selector (el mock lo tenía siempre completo). El
-    // rediseño en cascada (buscar producto -> pedir sus lotes) es Bloque C;
-    // hasta entonces, esto evita que la paginación real (Tarea 11 Bloque A)
-    // le corte el catálogo a los primeros 20.
     this.inventario.listarLotes({}, 0, 100).subscribe(() => {
       const primerProducto = this.productosDisponibles()[0];
       if (primerProducto) {
@@ -168,7 +163,7 @@ export class MermaScreen implements OnInit {
       }
     });
 
-    this.mermaService.listarMermasDelDia().subscribe();
+    this.mermaService.listarMermasDelDia().subscribe({ error: () => {} });
   }
 
   formatearHora(iso: string): string {
@@ -236,14 +231,14 @@ export class MermaScreen implements OnInit {
           this.form.controls.observacion.setValue('');
           this.mostrarToast(
             'success',
-            `Merma registrada · ${formatearMoneda(merma.valor)} dados de baja`,
+            `Merma registrada · ${formatearMoneda(merma.valorVenta)} dados de baja`,
           );
-          // refresca el lote (el servicio ya descontó el stock en InventarioService)
-          this.inventario.listarLotes({}, 0, 100).subscribe();
+          // Recarga lotes para reflejar el stock actualizado por el backend.
+          this.inventario.listarLotes({}, 0, 100).subscribe({ error: () => {} });
         },
         error: () => {
           this.confirmando.set(false);
-          this.mostrarToast('error', 'No se pudo registrar la merma. Reintenta.');
+          this.mostrarToast('error', this.mermaService.error() ?? 'No se pudo registrar la merma.');
         },
       });
   }

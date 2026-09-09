@@ -21,5 +21,7 @@ public interface VentaDao {
 
     List<VentaDetalle> listarDetallePorVenta(Long boticaId, Long ventaId);
 
+    Optional<Venta> buscarPorId(Long boticaId, Long id);
+
     PaginaResponse<Venta> listarPaginado(Long boticaId, int pagina, int tamano, String orden);
 }

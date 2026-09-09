@@ -1,0 +1,135 @@
+.historial-ventas {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.historial-ventas__header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.historial-ventas__titulo {
+  margin: 0;
+  font-size: 24px;
+  font-weight: var(--fw-black, 800);
+  letter-spacing: -0.02em;
+}
+
+.historial-ventas__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--s-3);
+}
+
+.historial-ventas__kpi-card {
+  background: var(--bg-card, #ffffff);
+  border: 1px solid var(--borde, #e2e8f0);
+  border-radius: var(--r-md, 8px);
+  padding: var(--s-3) var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  &--action {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+.historial-ventas__kpi-label {
+  font-size: 13px;
+  color: var(--texto-secundario, #64748b);
+  font-weight: 500;
+}
+
+.historial-ventas__kpi-valor {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.historial-ventas__tabla-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.historial-ventas__fecha {
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.btn-icon {
+  background: none;
+  border: 1px solid var(--borde, #cbd5e1);
+  border-radius: 6px;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--texto, #1e293b);
+  transition: background 0.15s ease, border-color 0.15s ease;
+
+  &:hover {
+    background: var(--bg-hover, #f1f5f9);
+    border-color: var(--azul-500, #3b82f6);
+    color: var(--azul-600, #2563eb);
+  }
+}
+
+// Modal detalle
+.modal-bs--lg {
+  max-width: 640px;
+  width: 95%;
+}
+
+.venta-detalle-modal__header {
+  border-bottom: 1px solid var(--borde, #e2e8f0);
+}
+
+.venta-detalle-modal__info {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  padding: var(--s-2) 0 var(--s-3) 0;
+  border-bottom: 1px dashed var(--borde, #e2e8f0);
+  margin-bottom: var(--s-3);
+  font-size: 13px;
+}
+
+.table-compact {
+  border-collapse: collapse;
+
+  th,
+  td {
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--borde, #f1f5f9);
+    font-size: 13px;
+  }
+
+  th {
+    background: var(--bg-subtle, #f8fafc);
+    color: var(--texto-secundario, #64748b);
+    font-weight: 600;
+  }
+}
+
+.venta-detalle-modal__totales {
+  margin-top: var(--s-3);
+  padding-top: var(--s-2);
+  border-top: 1px solid var(--borde, #e2e8f0);
+}
+
+.font-bold {
+  font-weight: 600;
+}
+
+.font-mono {
+  font-family: monospace;
+}
+
+.text-xs {
+  font-size: 11px;
+}

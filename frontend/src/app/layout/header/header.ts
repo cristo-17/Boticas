@@ -2,6 +2,7 @@ import { Component, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { ButtonComponent } from '../../shared/components/button/button';
 import { ConnStatusComponent } from '../../shared/components/conn-status/conn-status';
+import { HeaderNotificacionesComponent } from './header-notificaciones';
 import { AuthService } from '../../core/services/auth.service';
 import { ConexionService } from '../../core/services/conexion.service';
 
@@ -13,7 +14,7 @@ const ETIQUETAS_CONEXION = {
 
 @Component({
   selector: 'app-header',
-  imports: [ButtonComponent, ConnStatusComponent],
+  imports: [ButtonComponent, ConnStatusComponent, HeaderNotificacionesComponent],
   templateUrl: './header.html',
   styleUrl: './header.scss',
 })

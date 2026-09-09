@@ -21,7 +21,10 @@ import com.botica.backend.model.PresentacionProducto;
 import com.botica.backend.model.Producto;
 import com.botica.backend.model.Venta;
 import com.botica.backend.model.VentaDetalle;
+import com.botica.backend.event.StockCriticoEvent;
 import com.botica.backend.util.Dinero;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -56,15 +59,23 @@ class VentaTransaccion {
     private final CajaDao cajaDao;
     private final ContextoOperacion contexto;
     private final ConfigNegocioProperties config;
+    private final ApplicationEventPublisher eventPublisher;
 
     VentaTransaccion(VentaDao ventaDao, LoteDao loteDao, ProductoDao productoDao, CajaDao cajaDao,
-                      ContextoOperacion contexto, ConfigNegocioProperties config) {
+                     ContextoOperacion contexto, ConfigNegocioProperties config) {
+        this(ventaDao, loteDao, productoDao, cajaDao, contexto, config, null);
+    }
+
+    VentaTransaccion(VentaDao ventaDao, LoteDao loteDao, ProductoDao productoDao, CajaDao cajaDao,
+                     ContextoOperacion contexto, ConfigNegocioProperties config,
+                     @Autowired(required = false) ApplicationEventPublisher eventPublisher) {
         this.ventaDao = ventaDao;
         this.loteDao = loteDao;
         this.productoDao = productoDao;
         this.cajaDao = cajaDao;
         this.contexto = contexto;
         this.config = config;
+        this.eventPublisher = eventPublisher;
     }
 
     @Transactional
@@ -154,6 +165,11 @@ class VentaTransaccion {
                 detallesAInsertar.add(detalle);
 
                 loteDao.descontarStock(lote.getId(), consumido);
+            }
+
+            int stockRestante = disponibleTotal - cantidadBaseTotal;
+            if (stockRestante <= config.getUmbralStockBajo() && eventPublisher != null) {
+                eventPublisher.publishEvent(new StockCriticoEvent(boticaId, item.productoId(), producto.getNombre(), stockRestante));
             }
 
             totalVenta = totalVenta.add(totalLineaFinal);

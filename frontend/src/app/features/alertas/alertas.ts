@@ -2,6 +2,7 @@ import { Component, OnInit, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { BadgeComponent } from '../../shared/components/badge/badge';
 import { CardComponent } from '../../shared/components/card/card';
+import { ErrorBannerComponent } from '../../shared/components/error-banner/error-banner';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
 import {
   SummaryCardComponent,
@@ -33,7 +34,7 @@ const NIVEL_LABEL: Record<NivelAlerta, string> = {
 
 @Component({
   selector: 'app-alertas',
-  imports: [BadgeComponent, CardComponent, SkeletonComponent, SummaryCardComponent],
+  imports: [BadgeComponent, CardComponent, SkeletonComponent, SummaryCardComponent, ErrorBannerComponent],
   templateUrl: './alertas.html',
   styleUrl: './alertas.scss',
 })
@@ -45,6 +46,7 @@ export class AlertasScreen implements OnInit {
   readonly alertas = this.alertaService.alertas;
   readonly resumen = this.alertaService.resumen;
   readonly cargando = this.alertaService.cargando;
+  readonly error = this.alertaService.error;
 
   readonly nivelBadge = NIVEL_BADGE;
   readonly nivelLabel = NIVEL_LABEL;

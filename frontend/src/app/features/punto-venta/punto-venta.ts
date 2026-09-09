@@ -8,6 +8,7 @@ import { PresentacionProducto, Producto } from '../../core/models/producto.model
 import { MetodoPago, OrigenCaptura } from '../../core/models/venta.model';
 import { ProductoService } from '../../core/services/producto.service';
 import { VentaService } from '../../core/services/venta.service';
+import { ConfigService } from '../../core/services/config.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
 import { textoAlertaVencimiento } from '../../core/utils/fecha.util';
 import { CarritoPanelComponent } from './carrito-panel/carrito-panel';
@@ -34,6 +35,7 @@ import { CarritoService } from './services/carrito.service';
 export class PuntoVentaScreen implements OnInit {
   private readonly productoService = inject(ProductoService);
   private readonly ventaService = inject(VentaService);
+  private readonly configService = inject(ConfigService);
   readonly carrito = inject(CarritoService);
 
   readonly resultados = this.productoService.resultados;
@@ -65,7 +67,10 @@ export class PuntoVentaScreen implements OnInit {
   );
 
   readonly formatearMoneda = formatearMoneda;
-  readonly igvLabel = 'IGV 18%';
+  readonly igvLabel = computed(() => {
+    const tasa = this.configService.config()?.igv;
+    return tasa != null ? `IGV ${(tasa * 100).toFixed(0)}%` : 'IGV';
+  });
 
   ngOnInit(): void {
     this.productoService.obtenerMasVendidos().subscribe({ error: () => {} });

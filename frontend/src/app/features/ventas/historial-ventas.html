@@ -1,0 +1,184 @@
+<div class="historial-ventas">
+  <div class="historial-ventas__header">
+    <div>
+      <h1 class="historial-ventas__titulo">Historial de ventas</h1>
+      <p class="field-hint">Consulta de comprobantes emitidos, medios de pago y detalle de cobros.</p>
+    </div>
+    <div class="historial-ventas__acciones">
+      <app-button variant="primary" (clicked)="irAPuntoVenta()">
+        <i class="bi bi-cart-plus me-1"></i> Nueva venta
+      </app-button>
+    </div>
+  </div>
+
+  @if (error()) {
+    <app-error-banner [mensaje]="error()" />
+  }
+
+  <!-- KPIs rápidos de la vista -->
+  <div class="historial-ventas__kpis">
+    <div class="historial-ventas__kpi-card">
+      <span class="historial-ventas__kpi-label">Comprobantes totales</span>
+      <span class="historial-ventas__kpi-valor num">{{ totalElementos() }}</span>
+      <span class="field-hint">En el sistema</span>
+    </div>
+    <div class="historial-ventas__kpi-card">
+      <span class="historial-ventas__kpi-label">Subtotal página</span>
+      <span class="historial-ventas__kpi-valor num">{{ moneda(totalFacturadoPagina()) }}</span>
+      <span class="field-hint">{{ ventas().length }} boleta(s) listadas</span>
+    </div>
+    <div class="historial-ventas__kpi-card historial-ventas__kpi-card--action">
+      <app-button variant="ghost" [block]="true" (clicked)="cargarVentas()">
+        <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
+      </app-button>
+    </div>
+  </div>
+
+  <!-- Tabla de Ventas -->
+  <app-card [flat]="false" class="historial-ventas__tabla-card">
+    @if (cargando() && ventas().length === 0) {
+      <div class="p-4">
+        <app-skeleton [count]="5"></app-skeleton>
+      </div>
+    } @else if (ventas().length === 0) {
+      <app-empty-state
+        titulo="No se encontraron ventas"
+        mensaje="Aún no se han registrado transacciones de venta en esta botica."
+      ></app-empty-state>
+    } @else {
+      <app-table>
+        <thead>
+          <tr>
+            <th>N° Boleta</th>
+            <th>Fecha y hora</th>
+            <th>Método</th>
+            <th>Líneas</th>
+            <th class="text-end">Subtotal</th>
+            <th class="text-end">IGV</th>
+            <th class="text-end">Total</th>
+            <th class="text-center">Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (v of ventas(); track v.id) {
+            <tr>
+              <td class="num font-bold">#{{ v.id }}</td>
+              <td class="historial-ventas__fecha">{{ formatearFechaHora(v.fecha) }}</td>
+              <td>
+                <app-badge [variant]="badgeMetodo(v.metodoPago)">
+                  {{ labelMetodo(v.metodoPago) }}
+                </app-badge>
+              </td>
+              <td>{{ v.items.length }} ítem(s)</td>
+              <td class="text-end num">{{ moneda(v.subtotal) }}</td>
+              <td class="text-end num">{{ moneda(v.igv) }}</td>
+              <td class="text-end num font-bold">{{ moneda(v.total) }}</td>
+              <td class="text-center">
+                <button
+                  type="button"
+                  class="btn-icon"
+                  title="Ver detalle de la venta"
+                  (click)="verDetalle(v)"
+                >
+                  <i class="bi bi-eye"></i>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </app-table>
+
+      @if (pagina(); as p) {
+        <app-paginacion
+          [pagina]="p.pagina"
+          [totalPaginas]="p.totalPaginas"
+          [totalElementos]="p.totalElementos"
+          (anterior)="irAPagina(p.pagina - 1)"
+          (siguiente)="irAPagina(p.pagina + 1)"
+        ></app-paginacion>
+      }
+    }
+  </app-card>
+</div>
+
+<!-- Modal Detalle de Venta -->
+@if (modalDetalleAbierto() && ventaSeleccionada(); as v) {
+  <div class="modal-backdrop-bs" (click)="cerrarDetalle()">
+    <div class="modal-bs modal-bs--lg venta-detalle-modal" (click)="$event.stopPropagation()">
+      <div class="modal-bs__body venta-detalle-modal__header">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <div class="eyebrow">Comprobante de Venta</div>
+            <h2 class="modal-bs__title">Boleta de Venta #{{ v.id }}</h2>
+            <p class="field-hint mb-0">{{ formatearFechaHora(v.fecha) }}</p>
+          </div>
+          <app-badge [variant]="badgeMetodo(v.metodoPago)">
+            {{ labelMetodo(v.metodoPago) }}
+          </app-badge>
+        </div>
+      </div>
+
+      <div class="modal-bs__body">
+        <div class="venta-detalle-modal__info">
+          <div>
+            <span class="field-hint">Cajero / Usuario ID:</span>
+            <span class="font-bold ms-1">Usuario #{{ v.usuarioId }}</span>
+          </div>
+          <div>
+            <span class="field-hint">Clave Idempotencia:</span>
+            <span class="font-mono text-xs ms-1">{{ v.claveIdempotencia }}</span>
+          </div>
+        </div>
+
+        <div class="venta-detalle-modal__items">
+          <table class="table-compact w-100">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th>Presentación</th>
+                <th class="text-center">Cant.</th>
+                <th class="text-end">P. Unit.</th>
+                <th class="text-end">Importe</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of v.items; track item.presentacionId) {
+                <tr>
+                  <td class="font-bold">{{ item.nombre }}</td>
+                  <td>{{ item.presentacion }}</td>
+                  <td class="text-center num">{{ item.cantidad }}</td>
+                  <td class="text-end num">{{ moneda(item.precioUnitario) }}</td>
+                  <td class="text-end num font-bold">
+                    {{ moneda(item.cantidad * item.precioUnitario) }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="venta-detalle-modal__totales">
+          <div class="d-flex justify-content-between py-1">
+            <span class="field-hint">Subtotal (Op. Gravada):</span>
+            <span class="num">{{ moneda(v.subtotal) }}</span>
+          </div>
+          <div class="d-flex justify-content-between py-1">
+            <span class="field-hint">I.G.V. (18%):</span>
+            <span class="num">{{ moneda(v.igv) }}</span>
+          </div>
+          <div class="d-flex justify-content-between py-2 border-top font-bold fs-5">
+            <span>Total a pagar:</span>
+            <span class="num text-primary">{{ moneda(v.total) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-bs__footer d-flex justify-content-end gap-2 p-3 border-top">
+        <app-button variant="ghost" (clicked)="cerrarDetalle()">Cerrar</app-button>
+        <app-button variant="primary" (clicked)="cerrarDetalle()">
+          <i class="bi bi-printer me-1"></i> Imprimir comprobante
+        </app-button>
+      </div>
+    </div>
+  </div>
+}

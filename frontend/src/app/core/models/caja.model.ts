@@ -27,7 +27,7 @@ export interface MovimientoCaja {
   cajaId: number;
   tipo: TipoMovimientoCaja;
   descripcion: string;
-  nota: string;
+  nota: string | null;
   monto: number;
   /** false en movimientos que no mueven efectivo del cajón (p.ej. mermas, ventas con Yape/tarjeta). */
   afectaEfectivo: boolean;
