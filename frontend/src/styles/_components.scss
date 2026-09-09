@@ -577,6 +577,30 @@
   border: 1px solid var(--ambar-100);
 }
 
+// — banner de error de servicio (Tarea 9) — formaliza la regla de
+// CLAUDE.md "toda pantalla que llama a un servicio muestra su estado de
+// error". A diferencia del toast, no se autooculta: persiste mientras el
+// signal de error del servicio siga con un mensaje.
+.bs-error-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: var(--s-3) var(--s-4);
+  border-radius: var(--r-md);
+  background: var(--rojo-50);
+  color: var(--rojo-600);
+  border: 1px solid var(--rojo-100);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-bold);
+}
+.bs-error-banner__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rojo-500);
+  flex: none;
+}
+
 // — indicador de conexión / sincronización —
 .bs-conn {
   display: inline-flex;

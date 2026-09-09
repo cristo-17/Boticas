@@ -10,11 +10,7 @@ import { ToastComponent, ToastVariant } from '../../shared/components/toast/toas
 import { MotivoMerma } from '../../core/models/merma.model';
 import { AuthService } from '../../core/services/auth.service';
 import { InventarioService } from '../../core/services/inventario.service';
-import {
-  MOTIVOS_MERMA,
-  MOTIVOS_QUE_REQUIEREN_OBSERVACION,
-  MermaService,
-} from '../../core/services/merma.service';
+import { MermaService } from '../../core/services/merma.service';
 import { ProductoService } from '../../core/services/producto.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
 
@@ -39,7 +35,7 @@ export class MermaScreen implements OnInit {
   private readonly auth = inject(AuthService);
   private readonly destroyRef = inject(DestroyRef);
 
-  readonly motivos = MOTIVOS_MERMA;
+  readonly motivos = this.mermaService.motivosMerma;
   readonly formatearMoneda = formatearMoneda;
   readonly registrando = this.mermaService.cargando;
 
@@ -112,7 +108,7 @@ export class MermaScreen implements OnInit {
 
   readonly observacionRequerida = computed(() => {
     const motivo = this.formValue().motivo;
-    return !!motivo && MOTIVOS_QUE_REQUIEREN_OBSERVACION.includes(motivo);
+    return !!motivo && this.mermaService.motivosQueRequierenObservacion.includes(motivo);
   });
 
   readonly observacionValida = computed(

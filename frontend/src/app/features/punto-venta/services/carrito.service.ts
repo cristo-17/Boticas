@@ -1,5 +1,6 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { PresentacionProducto, Producto } from '../../../core/models/producto.model';
+import { ConfigService } from '../../../core/services/config.service';
 
 export interface LineaCarrito {
   key: string; // productoId + '|' + presentacionId
@@ -12,10 +13,13 @@ export interface LineaCarrito {
   alerta: string | null;
 }
 
-const TASA_IGV = 0.18;
+/** Fallback si /api/config no llegó a cargar todavía (no debería pasar: provideAppInitializer la espera antes de arrancar la app). */
+const TASA_IGV_DEFECTO = 0.18;
 
 @Injectable()
 export class CarritoService {
+  private readonly config = inject(ConfigService);
+
   private readonly _lineas = signal<LineaCarrito[]>([]);
   readonly lineas = this._lineas.asReadonly();
 
@@ -25,7 +29,10 @@ export class CarritoService {
   readonly subtotal = computed(() =>
     this._lineas().reduce((acc, l) => acc + l.precioUnitario * l.cantidad, 0),
   );
-  readonly igv = computed(() => this.subtotal() - this.subtotal() / (1 + TASA_IGV));
+  readonly igv = computed(() => {
+    const tasa = this.config.config()?.igv ?? TASA_IGV_DEFECTO;
+    return this.subtotal() - this.subtotal() / (1 + tasa);
+  });
   readonly total = computed(() => this.subtotal());
 
   agregar(producto: Producto, presentacion: PresentacionProducto): void {

@@ -1,3 +1,5 @@
+<app-error-banner [mensaje]="error()" class="cierre__error"></app-error-banner>
+
 <div class="cierre">
   <section class="cierre__movimientos">
     <div class="cierre__movimientos-head">
@@ -17,74 +19,105 @@
       </div>
     }
 
-    <div class="cierre__esperado">
-      <span class="cierre__esperado-label">Efectivo esperado en caja</span>
-      <span class="num cierre__esperado-valor">{{ formatearMoneda(efectivoEsperado()) }}</span>
-    </div>
-    <div class="cierre__nota-digital">
-      Las ventas con Yape y tarjeta no entran al conteo de efectivo.
-    </div>
+    @if (paginaMovimientos(); as pagina) {
+      <div class="cierre__mov-paginacion">
+        <app-paginacion
+          [pagina]="pagina.pagina"
+          [totalPaginas]="pagina.totalPaginas"
+          [totalElementos]="pagina.totalElementos"
+          (anterior)="irAPagina(pagina.pagina - 1)"
+          (siguiente)="irAPagina(pagina.pagina + 1)"
+        ></app-paginacion>
+      </div>
+    }
+
+    <!-- Conteo ciego (hueco 2): el total digital sí se muestra antes de contar (no se cuenta
+         físicamente), pero el efectivo esperado NUNCA se muestra hasta después del cierre. -->
+    @if (cajaActual()?.abierta && resumenCierre(); as resumen) {
+      <div class="cierre__esperado">
+        <span class="cierre__esperado-label">Ventas con Yape y tarjeta</span>
+        <span class="num cierre__esperado-valor">{{ formatearMoneda(resumen.totalVentasDigital) }}</span>
+      </div>
+      <div class="cierre__nota-digital">
+        No entran al conteo de efectivo del cajón — se cuentan aparte.
+      </div>
+    }
   </section>
 
   <aside class="cierre__panel">
-    <app-card>
-      <label for="cierre-contado" class="cierre__label">Monto contado en el cajón</label>
-      <div
-        class="cierre__monto-box"
-        [class.cierre__monto-box--error]="contadoTexto().trim() !== '' && !contadoValido()"
-      >
-        <span class="num cierre__monto-prefijo">S/</span>
-        <input
-          id="cierre-contado"
-          class="num cierre__monto-input"
-          inputmode="decimal"
-          [value]="contadoTexto()"
-          (input)="onContadoInput($event)"
-          placeholder="0.00"
-        />
-      </div>
-
-      <div class="cierre__descuadre" [class]="'cierre__descuadre--' + estadoDescuadre().tono">
-        <div class="cierre__descuadre-head">
-          <span class="cierre__descuadre-dot"></span>
-          <span class="cierre__descuadre-titulo">{{ estadoDescuadre().titulo }}</span>
+    @if (cajaActual()?.abierta) {
+      <app-card>
+        <label for="cierre-contado" class="cierre__label">Monto contado en el cajón</label>
+        <div
+          class="cierre__monto-box"
+          [class.cierre__monto-box--error]="contadoTexto().trim() !== '' && !contadoValido()"
+        >
+          <span class="num cierre__monto-prefijo">S/</span>
+          <input
+            id="cierre-contado"
+            class="num cierre__monto-input"
+            inputmode="decimal"
+            [value]="contadoTexto()"
+            (input)="onContadoInput($event)"
+            placeholder="0.00"
+          />
         </div>
-        <div class="num cierre__descuadre-monto">{{ estadoDescuadre().montoTexto }}</div>
-        <div class="cierre__descuadre-nota">{{ estadoDescuadre().nota }}</div>
-      </div>
 
-      <label for="cierre-obs" class="cierre__label cierre__label--obs"
-        >Observaciones {{ observacionHint() }}</label
-      >
-      <textarea
-        id="cierre-obs"
-        class="cierre__textarea"
-        rows="2"
-        [value]="observacion()"
-        (input)="observacion.set($any($event.target).value)"
-        placeholder="Ej.: se pagó S/ 45 de movilidad al proveedor"
-      ></textarea>
+        <label for="cierre-obs" class="cierre__label cierre__label--obs"
+          >Observaciones {{ observacionHint() }}</label
+        >
+        <textarea
+          id="cierre-obs"
+          class="cierre__textarea"
+          rows="2"
+          [value]="observacion()"
+          (input)="observacion.set($any($event.target).value)"
+          placeholder="Ej.: se pagó S/ 45 de movilidad al proveedor"
+        ></textarea>
 
-      <app-button
-        variant="action"
-        size="lg"
-        [block]="true"
-        [disabled]="!contadoValido()"
-        (clicked)="pedirCierre()"
-      >
-        Cerrar caja
-      </app-button>
-    </app-card>
+        <app-button
+          variant="action"
+          size="lg"
+          [block]="true"
+          [disabled]="!contadoValido()"
+          (clicked)="pedirCierre()"
+        >
+          Cerrar caja
+        </app-button>
+      </app-card>
 
-    <app-card [flat]="true">
-      <div class="eyebrow cierre__leyenda-titulo">Semáforo de descuadre</div>
-      @for (g of legendaDescuadre; track g.label) {
-        <div class="cierre__leyenda-fila">
-          <span class="status-bar cierre__leyenda-swatch" [class]="g.colorClass"></span>
-          {{ g.label }}
+      <app-card [flat]="true">
+        <div class="eyebrow cierre__leyenda-titulo">Semáforo de descuadre</div>
+        @for (g of legendaDescuadre(); track g.label) {
+          <div class="cierre__leyenda-fila">
+            <span class="status-bar cierre__leyenda-swatch" [class]="g.colorClass"></span>
+            {{ g.label }}
+          </div>
+        }
+      </app-card>
+    } @else if (resultadoCierre(); as resultado) {
+      <app-card>
+        <div class="eyebrow">Caja cerrada</div>
+        <div class="cierre__descuadre" [class]="'cierre__descuadre--' + resultado.tono">
+          <div class="cierre__descuadre-head">
+            <span class="cierre__descuadre-dot"></span>
+            <span class="cierre__descuadre-titulo">{{ resultado.titulo }}</span>
+          </div>
+          <div class="num cierre__descuadre-monto">{{ resultado.montoTexto }}</div>
+          <div class="cierre__descuadre-nota">{{ resultado.nota }}</div>
         </div>
-      }
-    </app-card>
+        <div class="cierre__resultado-detalle">
+          <div class="cierre__resultado-fila">
+            <span>Efectivo esperado</span>
+            <span class="num">{{ formatearMoneda(resultado.montoEsperado) }}</span>
+          </div>
+          <div class="cierre__resultado-fila">
+            <span>Efectivo contado</span>
+            <span class="num">{{ formatearMoneda(resultado.montoContado) }}</span>
+          </div>
+        </div>
+      </app-card>
+    }
   </aside>
 </div>
 

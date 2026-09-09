@@ -1,0 +1,75 @@
+### BoticaSys — API del módulo Caja (Tarea 8)
+### Requiere: DB_USERNAME/DB_PASSWORD exportadas y ./mvnw spring-boot:run
+### corriendo en http://localhost:8080. ContextoOperacionDev fija
+### usuarioId=1/boticaId=1 (Rosa Quispe, Botica San Lucas) — no hace
+### falta token todavía (SecurityConfig modo dev).
+
+@baseUrl = http://localhost:8080
+
+### 0) Config de negocio — se llama una sola vez al iniciar la app
+GET {{baseUrl}}/api/config
+
+### 1) Caja de hoy — probablemente null si no se abrió nada todavía
+GET {{baseUrl}}/api/caja/hoy
+
+### 2) Abrir caja — éxito
+POST {{baseUrl}}/api/caja/abrir
+Content-Type: application/json
+
+{
+  "montoInicial": 100.00,
+  "turno": "Tarde"
+}
+
+### 3) Abrir caja de nuevo — debe fallar 409 CAJA_YA_ABIERTA
+POST {{baseUrl}}/api/caja/abrir
+Content-Type: application/json
+
+{
+  "montoInicial": 50.00,
+  "turno": "Tarde"
+}
+
+### 4) Resumen antes de cerrar — reemplaza {id} por el id que devolvió el paso 2.
+### Conteo ciego: NO debe traer montoEsperado/diferencia/semaforoDescuadre.
+GET {{baseUrl}}/api/caja/1/resumen-cierre
+
+### 5) Movimientos de la caja, paginado — reemplaza {id}
+GET {{baseUrl}}/api/caja/1/movimientos?pagina=0&tamano=20
+
+### 6) Movimientos con orden inválido — debe fallar 400 ORDEN_INVALIDO
+GET {{baseUrl}}/api/caja/1/movimientos?orden=montoSecreto,asc
+
+### 7) Cerrar caja con descuadre — ajusta montoContado para ver EXACTO/LEVE/GRAVE
+POST {{baseUrl}}/api/caja/cerrar
+Content-Type: application/json
+
+{
+  "montoContado": 95.00,
+  "observaciones": "Faltante por vuelto mal dado"
+}
+
+### 8) Cerrar de nuevo sin caja abierta — debe fallar 409 CAJA_NO_ABIERTA
+POST {{baseUrl}}/api/caja/cerrar
+Content-Type: application/json
+
+{
+  "montoContado": 10.00
+}
+
+### 9) Abrir con monto negativo — debe fallar 400 MONTO_INVALIDO
+POST {{baseUrl}}/api/caja/abrir
+Content-Type: application/json
+
+{
+  "montoInicial": -5.00,
+  "turno": "Tarde"
+}
+
+### 10) Abrir sin turno — debe fallar 400 FORMATO_INVALIDO (Bean Validation)
+POST {{baseUrl}}/api/caja/abrir
+Content-Type: application/json
+
+{
+  "montoInicial": 100.00
+}

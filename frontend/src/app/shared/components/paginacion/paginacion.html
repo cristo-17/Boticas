@@ -1,0 +1,13 @@
+<div class="d-flex align-items-center justify-content-between gap-2">
+  <span class="field-hint">
+    Página {{ pagina + 1 }} de {{ totalPaginas || 1 }} · {{ totalElementos }} en total
+  </span>
+  <div class="d-flex gap-2">
+    <app-button variant="secondary" [disabled]="esPrimera" (clicked)="anterior.emit()">
+      Anterior
+    </app-button>
+    <app-button variant="secondary" [disabled]="esUltima" (clicked)="siguiente.emit()">
+      Siguiente
+    </app-button>
+  </div>
+</div>

@@ -4,15 +4,18 @@ import { tap } from 'rxjs/operators';
 import { NuevaVentaRequest, Venta } from '../models/venta.model';
 import { AuthService } from './auth.service';
 import { ConexionService } from './conexion.service';
+import { ConfigService } from './config.service';
 import { ProductoService } from './producto.service';
 import { nextId, simulate } from './mock-utils';
 
-const TASA_IGV = 0.18;
+/** Fallback si /api/config no llegó a cargar todavía (no debería pasar: provideAppInitializer la espera antes de arrancar la app). */
+const TASA_IGV_DEFECTO = 0.18;
 
 @Injectable({ providedIn: 'root' })
 export class VentaService {
   private readonly auth = inject(AuthService);
   private readonly conexion = inject(ConexionService);
+  private readonly config = inject(ConfigService);
   private readonly productoService = inject(ProductoService);
 
   private readonly _ventasDelDia = signal<Venta[]>([]);
@@ -46,8 +49,9 @@ export class VentaService {
         cantidad: linea.cantidad,
       };
     });
+    const tasaIgv = this.config.config()?.igv ?? TASA_IGV_DEFECTO;
     const subtotal = items.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
-    const igv = subtotal - subtotal / (1 + TASA_IGV);
+    const igv = subtotal - subtotal / (1 + tasaIgv);
     const offline = this.conexion.estado() === 'offline';
     const venta: Venta = {
       id: nextId('v'),

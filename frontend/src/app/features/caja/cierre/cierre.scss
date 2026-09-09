@@ -1,5 +1,11 @@
 $cierre-breakpoint: 899.98px;
 
+// Banner de error (Tarea 9, CLAUDE.md) — ancho completo, arriba de la grilla.
+.cierre__error {
+  display: block;
+  margin-bottom: var(--s-4);
+}
+
 .cierre {
   display: grid;
   gap: var(--s-4);
@@ -283,4 +289,26 @@ $cierre-breakpoint: 899.98px;
   width: 12px;
   height: 12px;
   border-radius: 3px;
+}
+
+// Paginación de movimientos (Tarea 9) — mismo padding que el resto de filas de la tarjeta.
+.cierre__mov-paginacion {
+  padding: var(--s-3) var(--s-5);
+  border-top: 1px solid var(--line);
+}
+
+// Detalle esperado/contado del resultado post-cierre (Tarea 9, conteo ciego) —
+// mismo patrón que .apertura__meta-fila, formalizado acá porque Cierre no lo tenía.
+.cierre__resultado-detalle {
+  margin-top: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.cierre__resultado-fila {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: var(--fw-medium);
+  color: var(--ink-2);
 }

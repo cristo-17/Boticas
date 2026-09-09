@@ -1,6 +1,7 @@
 import { Component, EventEmitter, Output, computed, inject, signal } from '@angular/core';
 import { ButtonComponent } from '../../../shared/components/button/button';
 import { CardComponent } from '../../../shared/components/card/card';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner';
 import { AuthService } from '../../../core/services/auth.service';
 import { CajaService } from '../../../core/services/caja.service';
 import { formatearMoneda } from '../../../core/utils/moneda.util';
@@ -9,7 +10,7 @@ const MONTOS_RAPIDOS = [100, 150, 200, 300];
 
 @Component({
   selector: 'app-apertura',
-  imports: [ButtonComponent, CardComponent],
+  imports: [ButtonComponent, CardComponent, ErrorBannerComponent],
   templateUrl: './apertura.html',
   styleUrl: './apertura.scss',
 })
@@ -21,6 +22,8 @@ export class AperturaComponent {
 
   readonly cajaActual = this.caja.cajaActual;
   readonly abriendo = this.caja.cargando;
+  // Regla de frontend (CLAUDE.md): la pantalla muestra el error del servicio que llama.
+  readonly error = this.caja.error;
   readonly montosRapidos = MONTOS_RAPIDOS;
   readonly formatearMoneda = formatearMoneda;
 
@@ -78,6 +81,9 @@ export class AperturaComponent {
   abrirCaja(): void {
     if (!this.montoValido()) return;
     const turno = this.auth.usuarioActual()?.turno ?? 'Tarde';
-    this.caja.abrirCaja({ montoInicial: this.montoNumero(), turno }).subscribe();
+    // El error ya queda en caja.error() (mostrado por app-error-banner);
+    // el callback vacío solo evita el "unhandled error" que RxJS tira a
+    // la consola cuando un subscribe no declara ninguno.
+    this.caja.abrirCaja({ montoInicial: this.montoNumero(), turno }).subscribe({ error: () => {} });
   }
 }

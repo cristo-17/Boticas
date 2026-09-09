@@ -8,6 +8,7 @@ import { EmptyStateComponent } from '../../shared/components/empty-state/empty-s
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
 import { TableComponent } from '../../shared/components/table/table';
 import { Lote } from '../../core/models/lote.model';
+import { ConfigService } from '../../core/services/config.service';
 import { InventarioService } from '../../core/services/inventario.service';
 import { diasHasta, estadoFefo } from '../../core/utils/fecha.util';
 import { formatearMoneda } from '../../core/utils/moneda.util';
@@ -22,7 +23,8 @@ interface FilaLote extends Lote {
   stockBajo: boolean;
 }
 
-const UMBRAL_STOCK_BAJO = 15;
+/** Fallback si /api/config no llegó a cargar todavía (no debería pasar: provideAppInitializer la espera antes de arrancar la app). */
+const UMBRAL_STOCK_BAJO_DEFECTO = 15;
 
 const FILTROS_VENCIMIENTO: { valor: VencimientoFiltro; label: string }[] = [
   { valor: 'todos', label: 'Todos' },
@@ -31,7 +33,7 @@ const FILTROS_VENCIMIENTO: { valor: VencimientoFiltro; label: string }[] = [
   { valor: 'critico', label: 'Menos de 30 · vencido' },
 ];
 
-function filaDeLote(lote: Lote): FilaLote {
+function filaDeLote(lote: Lote, umbralStockBajo: number): FilaLote {
   const dias = diasHasta(lote.fechaVencimiento);
   const estado = estadoFefo(dias);
   const badgeVariant: BadgeVariant =
@@ -45,7 +47,7 @@ function filaDeLote(lote: Lote): FilaLote {
     badgeVariant,
     statusClass,
     textoVencimiento,
-    stockBajo: lote.stock <= UMBRAL_STOCK_BAJO,
+    stockBajo: lote.stock <= umbralStockBajo,
   };
 }
 
@@ -65,6 +67,7 @@ function filaDeLote(lote: Lote): FilaLote {
 })
 export class InventarioScreen implements OnInit {
   private readonly inventario = inject(InventarioService);
+  private readonly config = inject(ConfigService);
   private readonly route = inject(ActivatedRoute);
 
   readonly cargando = this.inventario.cargando;
@@ -82,12 +85,13 @@ export class InventarioScreen implements OnInit {
   );
   readonly soloStockBajo = signal(this.paramsIniciales.get('soloStockBajo') === 'true');
 
-  readonly filas = computed<FilaLote[]>(() =>
-    this.inventario
+  readonly filas = computed<FilaLote[]>(() => {
+    const umbralStockBajo = this.config.config()?.umbralStockBajo ?? UMBRAL_STOCK_BAJO_DEFECTO;
+    return this.inventario
       .lotes()
-      .map(filaDeLote)
-      .sort((a, b) => a.dias - b.dias),
-  );
+      .map((lote) => filaDeLote(lote, umbralStockBajo))
+      .sort((a, b) => a.dias - b.dias);
+  });
 
   readonly vacio = computed(() => !this.cargando() && !this.error() && this.filas().length === 0);
 

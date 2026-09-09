@@ -1,8 +1,9 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, inject, signal } from '@angular/core';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { FiltroLotes, Lote, NuevoLoteRequest } from '../models/lote.model';
 import { diasHasta, estadoFefo } from '../utils/fecha.util';
+import { ConfigService } from './config.service';
 import { nextId, simulate } from './mock-utils';
 
 const LOTES_MOCK: Lote[] = [
@@ -96,10 +97,13 @@ const LOTES_MOCK: Lote[] = [
   },
 ];
 
-const UMBRAL_STOCK_BAJO = 15;
+/** Fallback si /api/config no llegó a cargar todavía (no debería pasar: provideAppInitializer la espera antes de arrancar la app). */
+const UMBRAL_STOCK_BAJO_DEFECTO = 15;
 
 @Injectable({ providedIn: 'root' })
 export class InventarioService {
+  private readonly config = inject(ConfigService);
+
   private readonly _todosLosLotes = signal<Lote[]>(LOTES_MOCK);
 
   private readonly _lotes = signal<Lote[]>([]);
@@ -124,7 +128,8 @@ export class InventarioService {
     const filtrados = this._todosLosLotes()
       .filter((l) => {
         const okCategoria = !filtro.categoria || filtro.categoria === 'Todas' || l.categoria === filtro.categoria;
-        const okStockBajo = !filtro.soloStockBajo || l.stock <= UMBRAL_STOCK_BAJO;
+        const umbralStockBajo = this.config.config()?.umbralStockBajo ?? UMBRAL_STOCK_BAJO_DEFECTO;
+        const okStockBajo = !filtro.soloStockBajo || l.stock <= umbralStockBajo;
         const dias = diasHasta(l.fechaVencimiento);
         const okVencimiento =
           !filtro.vencimiento ||
