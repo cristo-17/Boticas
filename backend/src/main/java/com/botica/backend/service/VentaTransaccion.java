@@ -66,6 +66,7 @@ class VentaTransaccion {
         this(ventaDao, loteDao, productoDao, cajaDao, contexto, config, null);
     }
 
+    @Autowired
     VentaTransaccion(VentaDao ventaDao, LoteDao loteDao, ProductoDao productoDao, CajaDao cajaDao,
                      ContextoOperacion contexto, ConfigNegocioProperties config,
                      @Autowired(required = false) ApplicationEventPublisher eventPublisher) {

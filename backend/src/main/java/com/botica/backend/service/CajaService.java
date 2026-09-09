@@ -42,6 +42,7 @@ public class CajaService {
         this(cajaDao, contexto, fechaNegocio, config, null);
     }
 
+    @Autowired
     public CajaService(CajaDao cajaDao, ContextoOperacion contexto, FechaNegocio fechaNegocio,
                        ConfigNegocioProperties config, @Autowired(required = false) ApplicationEventPublisher eventPublisher) {
         this.cajaDao = cajaDao;
