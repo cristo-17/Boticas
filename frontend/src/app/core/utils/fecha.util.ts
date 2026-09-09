@@ -12,11 +12,22 @@ export function diasHasta(fechaIso: string, desde: Date = new Date()): number {
   return Math.round((fecha.getTime() - hoy.getTime()) / msPorDia);
 }
 
-export type EstadoFefo = 'ok' | 'pronto' | 'critico';
+import type { EstadoVencimiento } from '../models/estados.model';
 
-/** ok: más de 90 días · pronto: 30 a 90 · critico: menos de 30 o ya vencido. */
-export function estadoFefo(dias: number): EstadoFefo {
-  if (dias <= 90 && dias >= 30) return 'pronto';
-  if (dias < 30) return 'critico';
-  return 'ok';
+/**
+ * Texto de alerta ("Vence en N días" / "Vencido hace N días") a partir
+ * del estado y la fecha que manda el servidor — solo si el estado
+ * amerita aviso (CRITICO/VENCIDO). El servidor manda el estado (regla
+ * de negocio) y la fecha (dato); el conteo de días se hace acá, nunca
+ * al revés (docs/API-CONTRATO.md) — evita mandar un texto que caduca.
+ */
+export function textoAlertaVencimiento(
+  estado: EstadoVencimiento | null | undefined,
+  fechaVencimiento: string | null | undefined,
+): string | null {
+  if (!fechaVencimiento || (estado !== 'CRITICO' && estado !== 'VENCIDO')) {
+    return null;
+  }
+  const dias = diasHasta(fechaVencimiento);
+  return dias < 0 ? `Vencido hace ${Math.abs(dias)} días` : `Vence en ${dias} días`;
 }

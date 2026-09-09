@@ -1,104 +1,113 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { Injectable, inject, signal } from '@angular/core';
 import { Observable, throwError } from 'rxjs';
-import { tap } from 'rxjs/operators';
-import { AbrirCajaRequest, CajaDiaria, CerrarCajaRequest, MovimientoCaja } from '../models/caja.model';
-import { AuthService } from './auth.service';
-import { nextId, simulate } from './mock-utils';
+import { catchError, finalize, tap } from 'rxjs/operators';
+import {
+  AbrirCajaRequest,
+  CajaDiaria,
+  CerrarCajaRequest,
+  MovimientoCaja,
+  ResumenCierre,
+} from '../models/caja.model';
+import { PaginaResponse } from '../models/pagina.model';
+import { ErrorTraducido } from '../interceptors/error.interceptor';
+import { environment } from '../../../environments/environment';
 
-const MOVIMIENTOS_MOCK: Omit<MovimientoCaja, 'id' | 'cajaId'>[] = [
-  { tipo: 'venta', descripcion: 'Ventas en efectivo', nota: '52 boletas', monto: 1284.5, afectaEfectivo: true },
-  {
-    tipo: 'ingreso',
-    descripcion: 'Ingresos extra',
-    nota: 'Devolución de proveedor',
-    monto: 60,
-    afectaEfectivo: true,
-  },
-  { tipo: 'egreso', descripcion: 'Egresos', nota: 'Movilidad y pago de agua', monto: -45, afectaEfectivo: true },
-  {
-    tipo: 'merma',
-    descripcion: 'Mermas registradas',
-    nota: '3 productos vencidos · no afecta efectivo',
-    monto: -28.4,
-    afectaEfectivo: false,
-  },
-];
+const BASE_URL = `${environment.apiUrl}/caja`;
 
 @Injectable({ providedIn: 'root' })
 export class CajaService {
-  private readonly auth = inject(AuthService);
+  private readonly http = inject(HttpClient);
 
   private readonly _cajaActual = signal<CajaDiaria | null>(null);
   readonly cajaActual = this._cajaActual.asReadonly();
 
-  private readonly _movimientos = signal<MovimientoCaja[]>([]);
+  /** Se llena ANTES de contar (GET /resumen-cierre) — deliberadamente sin montoEsperado (conteo ciego). */
+  private readonly _resumenCierre = signal<ResumenCierre | null>(null);
+  readonly resumenCierre = this._resumenCierre.asReadonly();
+
+  private readonly _movimientos = signal<PaginaResponse<MovimientoCaja> | null>(null);
   readonly movimientos = this._movimientos.asReadonly();
 
   private readonly _cargando = signal(false);
   readonly cargando = this._cargando.asReadonly();
 
-  /** Suma solo los movimientos que mueven efectivo del cajón (excluye mermas, Yape y tarjeta). */
-  readonly efectivoEsperado = computed(() =>
-    this._movimientos()
-      .filter((m) => m.afectaEfectivo)
-      .reduce((acc, m) => acc + m.monto, (this._cajaActual()?.montoApertura ?? 0)),
-  );
+  /** Regla de frontend (CLAUDE.md): toda pantalla que llama a este servicio muestra este signal. */
+  private readonly _error = signal<string | null>(null);
+  readonly error = this._error.asReadonly();
 
   // GET /api/caja/hoy
   obtenerCajaDeHoy(): Observable<CajaDiaria | null> {
     this._cargando.set(true);
-    return simulate(this._cajaActual()).pipe(tap(() => this._cargando.set(false)));
+    this._error.set(null);
+    return this.http.get<CajaDiaria | null>(`${BASE_URL}/hoy`).pipe(
+      tap((caja) => this._cajaActual.set(caja)),
+      catchError((err) => this.manejarError(err, 'No se pudo cargar la caja de hoy.')),
+      // finalize corre en éxito Y en error -- tap() sola habría dejado
+      // "cargando" en true para siempre ante un fallo (409, red caída, etc.).
+      finalize(() => this._cargando.set(false)),
+    );
   }
 
   // POST /api/caja/abrir
   abrirCaja(request: AbrirCajaRequest): Observable<CajaDiaria> {
-    if (this._cajaActual()?.abierta) {
-      return throwError(() => new Error('Ya existe una caja abierta hoy'));
-    }
-    const usuario = this.auth.usuarioActual();
-    const caja: CajaDiaria = {
-      id: nextId('caja'),
-      fecha: new Date().toISOString().slice(0, 10),
-      usuarioId: usuario?.id ?? '',
-      usuarioNombre: usuario?.nombre ?? '',
-      turno: request.turno,
-      montoApertura: request.montoInicial,
-      horaApertura: new Date().toISOString(),
-      horaCierre: null,
-      montoContado: null,
-      diferencia: null,
-      observaciones: null,
-      abierta: true,
-    };
-    return simulate(caja, 500).pipe(
-      tap(() => {
+    this._cargando.set(true);
+    this._error.set(null);
+    return this.http.post<CajaDiaria>(`${BASE_URL}/abrir`, request).pipe(
+      tap((caja) => {
         this._cajaActual.set(caja);
-        this._movimientos.set(
-          MOVIMIENTOS_MOCK.map((m) => ({ ...m, id: nextId('mov'), cajaId: caja.id })),
-        );
+        this._resumenCierre.set(null);
+        this._movimientos.set(null);
       }),
+      catchError((err) => this.manejarError(err, 'No se pudo abrir la caja.')),
+      finalize(() => this._cargando.set(false)),
     );
   }
 
-  // GET /api/caja/{id}/movimientos
-  listarMovimientos(): Observable<MovimientoCaja[]> {
-    return simulate(this._movimientos());
+  // GET /api/caja/{id}/resumen-cierre — llamar ANTES de que el cajero cuente el efectivo.
+  obtenerResumenCierre(): Observable<ResumenCierre> {
+    const id = this._cajaActual()?.id;
+    if (id === undefined) {
+      throw new Error('No hay una caja abierta para pedir el resumen de cierre.');
+    }
+    this._error.set(null);
+    return this.http.get<ResumenCierre>(`${BASE_URL}/${id}/resumen-cierre`).pipe(
+      tap((resumen) => this._resumenCierre.set(resumen)),
+      catchError((err) => this.manejarError(err, 'No se pudo cargar el resumen de cierre.')),
+    );
   }
 
-  // POST /api/caja/cerrar
-  cerrarCaja(request: CerrarCajaRequest): Observable<CajaDiaria> {
-    const cajaAbierta = this._cajaActual();
-    if (!cajaAbierta) {
-      return throwError(() => new Error('No hay una caja abierta para cerrar'));
+  // GET /api/caja/{id}/movimientos?pagina=&tamano=&orden=
+  listarMovimientos(pagina = 0, tamano = 20, orden?: string): Observable<PaginaResponse<MovimientoCaja>> {
+    const id = this._cajaActual()?.id;
+    if (id === undefined) {
+      throw new Error('No hay una caja abierta para listar movimientos.');
     }
-    const cerrada: CajaDiaria = {
-      ...cajaAbierta,
-      horaCierre: new Date().toISOString(),
-      montoContado: request.montoContado,
-      diferencia: request.montoContado - this.efectivoEsperado(),
-      observaciones: request.observaciones ?? null,
-      abierta: false,
-    };
-    return simulate(cerrada, 500).pipe(tap(() => this._cajaActual.set(cerrada)));
+    let params = new HttpParams().set('pagina', pagina).set('tamano', tamano);
+    if (orden) {
+      params = params.set('orden', orden);
+    }
+    this._error.set(null);
+    return this.http.get<PaginaResponse<MovimientoCaja>>(`${BASE_URL}/${id}/movimientos`, { params }).pipe(
+      tap((data) => this._movimientos.set(data)),
+      catchError((err) => this.manejarError(err, 'No se pudieron cargar los movimientos.')),
+    );
+  }
+
+  // POST /api/caja/cerrar — el servidor calcula montoEsperado/diferencia/semaforoDescuadre; recién acá se conocen.
+  cerrarCaja(request: CerrarCajaRequest): Observable<CajaDiaria> {
+    this._cargando.set(true);
+    this._error.set(null);
+    return this.http.post<CajaDiaria>(`${BASE_URL}/cerrar`, request).pipe(
+      tap((caja) => this._cajaActual.set(caja)),
+      catchError((err) => this.manejarError(err, 'No se pudo cerrar la caja.')),
+      finalize(() => this._cargando.set(false)),
+    );
+  }
+
+  /** Molde único de manejo de error (CLAUDE.md): guarda el mensaje traducido en el signal y vuelve a lanzar. */
+  private manejarError(err: HttpErrorResponse & { traducido?: ErrorTraducido }, mensajeDefecto: string): Observable<never> {
+    this._error.set(err.traducido?.mensaje ?? mensajeDefecto);
+    return throwError(() => err);
   }
 }

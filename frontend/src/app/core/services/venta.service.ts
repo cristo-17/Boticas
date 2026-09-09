@@ -1,71 +1,54 @@
-import { Injectable, computed, inject, signal } from '@angular/core';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { HttpClient, HttpErrorResponse } from '@angular/common/http';
+import { Injectable, inject, signal } from '@angular/core';
+import { Observable, throwError } from 'rxjs';
+import { catchError, finalize, tap } from 'rxjs/operators';
 import { NuevaVentaRequest, Venta } from '../models/venta.model';
-import { AuthService } from './auth.service';
-import { ConexionService } from './conexion.service';
-import { ProductoService } from './producto.service';
-import { nextId, simulate } from './mock-utils';
+import { ErrorTraducido } from '../interceptors/error.interceptor';
+import { environment } from '../../../environments/environment';
 
-const TASA_IGV = 0.18;
+const BASE_URL = `${environment.apiUrl}/ventas`;
 
 @Injectable({ providedIn: 'root' })
 export class VentaService {
-  private readonly auth = inject(AuthService);
-  private readonly conexion = inject(ConexionService);
-  private readonly productoService = inject(ProductoService);
-
-  private readonly _ventasDelDia = signal<Venta[]>([]);
-  readonly ventasDelDia = this._ventasDelDia.asReadonly();
+  private readonly http = inject(HttpClient);
 
   private readonly _cargando = signal(false);
   readonly cargando = this._cargando.asReadonly();
 
-  readonly totalVentasDelDia = computed(() =>
-    this._ventasDelDia().reduce((acc, v) => acc + v.total, 0),
-  );
+  /** Regla de frontend (CLAUDE.md): toda pantalla que llama a este servicio muestra este signal. */
+  private readonly _error = signal<string | null>(null);
+  readonly error = this._error.asReadonly();
 
-  // GET /api/ventas?fecha=hoy
-  listarVentasDelDia(): Observable<Venta[]> {
-    this._cargando.set(true);
-    return simulate(this._ventasDelDia()).pipe(tap(() => this._cargando.set(false)));
-  }
+  /**
+   * Se genera al confirmar el carrito (la primera vez que se llama a
+   * registrarVenta para este intento de cobro), NO dentro de cada
+   * intento HTTP -- si se generara ahí, cada reintento de red mandaría
+   * un UUID distinto y la idempotencia no serviría de nada. Se reusa
+   * en cada reintento del mismo POST (nunca se limpia en catchError) y
+   * solo se limpia cuando el backend responde con éxito.
+   */
+  private readonly _claveIdempotencia = signal<string | null>(null);
 
   // POST /api/ventas
-  registrarVenta(request: NuevaVentaRequest): Observable<Venta> {
+  registrarVenta(request: Omit<NuevaVentaRequest, 'claveIdempotencia'>): Observable<Venta> {
     this._cargando.set(true);
-    const items = request.items.map((linea) => {
-      const producto = this.productoService.obtenerPorId(linea.productoId);
-      const presentacion = producto?.presentaciones.find((p) => p.id === linea.presentacionId);
-      return {
-        productoId: linea.productoId,
-        presentacionId: linea.presentacionId,
-        nombre: producto?.nombre ?? linea.productoId,
-        presentacion: presentacion?.etiqueta ?? '',
-        precioUnitario: presentacion?.precio ?? 0,
-        cantidad: linea.cantidad,
-      };
-    });
-    const subtotal = items.reduce((acc, i) => acc + i.precioUnitario * i.cantidad, 0);
-    const igv = subtotal - subtotal / (1 + TASA_IGV);
-    const offline = this.conexion.estado() === 'offline';
-    const venta: Venta = {
-      id: nextId('v'),
-      fecha: new Date().toISOString(),
-      usuarioId: this.auth.usuarioActual()?.id ?? '',
-      items,
-      subtotal,
-      igv,
-      total: subtotal,
-      metodoPago: request.metodoPago,
-      sincronizada: !offline,
-    };
-    return simulate(venta, 500).pipe(
-      tap(() => {
-        this._ventasDelDia.update((all) => [venta, ...all]);
-        if (offline) this.conexion.marcarPendiente();
-        this._cargando.set(false);
-      }),
+    this._error.set(null);
+    let clave = this._claveIdempotencia();
+    if (!clave) {
+      clave = crypto.randomUUID();
+      this._claveIdempotencia.set(clave);
+    }
+    const cuerpo: NuevaVentaRequest = { ...request, claveIdempotencia: clave };
+    return this.http.post<Venta>(BASE_URL, cuerpo).pipe(
+      tap(() => this._claveIdempotencia.set(null)), // solo se limpia en éxito -- el reintento tras un error reusa la misma clave
+      catchError((err) => this.manejarError(err, 'No se pudo registrar la venta.')),
+      finalize(() => this._cargando.set(false)),
     );
+  }
+
+  /** Molde único de manejo de error (CLAUDE.md): guarda el mensaje traducido en el signal y vuelve a lanzar. */
+  private manejarError(err: HttpErrorResponse & { traducido?: ErrorTraducido }, mensajeDefecto: string): Observable<never> {
+    this._error.set(err.traducido?.mensaje ?? mensajeDefecto);
+    return throwError(() => err);
   }
 }

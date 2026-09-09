@@ -4,10 +4,13 @@
       <h1>Inventario y lotes</h1>
       <p class="field-hint">
         Orden FEFO: primero vence, primero sale ·
-        <span class="num">{{ filas().length }} lotes</span>
+        <span class="num">{{ pagina()?.totalElementos ?? 0 }} lotes</span>
       </p>
     </div>
+    <app-button variant="primary" (clicked)="abrirFormulario()">Registrar lote</app-button>
   </div>
+
+  <app-error-banner [mensaje]="error()"></app-error-banner>
 
   <app-card>
     <div class="inventario__filtros">
@@ -59,12 +62,6 @@
     <app-card>
       <app-skeleton [count]="6"></app-skeleton>
     </app-card>
-  } @else if (error()) {
-    <app-card class="inventario__error">
-      <div class="inventario__error-titulo">No pudimos cargar el inventario</div>
-      <p class="field-hint">{{ error() }}</p>
-      <app-button variant="danger" (clicked)="cargar()">Reintentar</app-button>
-    </app-card>
   } @else if (vacio()) {
     <app-empty-state
       title="Ningún lote coincide con los filtros"
@@ -98,7 +95,9 @@
             <td class="align-end num">
               <span class="inventario__stock">{{ f.stock }}</span>
               @if (f.stockBajo) {
-                <span class="inventario__stock-bajo">Stock bajo</span>
+                <span class="inventario__stock-bajo">{{
+                  f.stockEstado === 'AGOTADO' ? 'Agotado' : 'Stock bajo'
+                }}</span>
               }
             </td>
             <td class="num inventario__code">{{ f.codigo }}</td>
@@ -139,12 +138,24 @@
               }}</app-badge>
             </div>
             @if (f.stockBajo) {
-              <div class="inventario__stock-bajo">Stock bajo · reponer</div>
+              <div class="inventario__stock-bajo">
+                {{ f.stockEstado === 'AGOTADO' ? 'Agotado' : 'Stock bajo' }} · reponer
+              </div>
             }
           </app-card>
         }
       </div>
     </app-table>
+
+    @if (pagina(); as p) {
+      <app-paginacion
+        [pagina]="p.pagina"
+        [totalPaginas]="p.totalPaginas"
+        [totalElementos]="p.totalElementos"
+        (anterior)="irAPagina(p.pagina - 1)"
+        (siguiente)="irAPagina(p.pagina + 1)"
+      ></app-paginacion>
+    }
 
     <div class="inventario__leyenda">
       @for (g of leyenda; track g.statusClass) {
@@ -156,3 +167,114 @@
     </div>
   }
 </div>
+
+@if (formularioAbierto()) {
+  <div class="modal-backdrop-bs" (click)="cerrarFormulario()">
+    <div class="modal-bs inventario__form-modal" (click)="$event.stopPropagation()">
+      <div class="modal-bs__body">
+        <div class="modal-bs__title">Registrar lote</div>
+
+        <app-error-banner [mensaje]="errorFormulario()"></app-error-banner>
+
+        <div class="inventario__form-campos">
+          <div class="bs-field">
+            <label for="lote-producto" class="bs-field__label">Producto</label>
+            <select id="lote-producto" class="bs-field__select" (change)="onProductoSeleccionado($event)">
+              <option value="">Selecciona un producto</option>
+              @for (p of productosDisponibles(); track p.id) {
+                <option [value]="p.id">{{ p.nombre }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="inventario__form-fila">
+            <div class="bs-field">
+              <label for="lote-codigo" class="bs-field__label">Código de lote</label>
+              <div class="bs-field__control">
+                <input
+                  id="lote-codigo"
+                  class="bs-field__input"
+                  type="text"
+                  placeholder="L-2601A"
+                  [value]="nuevoCodigo()"
+                  (input)="nuevoCodigo.set($any($event.target).value)"
+                />
+              </div>
+            </div>
+
+            <div class="bs-field">
+              <label for="lote-vencimiento" class="bs-field__label">Fecha de vencimiento</label>
+              <div class="bs-field__control">
+                <input
+                  id="lote-vencimiento"
+                  class="bs-field__input"
+                  type="date"
+                  [value]="nuevaFechaVencimiento()"
+                  (input)="nuevaFechaVencimiento.set($any($event.target).value)"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="inventario__form-fila">
+            <div class="bs-field">
+              <label for="lote-stock" class="bs-field__label">Stock inicial</label>
+              <div class="bs-field__control">
+                <input
+                  id="lote-stock"
+                  class="bs-field__input"
+                  type="number"
+                  min="0"
+                  [value]="nuevoStock()"
+                  (input)="nuevoStock.set($any($event.target).value === '' ? null : Number($any($event.target).value))"
+                />
+              </div>
+            </div>
+
+            <div class="bs-field">
+              <label for="lote-ubicacion" class="bs-field__label">Ubicación</label>
+              <div class="bs-field__control">
+                <input
+                  id="lote-ubicacion"
+                  class="bs-field__input"
+                  type="text"
+                  placeholder="A-3"
+                  [value]="nuevaUbicacion()"
+                  (input)="nuevaUbicacion.set($any($event.target).value)"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div class="bs-field">
+            <label for="lote-costo" class="bs-field__label">Costo unitario (S/)</label>
+            <div class="bs-field__control">
+              <input
+                id="lote-costo"
+                class="bs-field__input"
+                type="number"
+                min="0"
+                step="0.01"
+                [value]="nuevoCostoUnitario()"
+                (input)="nuevoCostoUnitario.set($any($event.target).value === '' ? null : Number($any($event.target).value))"
+              />
+            </div>
+            <div class="field-hint">
+              Es información del dueño — nunca se muestra en el listado de lotes.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-bs__actions">
+        <app-button variant="secondary" [disabled]="registrando()" (clicked)="cerrarFormulario()">Cancelar</app-button>
+        <app-button
+          variant="primary"
+          [loading]="registrando()"
+          [disabled]="!formularioValido()"
+          (clicked)="registrarLote()"
+          >Guardar lote</app-button
+        >
+      </div>
+    </div>
+  </div>
+}

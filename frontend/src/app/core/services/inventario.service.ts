@@ -1,179 +1,124 @@
-import { Injectable, computed, signal } from '@angular/core';
-import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
+import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
+import { Injectable, computed, inject, signal } from '@angular/core';
+import { Observable, throwError } from 'rxjs';
+import { catchError, finalize, tap } from 'rxjs/operators';
 import { FiltroLotes, Lote, NuevoLoteRequest } from '../models/lote.model';
-import { diasHasta, estadoFefo } from '../utils/fecha.util';
-import { nextId, simulate } from './mock-utils';
+import { PaginaResponse } from '../models/pagina.model';
+import { ErrorTraducido } from '../interceptors/error.interceptor';
+import { environment } from '../../../environments/environment';
 
-const LOTES_MOCK: Lote[] = [
-  {
-    id: 'l1',
-    productoId: 'p1',
-    productoNombre: 'Paracetamol 500 mg x100',
-    categoria: 'Analgésicos',
-    codigo: 'L-2405A',
-    fechaVencimiento: '2027-03-12',
-    stock: 240,
-    ubicacion: 'A-2',
-    precioUnitario: 12.9,
-  },
-  {
-    id: 'l2',
-    productoId: 'p6',
-    productoNombre: 'Sales de rehidratación x12',
-    categoria: 'Otros',
-    codigo: 'L-2503A',
-    fechaVencimiento: '2026-12-02',
-    stock: 54,
-    ubicacion: 'D-1',
-    precioUnitario: 16.8,
-  },
-  {
-    id: 'l3',
-    productoId: 'p2',
-    productoNombre: 'Amoxicilina 500 mg x50',
-    categoria: 'Antibióticos',
-    codigo: 'L-2312F',
-    fechaVencimiento: '2026-10-30',
-    stock: 38,
-    ubicacion: 'B-1',
-    precioUnitario: 28.5,
-  },
-  {
-    id: 'l4',
-    productoId: 'p7',
-    productoNombre: 'Clotrimazol crema 20 g',
-    categoria: 'Dermatológicos',
-    codigo: 'L-2408E',
-    fechaVencimiento: '2026-11-18',
-    stock: 21,
-    ubicacion: 'C-1',
-    precioUnitario: 9.2,
-  },
-  {
-    id: 'l5',
-    productoId: 'p3',
-    productoNombre: 'Ibuprofeno 400 mg x100',
-    categoria: 'Analgésicos',
-    codigo: 'L-2401C',
-    fechaVencimiento: '2026-09-20',
-    stock: 12,
-    ubicacion: 'A-4',
-    precioUnitario: 15.0,
-  },
-  {
-    id: 'l6',
-    productoId: 'p5',
-    productoNombre: 'Omeprazol 20 mg x30',
-    categoria: 'Gastrointestinal',
-    codigo: 'L-2311D',
-    fechaVencimiento: '2026-08-15',
-    stock: 7,
-    ubicacion: 'B-2',
-    precioUnitario: 11.5,
-  },
-  {
-    id: 'l7',
-    productoId: 'p4',
-    productoNombre: 'Loratadina 10 mg x30',
-    categoria: 'Antialérgicos',
-    codigo: 'L-2502B',
-    fechaVencimiento: '2027-06-05',
-    stock: 96,
-    ubicacion: 'C-3',
-    precioUnitario: 9.9,
-  },
-  {
-    id: 'l8',
-    productoId: 'p8',
-    productoNombre: 'Metformina 850 mg x60',
-    categoria: 'Crónicos',
-    codigo: 'L-2506A',
-    fechaVencimiento: '2027-04-22',
-    stock: 130,
-    ubicacion: 'A-1',
-    precioUnitario: 18.5,
-  },
-];
+const BASE_URL = `${environment.apiUrl}/lotes`;
 
-const UMBRAL_STOCK_BAJO = 15;
+/** Categorías de referencia mientras no hay un catálogo separado — se completan con lo que traiga cada página cargada. */
+const CATEGORIAS_INICIALES = ['Todas'];
 
 @Injectable({ providedIn: 'root' })
 export class InventarioService {
-  private readonly _todosLosLotes = signal<Lote[]>(LOTES_MOCK);
+  private readonly http = inject(HttpClient);
 
-  private readonly _lotes = signal<Lote[]>([]);
-  readonly lotes = this._lotes.asReadonly();
+  private readonly _pagina = signal<PaginaResponse<Lote> | null>(null);
+  readonly pagina = this._pagina.asReadonly();
+
+  /** La página actual, o [] mientras no haya cargado ninguna todavía. */
+  readonly lotes = computed(() => this._pagina()?.contenido ?? []);
 
   private readonly _cargando = signal(false);
   readonly cargando = this._cargando.asReadonly();
 
+  /** Regla de frontend (CLAUDE.md): toda pantalla que llama a este servicio muestra este signal. */
   private readonly _error = signal<string | null>(null);
   readonly error = this._error.asReadonly();
 
-  /** Categorías disponibles sobre el catálogo completo, no sobre el filtro activo. */
-  readonly categorias = computed(() => [
-    'Todas',
-    ...Array.from(new Set(this._todosLosLotes().map((l) => l.categoria))),
-  ]);
+  private readonly _categorias = signal<string[]>(CATEGORIAS_INICIALES);
+  readonly categorias = this._categorias.asReadonly();
 
-  // GET /api/lotes?categoria=&vencimiento=&stockBajo=
-  listarLotes(filtro: FiltroLotes = {}): Observable<Lote[]> {
+  // GET /api/lotes?categoria=&vencimiento=&stockBajo=&productoId=&pagina=&tamano=&orden=
+  listarLotes(filtro: FiltroLotes = {}, pagina = 0, tamano = 20, orden?: string): Observable<PaginaResponse<Lote>> {
     this._cargando.set(true);
     this._error.set(null);
-    const filtrados = this._todosLosLotes()
-      .filter((l) => {
-        const okCategoria = !filtro.categoria || filtro.categoria === 'Todas' || l.categoria === filtro.categoria;
-        const okStockBajo = !filtro.soloStockBajo || l.stock <= UMBRAL_STOCK_BAJO;
-        const dias = diasHasta(l.fechaVencimiento);
-        const okVencimiento =
-          !filtro.vencimiento ||
-          filtro.vencimiento === 'todos' ||
-          (filtro.vencimiento === 'ok' && dias > 90) ||
-          (filtro.vencimiento === 'pronto' && estadoFefo(dias) === 'pronto') ||
-          (filtro.vencimiento === 'critico' && dias < 30);
-        return okCategoria && okStockBajo && okVencimiento;
-      })
-      .sort((a, b) => diasHasta(a.fechaVencimiento) - diasHasta(b.fechaVencimiento));
-    return simulate(filtrados).pipe(
+    let params = new HttpParams().set('pagina', pagina).set('tamano', tamano);
+    if (filtro.categoria) {
+      params = params.set('categoria', filtro.categoria);
+    }
+    if (filtro.vencimiento) {
+      params = params.set('vencimiento', filtro.vencimiento);
+    }
+    if (filtro.soloStockBajo) {
+      params = params.set('stockBajo', true);
+    }
+    if (filtro.productoId !== undefined) {
+      params = params.set('productoId', filtro.productoId);
+    }
+    if (orden) {
+      params = params.set('orden', orden);
+    }
+    return this.http.get<PaginaResponse<Lote>>(BASE_URL, { params }).pipe(
       tap((data) => {
-        this._lotes.set(data);
-        this._cargando.set(false);
+        this._pagina.set(data);
+        this.actualizarCategorias(data.contenido);
       }),
+      catchError((err) => this.manejarError(err, 'No se pudo cargar el inventario.')),
+      finalize(() => this._cargando.set(false)),
     );
   }
 
-  // GET /api/lotes?productoNombre= — usado por el selector de producto en Registrar merma
-  listarLotesDeProducto(productoNombre: string): Observable<Lote[]> {
-    return simulate(this._todosLosLotes().filter((l) => l.productoNombre.startsWith(productoNombre)));
+  // GET /api/lotes?productoId=&pagina=0&tamano=50 — segundo paso del flujo rediseñado de Merma (Tarea 11 Bloque C).
+  listarLotesDeProducto(productoId: number): Observable<PaginaResponse<Lote>> {
+    return this.listarLotes({ productoId }, 0, 50);
   }
 
   // POST /api/lotes
   registrarLote(request: NuevoLoteRequest): Observable<Lote> {
-    const producto = this._todosLosLotes().find((l) => l.productoId === request.productoId);
-    const lote: Lote = {
-      id: nextId('l'),
-      productoId: request.productoId,
-      productoNombre: producto?.productoNombre ?? request.productoId,
-      categoria: producto?.categoria ?? '',
-      codigo: request.codigo,
-      fechaVencimiento: request.fechaVencimiento,
-      stock: request.stock,
-      ubicacion: request.ubicacion,
-      precioUnitario: request.precioUnitario,
-    };
-    return simulate(lote).pipe(tap(() => this._todosLosLotes.update((all) => [...all, lote])));
-  }
-
-  /** Lectura síncrona sobre el catálogo completo (no el filtrado), para que MermaService valide contra el lote real sin depender de qué filtro tenga puesto la pantalla de inventario. */
-  obtenerLotePorId(loteId: string): Lote | undefined {
-    return this._todosLosLotes().find((l) => l.id === loteId);
-  }
-
-  /** Descuenta stock de un lote (usado por MermaService al confirmar una baja). No es un endpoint propio: viaja dentro de POST /api/mermas. */
-  descontarStock(loteId: string, cantidad: number): void {
-    this._todosLosLotes.update((all) =>
-      all.map((l) => (l.id === loteId ? { ...l, stock: Math.max(0, l.stock - cantidad) } : l)),
+    this._cargando.set(true);
+    this._error.set(null);
+    return this.http.post<Lote>(BASE_URL, request).pipe(
+      catchError((err) => this.manejarError(err, 'No se pudo registrar el lote.')),
+      finalize(() => this._cargando.set(false)),
     );
+  }
+
+  /**
+   * Lectura síncrona sobre la página actualmente cargada — usada por
+   * MermaService (todavía mock, Tarea 11 Bloque C) para validar un
+   * lote sin volver a pedirlo. Con HTTP real ya no hay "todos los
+   * lotes" en memoria, solo la última página — mismo compromiso que
+   * ProductoService.obtenerPorId. Bloque C reemplaza este uso por un
+   * lookup real del backend.
+   */
+  obtenerLotePorId(loteId: number): Lote | undefined {
+    return this.lotes().find((l) => l.id === loteId);
+  }
+
+  /**
+   * Mutación local cosmética para que el mock de MermaService (Bloque C)
+   * siga funcionando mientras no esté conectado a HTTP real — el
+   * descuento de verdad lo hace el servidor dentro de POST /api/mermas
+   * cuando ese bloque se construya. No es un endpoint propio.
+   */
+  descontarStock(loteId: number, cantidad: number): void {
+    const actual = this._pagina();
+    if (!actual) {
+      return;
+    }
+    this._pagina.set({
+      ...actual,
+      contenido: actual.contenido.map((l) =>
+        l.id === loteId ? { ...l, stock: Math.max(0, l.stock - cantidad) } : l,
+      ),
+    });
+  }
+
+  private actualizarCategorias(lotes: Lote[]): void {
+    const nuevas = new Set(this._categorias());
+    for (const l of lotes) {
+      nuevas.add(l.categoria);
+    }
+    this._categorias.set(Array.from(nuevas));
+  }
+
+  /** Molde único de manejo de error (CLAUDE.md): guarda el mensaje traducido en el signal y vuelve a lanzar. */
+  private manejarError(err: HttpErrorResponse & { traducido?: ErrorTraducido }, mensajeDefecto: string): Observable<never> {
+    this._error.set(err.traducido?.mensaje ?? mensajeDefecto);
+    return throwError(() => err);
   }
 }

@@ -1,13 +1,15 @@
 import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { BadgeComponent } from '../../shared/components/badge/badge';
 import { CardComponent } from '../../shared/components/card/card';
+import { ErrorBannerComponent } from '../../shared/components/error-banner/error-banner';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
 import { ToastComponent } from '../../shared/components/toast/toast';
 import { PresentacionProducto, Producto } from '../../core/models/producto.model';
-import { MetodoPago } from '../../core/models/venta.model';
+import { MetodoPago, OrigenCaptura } from '../../core/models/venta.model';
 import { ProductoService } from '../../core/services/producto.service';
 import { VentaService } from '../../core/services/venta.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
+import { textoAlertaVencimiento } from '../../core/utils/fecha.util';
 import { CarritoPanelComponent } from './carrito-panel/carrito-panel';
 import { PresentacionModalComponent } from './presentacion-modal/presentacion-modal';
 import { EstadoEscaneo, ScannerComponent } from './scanner/scanner';
@@ -19,6 +21,7 @@ import { CarritoService } from './services/carrito.service';
   imports: [
     BadgeComponent,
     CardComponent,
+    ErrorBannerComponent,
     SkeletonComponent,
     ToastComponent,
     CarritoPanelComponent,
@@ -39,9 +42,20 @@ export class PuntoVentaScreen implements OnInit {
   readonly buscandoProductos = this.productoService.cargando;
   readonly cobrando = this.ventaService.cargando;
 
+  /** Regla de frontend (CLAUDE.md): toda pantalla que llama a un servicio muestra su error — acá hay dos servicios, un solo banner combinado. */
+  readonly error = computed(() => this.productoService.error() ?? this.ventaService.error());
+
   readonly query = signal('');
   readonly estadoEscaneo = signal<EstadoEscaneo>('idle');
   readonly codigoEscaneado = signal<string | null>(null);
+
+  /**
+   * De dónde salió el producto actualmente seleccionado (D4/Nota 2) —
+   * no es una pantalla ni un campo que el cajero vea o elija: se
+   * detecta en simularEscaneo()/elegirProducto() y viaja con la línea
+   * recién al agregarla al carrito (agregarPresentacion).
+   */
+  private readonly origenSeleccionActual = signal<OrigenCaptura>('BUSQUEDA');
 
   readonly toastVisible = signal(false);
   readonly toastMensaje = signal('');
@@ -54,13 +68,13 @@ export class PuntoVentaScreen implements OnInit {
   readonly igvLabel = 'IGV 18%';
 
   ngOnInit(): void {
-    this.productoService.obtenerMasVendidos().subscribe();
+    this.productoService.obtenerMasVendidos().subscribe({ error: () => {} });
     this.buscar('');
   }
 
   buscar(query: string): void {
     this.query.set(query);
-    this.productoService.buscarProductos(query).subscribe();
+    this.productoService.buscarProductos(query).subscribe({ error: () => {} });
   }
 
   onQueryInput(event: Event): void {
@@ -76,9 +90,18 @@ export class PuntoVentaScreen implements OnInit {
     }
     this.estadoEscaneo.set('buscando');
     this.codigoEscaneado.set(null);
-    this.productoService.buscarPorCodigoBarras(elegido.codigoBarras).subscribe((producto) => {
-      this.codigoEscaneado.set(elegido.codigoBarras);
-      this.estadoEscaneo.set(producto ? 'encontrado' : 'error');
+    this.origenSeleccionActual.set('ESCANEO');
+    this.productoService.buscarPorCodigoBarras(elegido.codigoBarras).subscribe({
+      next: (producto) => {
+        this.codigoEscaneado.set(elegido.codigoBarras);
+        this.estadoEscaneo.set(producto ? 'encontrado' : 'error');
+      },
+      // PRODUCTO_NO_ENCONTRADO es un código silencioso (sin toast) pero la
+      // pantalla igual necesita reflejar el fallo del escaneo.
+      error: () => {
+        this.codigoEscaneado.set(elegido.codigoBarras);
+        this.estadoEscaneo.set('error');
+      },
     });
   }
 
@@ -88,7 +111,9 @@ export class PuntoVentaScreen implements OnInit {
     this.codigoEscaneado.set('error');
   }
 
+  /** MANUAL (Nota 2): match exacto entre lo tecleado en el buscador y el código de barras — no es una pantalla aparte, es una detección. Cualquier otra selección desde resultados es BUSQUEDA. */
   elegirProducto(producto: Producto): void {
+    this.origenSeleccionActual.set(this.query().trim() === producto.codigoBarras ? 'MANUAL' : 'BUSQUEDA');
     this.productoService.seleccionar(producto);
     this.estadoEscaneo.set('encontrado');
   }
@@ -101,7 +126,7 @@ export class PuntoVentaScreen implements OnInit {
   agregarPresentacion(presentacion: PresentacionProducto): void {
     const producto = this.productoSeleccionado();
     if (producto) {
-      this.carrito.agregar(producto, presentacion);
+      this.carrito.agregar(producto, presentacion, this.origenSeleccionActual());
     }
     this.productoService.cerrarSeleccion();
     this.estadoEscaneo.set('idle');
@@ -111,20 +136,28 @@ export class PuntoVentaScreen implements OnInit {
     return producto.presentaciones[producto.presentaciones.length - 1]?.precio ?? 0;
   }
 
+  alertaVencimientoDe(producto: Producto): string | null {
+    return textoAlertaVencimiento(producto.estadoVencimiento, producto.fechaVencimiento);
+  }
+
   cobrar(metodo: MetodoPago = 'efectivo'): void {
     if (this.carrito.vacio()) return;
     const items = this.carrito.lineas().map((l) => ({
       productoId: l.productoId,
       presentacionId: l.presentacionId,
       cantidad: l.cantidad,
+      origenCaptura: l.origenCaptura,
     }));
-    this.ventaService.registrarVenta({ items, metodoPago: metodo }).subscribe((venta) => {
-      this.carrito.vaciar();
-      this.mostrarToast(
-        venta.sincronizada
-          ? `Venta cobrada (${metodo.toUpperCase()}) · ${formatearMoneda(venta.total)}`
-          : `Venta guardada localmente · ${formatearMoneda(venta.total)}`,
-      );
+    this.ventaService.registrarVenta({ items, metodoPago: metodo }).subscribe({
+      next: (venta) => {
+        this.carrito.vaciar();
+        this.mostrarToast(
+          venta.sincronizada
+            ? `Venta cobrada (${metodo.toUpperCase()}) · ${formatearMoneda(venta.total)}`
+            : `Venta guardada localmente · ${formatearMoneda(venta.total)}`,
+        );
+      },
+      error: () => {}, // el error ya queda en productoService.error()/ventaService.error() (mostrado en el banner)
     });
   }
 

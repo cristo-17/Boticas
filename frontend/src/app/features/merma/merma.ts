@@ -1,24 +1,19 @@
-import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
-import { takeUntilDestroyed, toSignal } from '@angular/core/rxjs-interop';
+import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { BadgeComponent } from '../../shared/components/badge/badge';
 import { ButtonComponent } from '../../shared/components/button/button';
 import { CardComponent } from '../../shared/components/card/card';
 import { ChipComponent } from '../../shared/components/chip/chip';
-import { FieldComponent } from '../../shared/components/field/field';
 import { ModalComponent } from '../../shared/components/modal/modal';
 import { TableComponent } from '../../shared/components/table/table';
 import { ToastComponent, ToastVariant } from '../../shared/components/toast/toast';
 import { MotivoMerma } from '../../core/models/merma.model';
 import { AuthService } from '../../core/services/auth.service';
 import { InventarioService } from '../../core/services/inventario.service';
-import {
-  MOTIVOS_MERMA,
-  MOTIVOS_QUE_REQUIEREN_OBSERVACION,
-  MermaService,
-} from '../../core/services/merma.service';
+import { MermaService } from '../../core/services/merma.service';
 import { ProductoService } from '../../core/services/producto.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
+import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-merma',
@@ -28,7 +23,6 @@ import { formatearMoneda } from '../../core/utils/moneda.util';
     ButtonComponent,
     CardComponent,
     ChipComponent,
-    FieldComponent,
     ModalComponent,
     TableComponent,
     ToastComponent,
@@ -41,17 +35,25 @@ export class MermaScreen implements OnInit {
   private readonly productoService = inject(ProductoService);
   private readonly mermaService = inject(MermaService);
   private readonly auth = inject(AuthService);
-  private readonly destroyRef = inject(DestroyRef);
 
-  readonly motivos = MOTIVOS_MERMA;
+  readonly motivos = this.mermaService.motivosMerma;
   readonly formatearMoneda = formatearMoneda;
   readonly registrando = this.mermaService.cargando;
   readonly mermas = this.mermaService.mermas;
 
-  // Formulario reactivo para registrar una merma. Se conecta a app-field (ControlValueAccessor) en la plantilla.
+  /**
+   * productoId/loteId son signals de number, no FormControl: app-field
+   * (select) es string-only porque un <select> nativo del DOM solo
+   * puede devolver string. La conversión ocurre UNA sola vez, en
+   * onProductoSeleccionado/onLoteSeleccionado (CLAUDE.md, "Los ids que
+   * vienen del backend son number") — de ahí para adentro, todo id es
+   * number, sin más conversiones.
+   */
+  readonly productoIdSeleccionado = signal<number | null>(null);
+  readonly loteIdSeleccionado = signal<number | null>(null);
+
+  // El resto del formulario (sin ids) sí es un FormGroup reactivo — se conecta a app-field en la plantilla.
   readonly form = new FormGroup({
-    productoId: new FormControl<string | null>(null, Validators.required),
-    loteId: new FormControl<string | null>(null, Validators.required),
     cantidad: new FormControl(1, [Validators.required, Validators.min(1)]),
     motivo: new FormControl<MotivoMerma>('Vencimiento', {
       nonNullable: true,
@@ -70,13 +72,10 @@ export class MermaScreen implements OnInit {
   });
 
   readonly productosDisponibles = computed(() => {
-    const vistos = new Map<string, string>();
+    const vistos = new Map<number, string>();
     for (const lote of this.todosLosLotes()) {
       if (!vistos.has(lote.productoId)) {
-        vistos.set(
-          lote.productoId,
-          this.productoService.obtenerPorId(lote.productoId)?.nombre ?? lote.productoNombre,
-        );
+        vistos.set(lote.productoId, this.productoService.obtenerPorId(lote.productoId)?.nombre ?? lote.productoNombre);
       }
     }
     return Array.from(vistos, ([productoId, nombre]) => ({ productoId, nombre }));
@@ -87,7 +86,7 @@ export class MermaScreen implements OnInit {
   );
 
   readonly lotesDelProducto = computed(() => {
-    const productoId = this.formValue().productoId;
+    const productoId = this.productoIdSeleccionado();
     return this.todosLosLotes().filter((l) => l.productoId === productoId);
   });
 
@@ -96,7 +95,7 @@ export class MermaScreen implements OnInit {
   );
 
   readonly loteSeleccionado = computed(() => {
-    const loteId = this.formValue().loteId;
+    const loteId = this.loteIdSeleccionado();
     return this.lotesDelProducto().find((l) => l.id === loteId) ?? null;
   });
 
@@ -117,7 +116,7 @@ export class MermaScreen implements OnInit {
 
   readonly observacionRequerida = computed(() => {
     const motivo = this.formValue().motivo;
-    return !!motivo && MOTIVOS_QUE_REQUIEREN_OBSERVACION.includes(motivo);
+    return !!motivo && this.mermaService.motivosQueRequierenObservacion.includes(motivo);
   });
 
   readonly observacionValida = computed(
@@ -157,23 +156,15 @@ export class MermaScreen implements OnInit {
   readonly toastVariant = signal<ToastVariant>('success');
 
   ngOnInit(): void {
-    this.form.controls.productoId.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe((productoId) => {
-        if (!productoId) return;
-        const primerLote = this.todosLosLotes().find((l) => l.productoId === productoId) ?? null;
-        this.form.controls.loteId.setValue(primerLote?.id ?? null);
-      });
-    this.form.controls.loteId.valueChanges
-      .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => {
-        this.form.controls.cantidad.setValue(1);
-      });
-
-    this.inventario.listarLotes({}).subscribe(() => {
+    // tamano grande a propósito: este flujo todavía asume "todos los lotes" en
+    // memoria para armar el selector (el mock lo tenía siempre completo). El
+    // rediseño en cascada (buscar producto -> pedir sus lotes) es Bloque C;
+    // hasta entonces, esto evita que la paginación real (Tarea 11 Bloque A)
+    // le corte el catálogo a los primeros 20.
+    this.inventario.listarLotes({}, 0, 100).subscribe(() => {
       const primerProducto = this.productosDisponibles()[0];
       if (primerProducto) {
-        this.form.controls.productoId.setValue(primerProducto.productoId);
+        this.seleccionarProducto(primerProducto.productoId);
       }
     });
 
@@ -185,6 +176,26 @@ export class MermaScreen implements OnInit {
     return isNaN(d.getTime())
       ? iso
       : d.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  private seleccionarProducto(productoId: number): void {
+    this.productoIdSeleccionado.set(productoId);
+    const primerLote = this.todosLosLotes().find((l) => l.productoId === productoId) ?? null;
+    this.loteIdSeleccionado.set(primerLote?.id ?? null);
+    this.form.controls.cantidad.setValue(1);
+  }
+
+  onProductoSeleccionado(event: Event): void {
+    const valor = (event.target as HTMLSelectElement).value;
+    if (valor) {
+      this.seleccionarProducto(Number(valor));
+    }
+  }
+
+  onLoteSeleccionado(event: Event): void {
+    const valor = (event.target as HTMLSelectElement).value;
+    this.loteIdSeleccionado.set(valor ? Number(valor) : null);
+    this.form.controls.cantidad.setValue(1);
   }
 
   incrementarCantidad(): void {
@@ -228,7 +239,7 @@ export class MermaScreen implements OnInit {
             `Merma registrada · ${formatearMoneda(merma.valor)} dados de baja`,
           );
           // refresca el lote (el servicio ya descontó el stock en InventarioService)
-          this.inventario.listarLotes({}).subscribe();
+          this.inventario.listarLotes({}, 0, 100).subscribe();
         },
         error: () => {
           this.confirmando.set(false);

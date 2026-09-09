@@ -1,6 +1,15 @@
 .apertura {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s-3);
+}
+
+// El banner de error (Tarea 9, CLAUDE.md) es ancho completo cuando aparece;
+// las cards de apertura/bloqueada se quedan centradas con su propio max-width.
+.apertura > app-error-banner {
+  width: 100%;
+  max-width: 560px;
 }
 
 // — bloqueada —

@@ -1,4 +1,6 @@
 <div class="apertura">
+  <app-error-banner [mensaje]="error()"></app-error-banner>
+
   @if (cajaActual()?.abierta) {
     <app-card class="apertura__bloqueada">
       <div class="apertura__bloqueada-eyebrow">Apertura bloqueada</div>

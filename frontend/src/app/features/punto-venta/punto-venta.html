@@ -1,4 +1,6 @@
 <div class="pos">
+  <app-error-banner [mensaje]="error()" class="pos__error"></app-error-banner>
+
   <section class="pos__main">
     <app-card>
       <div class="pos__card-head">
@@ -41,10 +43,8 @@
                         >{{ p.laboratorio }} · {{ p.categoria }}</span
                       >
                     </span>
-                    @if (p.alertaVencimiento) {
-                      <app-badge variant="warn" class="pos__resultado-badge">{{
-                        p.alertaVencimiento
-                      }}</app-badge>
+                    @if (alertaVencimientoDe(p); as texto) {
+                      <app-badge variant="warn" class="pos__resultado-badge">{{ texto }}</app-badge>
                     }
                     <span class="num pos__resultado-precio"
                       >desde {{ formatearMoneda(precioDesde(p)) }}</span
