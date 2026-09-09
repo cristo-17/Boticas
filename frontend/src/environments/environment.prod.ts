@@ -5,5 +5,5 @@
 // (docs/DESPLIEGUE.md, guía de cuentas) y antes de conectar Vercel.
 export const environment = {
   production: true,
-  apiUrl: 'https://<tu-servicio>.onrender.com/api',
+  apiUrl: 'https://botica-vbzh.onrender.com/api',
 };
