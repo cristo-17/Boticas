@@ -1,7 +1,22 @@
 <div class="alertas">
-  <div>
-    <h1 class="alertas__saludo">{{ saludo() }}</h1>
-    <p class="field-hint alertas__fecha">{{ fechaTexto }}</p>
+  <div class="alertas__header">
+    <div>
+      <h1 class="alertas__saludo">{{ saludo() }}</h1>
+      <p class="field-hint alertas__fecha">{{ fechaTexto }}</p>
+    </div>
+    <div class="alertas__header-actions">
+      @if (conectadoSse()) {
+        <span class="alertas__live-indicator" title="Conectado al servidor de eventos en tiempo real">
+          <span class="alertas__live-dot"></span> En tiempo real
+        </span>
+      }
+      <span class="alertas__sync-time">
+        Último refresco: <span class="num">{{ ultimaActualizacionTexto() }}</span>
+      </span>
+      <app-button variant="ghost" size="default" (clicked)="actualizarManual()" [disabled]="cargando()">
+        <i class="bi bi-arrow-clockwise me-1" [class.spin]="cargando()"></i> Actualizar
+      </app-button>
+    </div>
   </div>
 
   <app-error-banner [mensaje]="error()"></app-error-banner>
@@ -29,16 +44,39 @@
 
   <app-card [flat]="false" class="alertas__lista">
     <div class="alertas__lista-head">
-      <h2 class="alertas__lista-titulo">Alertas priorizadas</h2>
-      <span class="alertas__lista-hint">Orden: urgencia y dinero en riesgo</span>
+      <div>
+        <h2 class="alertas__lista-titulo">Alertas priorizadas</h2>
+        <span class="alertas__lista-hint">Ordenadas por nivel de urgencia y dinero en riesgo</span>
+      </div>
+      <div class="alertas__filtros">
+        <app-chip [activo]="filtroNivel() === 'todos'" (clicked)="cambiarFiltro('todos')">
+          Todas ({{ alertas().length }})
+        </app-chip>
+        <app-chip [activo]="filtroNivel() === 'urgente'" (clicked)="cambiarFiltro('urgente')">
+          Urgentes ({{ conteoUrgente() }})
+        </app-chip>
+        <app-chip [activo]="filtroNivel() === 'atencion'" (clicked)="cambiarFiltro('atencion')">
+          Atención ({{ conteoAtencion() }})
+        </app-chip>
+        <app-chip [activo]="filtroNivel() === 'con-monto'" (clicked)="cambiarFiltro('con-monto')">
+          Con dinero en riesgo ({{ conteoConMonto() }})
+        </app-chip>
+      </div>
     </div>
 
     @if (cargando() && alertas().length === 0) {
       <div class="alertas__skeleton-wrap">
         <app-skeleton [count]="4"></app-skeleton>
       </div>
+    } @else if (alertasFiltradas().length === 0) {
+      <div class="p-4">
+        <app-empty-state
+          [title]="filtroNivel() === 'todos' ? 'Sin alertas pendientes' : 'Sin alertas en esta categoría'"
+          [text]="filtroNivel() === 'todos' ? 'Todo está en orden en la botica. No hay lotes vencidos, quiebres de stock ni cajas desatendidas.' : 'No hay alertas que coincidan con el filtro seleccionado.'"
+        ></app-empty-state>
+      </div>
     } @else {
-      @for (a of alertas(); track a.id) {
+      @for (a of alertasFiltradas(); track a.id) {
         <button
           type="button"
           class="alertas__fila"
@@ -56,7 +94,9 @@
           @if (a.monto) {
             <span class="num alertas__fila-monto">{{ a.monto }}</span>
           }
-          <span class="alertas__fila-accion">{{ a.accionLabel }}</span>
+          <span class="alertas__fila-accion">
+            {{ a.accionLabel }} <i class="bi bi-arrow-right ms-1"></i>
+          </span>
         </button>
       }
     }

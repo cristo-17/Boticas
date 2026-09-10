@@ -5,6 +5,7 @@ import { catchError, finalize, tap } from 'rxjs/operators';
 import { Merma, MotivoMerma, NuevaMermaRequest } from '../models/merma.model';
 import { PaginaResponse } from '../models/pagina.model';
 import { ConfigService } from './config.service';
+import { AlertaService } from './alerta.service';
 import { ErrorTraducido } from '../interceptors/error.interceptor';
 import { environment } from '../../../environments/environment';
 
@@ -18,6 +19,7 @@ const MOTIVOS_CON_OBSERVACION_DEFECTO: MotivoMerma[] = ['Robo o pérdida', 'Otro
 export class MermaService {
   private readonly http = inject(HttpClient);
   private readonly config = inject(ConfigService);
+  private readonly alertaService = inject(AlertaService);
 
   private readonly _mermas = signal<Merma[]>([]);
   readonly mermas = this._mermas.asReadonly();
@@ -58,7 +60,10 @@ export class MermaService {
     this._cargando.set(true);
     this._error.set(null);
     return this.http.post<Merma>(BASE_URL, request).pipe(
-      tap((merma) => this._mermas.update((all) => [merma, ...all])),
+      tap((merma) => {
+        this._mermas.update((all) => [merma, ...all]);
+        this.alertaService.recargarTodo(0, 20, true).subscribe({ error: () => {} });
+      }),
       catchError((err) => this.manejarError(err, 'No se pudo registrar la merma.')),
       finalize(() => this._cargando.set(false)),
     );

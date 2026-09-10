@@ -5,6 +5,7 @@ import { catchError, finalize, tap } from 'rxjs/operators';
 import { NuevaVentaRequest, Venta } from '../models/venta.model';
 import { PaginaResponse } from '../models/pagina.model';
 import { ErrorTraducido } from '../interceptors/error.interceptor';
+import { AlertaService } from './alerta.service';
 import { environment } from '../../../environments/environment';
 
 const BASE_URL = `${environment.apiUrl}/ventas`;
@@ -12,6 +13,7 @@ const BASE_URL = `${environment.apiUrl}/ventas`;
 @Injectable({ providedIn: 'root' })
 export class VentaService {
   private readonly http = inject(HttpClient);
+  private readonly alertaService = inject(AlertaService);
 
   private readonly _cargando = signal(false);
   readonly cargando = this._cargando.asReadonly();
@@ -44,7 +46,10 @@ export class VentaService {
     }
     const cuerpo: NuevaVentaRequest = { ...request, claveIdempotencia: clave };
     return this.http.post<Venta>(BASE_URL, cuerpo).pipe(
-      tap(() => this._claveIdempotencia.set(null)), // solo se limpia en éxito -- el reintento tras un error reusa la misma clave
+      tap(() => {
+        this._claveIdempotencia.set(null);
+        this.alertaService.obtenerResumen(true).subscribe({ error: () => {} });
+      }), // solo se limpia en éxito -- el reintento tras un error reusa la misma clave
       catchError((err) => this.manejarError(err, 'No se pudo registrar la venta.')),
       finalize(() => this._cargando.set(false)),
     );

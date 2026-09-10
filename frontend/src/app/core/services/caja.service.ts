@@ -11,6 +11,7 @@ import {
 } from '../models/caja.model';
 import { PaginaResponse } from '../models/pagina.model';
 import { ErrorTraducido } from '../interceptors/error.interceptor';
+import { AlertaService } from './alerta.service';
 import { environment } from '../../../environments/environment';
 
 const BASE_URL = `${environment.apiUrl}/caja`;
@@ -18,6 +19,7 @@ const BASE_URL = `${environment.apiUrl}/caja`;
 @Injectable({ providedIn: 'root' })
 export class CajaService {
   private readonly http = inject(HttpClient);
+  private readonly alertaService = inject(AlertaService);
 
   private readonly _cajaActual = signal<CajaDiaria | null>(null);
   readonly cajaActual = this._cajaActual.asReadonly();
@@ -58,6 +60,7 @@ export class CajaService {
         this._cajaActual.set(caja);
         this._resumenCierre.set(null);
         this._movimientos.set(null);
+        this.alertaService.obtenerResumen(true).subscribe({ error: () => {} });
       }),
       catchError((err) => this.manejarError(err, 'No se pudo abrir la caja.')),
       finalize(() => this._cargando.set(false)),
@@ -99,7 +102,10 @@ export class CajaService {
     this._cargando.set(true);
     this._error.set(null);
     return this.http.post<CajaDiaria>(`${BASE_URL}/cerrar`, request).pipe(
-      tap((caja) => this._cajaActual.set(caja)),
+      tap((caja) => {
+        this._cajaActual.set(caja);
+        this.alertaService.obtenerResumen(true).subscribe({ error: () => {} });
+      }),
       catchError((err) => this.manejarError(err, 'No se pudo cerrar la caja.')),
       finalize(() => this._cargando.set(false)),
     );

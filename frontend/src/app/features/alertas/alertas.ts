@@ -1,7 +1,10 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, HostListener, OnDestroy, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { BadgeComponent } from '../../shared/components/badge/badge';
+import { ButtonComponent } from '../../shared/components/button/button';
 import { CardComponent } from '../../shared/components/card/card';
+import { ChipComponent } from '../../shared/components/chip/chip';
+import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state';
 import { ErrorBannerComponent } from '../../shared/components/error-banner/error-banner';
 import { PaginacionComponent } from '../../shared/components/paginacion/paginacion';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
@@ -13,7 +16,10 @@ import { Alerta, NivelAlerta } from '../../core/models/alerta.model';
 import { AlertaService } from '../../core/services/alerta.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
+import { NotificacionService } from '../../core/services/notificacion.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
+
+export type FiltroAlertaNivel = 'todos' | 'urgente' | 'atencion' | 'con-monto';
 
 interface KpiVista {
   label: string;
@@ -43,16 +49,34 @@ const FORMATO_HORA = new Intl.DateTimeFormat('es-PE', {
   timeZone: 'America/Lima',
 });
 
+const FORMATO_HORA_SEGUNDOS = new Intl.DateTimeFormat('es-PE', {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  timeZone: 'America/Lima',
+});
+
 @Component({
   selector: 'app-alertas',
-  imports: [BadgeComponent, CardComponent, ErrorBannerComponent, PaginacionComponent, SkeletonComponent, SummaryCardComponent],
+  imports: [
+    BadgeComponent,
+    ButtonComponent,
+    CardComponent,
+    ChipComponent,
+    EmptyStateComponent,
+    ErrorBannerComponent,
+    PaginacionComponent,
+    SkeletonComponent,
+    SummaryCardComponent,
+  ],
   templateUrl: './alertas.html',
   styleUrl: './alertas.scss',
 })
-export class AlertasScreen implements OnInit {
+export class AlertasScreen implements OnInit, OnDestroy {
   private readonly alertaService = inject(AlertaService);
   private readonly auth = inject(AuthService);
   private readonly config = inject(ConfigService);
+  private readonly notificaciones = inject(NotificacionService);
   private readonly router = inject(Router);
 
   readonly alertas = this.alertaService.alertas;
@@ -60,11 +84,26 @@ export class AlertasScreen implements OnInit {
   readonly resumen = this.alertaService.resumen;
   readonly cargando = this.alertaService.cargando;
   readonly error = this.alertaService.error;
+  readonly ultimaActualizacion = this.alertaService.ultimaActualizacion;
+  readonly conectadoSse = this.notificaciones.conectadoSse;
 
   readonly nivelBadge = NIVEL_BADGE;
   readonly nivelLabel = NIVEL_LABEL;
 
   readonly paginaActual = signal(0);
+  readonly filtroNivel = signal<FiltroAlertaNivel>('todos');
+
+  private timerRef: ReturnType<typeof setInterval> | null = null;
+
+  constructor() {
+    // Reaccionar automáticamente a eventos SSE entrantes en tiempo real
+    effect(() => {
+      const live = this.notificaciones.alertaEnVivo();
+      if (live) {
+        this.cargarTodo(true);
+      }
+    });
+  }
 
   readonly saludo = computed(() => {
     const hora = new Date().getHours();
@@ -79,7 +118,25 @@ export class AlertasScreen implements OnInit {
     month: 'long',
   });
 
-  // KPIs reformados (hueco 5): el backend manda números crudos, el texto se arma acá con moneda.util/Intl.DateTimeFormat
+  readonly ultimaActualizacionTexto = computed(() =>
+    FORMATO_HORA_SEGUNDOS.format(this.ultimaActualizacion()),
+  );
+
+  // Alertas filtradas reactivamente
+  readonly alertasFiltradas = computed(() => {
+    const f = this.filtroNivel();
+    const lista = this.alertas();
+    if (f === 'urgente') return lista.filter((a) => a.nivel === 'urgente');
+    if (f === 'atencion') return lista.filter((a) => a.nivel === 'atencion');
+    if (f === 'con-monto') return lista.filter((a) => !!a.monto);
+    return lista;
+  });
+
+  readonly conteoUrgente = computed(() => this.alertas().filter((a) => a.nivel === 'urgente').length);
+  readonly conteoAtencion = computed(() => this.alertas().filter((a) => a.nivel === 'atencion').length);
+  readonly conteoConMonto = computed(() => this.alertas().filter((a) => !!a.monto).length);
+
+  // KPIs del dashboard reformados
   readonly kpis = computed<KpiVista[]>(() => {
     const r = this.resumen();
     if (!r) return [];
@@ -110,7 +167,10 @@ export class AlertasScreen implements OnInit {
       {
         label: 'Estado de caja',
         valor: r.cajaEstado === 'ABIERTA' ? 'Abierta' : 'Cerrada',
-        nota: r.cajaEstado === 'ABIERTA' && r.cajaHoraApertura ? `Desde ${FORMATO_HORA.format(new Date(r.cajaHoraApertura))}` : 'Sin turno abierto',
+        nota:
+          r.cajaEstado === 'ABIERTA' && r.cajaHoraApertura
+            ? `Desde ${FORMATO_HORA.format(new Date(r.cajaHoraApertura))}`
+            : 'Sin turno abierto',
         variant: 'info',
         ruta: '/caja',
       },
@@ -118,17 +178,44 @@ export class AlertasScreen implements OnInit {
   });
 
   ngOnInit(): void {
-    this.alertaService.obtenerResumen().subscribe();
-    this.cargar();
+    this.cargarTodo();
+    // Sondeo suave periódico cada 30 segundos si la pantalla queda abierta
+    this.timerRef = setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        this.cargarTodo(true);
+      }
+    }, 30000);
   }
 
-  cargar(): void {
-    this.alertaService.listarAlertas(this.paginaActual(), TAMANO_PAGINA).subscribe();
+  ngOnDestroy(): void {
+    if (this.timerRef) {
+      clearInterval(this.timerRef);
+      this.timerRef = null;
+    }
+  }
+
+  @HostListener('document:visibilitychange')
+  onVisibilityChange(): void {
+    if (document.visibilityState === 'visible') {
+      this.cargarTodo(true);
+    }
+  }
+
+  cargarTodo(silencioso = false): void {
+    this.alertaService.recargarTodo(this.paginaActual(), TAMANO_PAGINA, silencioso).subscribe();
+  }
+
+  actualizarManual(): void {
+    this.cargarTodo(false);
+  }
+
+  cambiarFiltro(f: FiltroAlertaNivel): void {
+    this.filtroNivel.set(f);
   }
 
   irAPagina(pagina: number): void {
     this.paginaActual.set(Math.max(0, pagina));
-    this.cargar();
+    this.cargarTodo(false);
   }
 
   irA(ruta: string, queryParams?: Record<string, string>): void {
@@ -139,3 +226,4 @@ export class AlertasScreen implements OnInit {
     this.irA(alerta.accionRuta, alerta.accionQueryParams);
   }
 }
+
