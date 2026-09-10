@@ -4,11 +4,13 @@ import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { ButtonComponent } from '../../shared/components/button/button';
+import { BadgeComponent } from '../../shared/components/badge/badge';
 import { CardComponent } from '../../shared/components/card/card';
 import { ChipComponent } from '../../shared/components/chip/chip';
 import { ErrorBannerComponent } from '../../shared/components/error-banner/error-banner';
 import { ModalComponent } from '../../shared/components/modal/modal';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
+import { TableComponent } from '../../shared/components/table/table';
 import { ToastComponent, ToastVariant } from '../../shared/components/toast/toast';
 import { MotivoMerma } from '../../core/models/merma.model';
 import { Producto } from '../../core/models/producto.model';
@@ -21,7 +23,18 @@ import { toSignal } from '@angular/core/rxjs-interop';
 
 @Component({
   selector: 'app-merma',
-  imports: [ReactiveFormsModule, ButtonComponent, CardComponent, ChipComponent, ErrorBannerComponent, ModalComponent, SkeletonComponent, ToastComponent],
+  imports: [
+    ReactiveFormsModule,
+    BadgeComponent,
+    ButtonComponent,
+    CardComponent,
+    ChipComponent,
+    ErrorBannerComponent,
+    ModalComponent,
+    SkeletonComponent,
+    TableComponent,
+    ToastComponent,
+  ],
   templateUrl: './merma.html',
   styleUrl: './merma.scss',
 })

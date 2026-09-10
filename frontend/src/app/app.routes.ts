@@ -1,5 +1,4 @@
 import { Routes } from '@angular/router';
-import { authGuard } from './core/guards/auth.guard';
 import { Shell } from './layout/shell/shell';
 import { authGuard } from './core/guards/auth.guard';
 
@@ -14,6 +13,11 @@ export const routes: Routes = [
     component: Shell,
     canActivate: [authGuard],
     children: [
+      {
+        path: 'dashboard',
+        redirectTo: 'alertas',
+        pathMatch: 'full',
+      },
       {
         path: 'alertas',
         loadComponent: () => import('./features/alertas/alertas').then((m) => m.AlertasScreen),
