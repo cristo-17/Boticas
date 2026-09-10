@@ -78,10 +78,52 @@
   }
 }
 
+// Tarjetas móviles para listado de ventas
+.historial-ventas__m-card {
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--borde, #e2e8f0);
+  border-radius: var(--r-md, 8px);
+  padding: var(--s-3, 12px);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2, 8px);
+  box-shadow: var(--sh-1, 0 1px 3px rgba(0, 0, 0, 0.05));
+}
+
+.historial-ventas__m-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.historial-ventas__m-card-mid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.historial-ventas__m-card-action {
+  padding-top: var(--s-2, 8px);
+  border-top: 1px solid var(--line, #e2e8f0);
+}
+
 // Modal detalle
 .modal-bs--lg {
   max-width: 640px;
   width: 95%;
+}
+
+.venta-detalle-modal {
+  max-height: 90vh;
+  max-height: 90dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  .modal-bs__body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .venta-detalle-modal__header {
@@ -99,8 +141,16 @@
   font-size: 13px;
 }
 
+.venta-detalle-modal__items {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: 0 calc(-1 * var(--s-3, 12px));
+  padding: 0 var(--s-3, 12px);
+}
+
 .table-compact {
   border-collapse: collapse;
+  min-width: 480px;
 
   th,
   td {
@@ -133,3 +183,4 @@
 .text-xs {
   font-size: 11px;
 }
+

@@ -47,6 +47,44 @@ a:hover {
   outline-offset: 2px;
 }
 
+// Estilo de barras de desplazamiento cross-browser (Firefox y WebKit/Blink)
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--muted);
+}
+
+// Heredar tipografía en controles de formulario
+input,
+select,
+textarea,
+button {
+  font-family: inherit;
+}
+
+// Prevenir zoom automático forzado en iOS Safari al enfocar inputs
+@media (max-width: 1024px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation-duration: 0.01ms !important;

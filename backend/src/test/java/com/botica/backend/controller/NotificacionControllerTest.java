@@ -2,15 +2,14 @@ package com.botica.backend.controller;
 
 import com.botica.backend.config.ContextoOperacion;
 import com.botica.backend.config.GlobalExceptionHandler;
-import com.botica.backend.config.SecurityConfig;
 import com.botica.backend.dao.NotificacionDao;
 import com.botica.backend.model.Notificacion;
 import com.botica.backend.service.SseEmitterService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -29,12 +28,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(NotificacionController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
-@WithMockUser(roles = "ADMINISTRADOR")
+@Import(GlobalExceptionHandler.class)
+@AutoConfigureMockMvc(addFilters = false)
 class NotificacionControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private com.botica.backend.util.JwtUtil jwtUtil;
 
     @MockitoBean
     private NotificacionDao notificacionDao;

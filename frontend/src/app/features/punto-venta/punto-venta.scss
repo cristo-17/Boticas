@@ -11,7 +11,7 @@ $scan-breakpoint: 1400.98px;
 @media (max-width: $pos-breakpoint) {
   .pos {
     grid-template-columns: minmax(0, 1fr);
-    padding-bottom: 140px;
+    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
   }
 }
 

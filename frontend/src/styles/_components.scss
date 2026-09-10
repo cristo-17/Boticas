@@ -468,6 +468,10 @@
 .modal-bs {
   width: 100%;
   max-width: 460px;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  display: flex;
+  flex-direction: column;
   background: var(--surface);
   border-radius: var(--r-lg);
   box-shadow: var(--sh-3);
@@ -475,6 +479,8 @@
 }
 .modal-bs__body {
   padding: var(--s-5);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 .modal-bs__title {
   font-size: 20px;
@@ -666,6 +672,12 @@
 }
 
 // — tabla —
+.table-responsive {
+  display: block;
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
 .table-bs {
   width: 100%;
   border-collapse: collapse;
@@ -716,13 +728,16 @@
 }
 // Móvil: tarjetas en vez de tabla
 @media (max-width: 767.98px) {
-  .table-desktop {
+  app-table:has(.table-cards > *) .table-desktop {
     display: none;
   }
   .table-cards {
     display: flex;
     flex-direction: column;
     gap: var(--s-3);
+  }
+  .table-cards:empty {
+    display: none;
   }
 }
 @media (min-width: 768px) {

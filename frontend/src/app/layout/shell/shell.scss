@@ -1,6 +1,7 @@
 :host {
   display: block;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--bg);
   padding-bottom: var(--s-7);
 }
@@ -14,10 +15,15 @@
   flex: 1;
   min-width: 0;
   padding: var(--s-5) var(--s-4);
+  -webkit-overflow-scrolling: touch;
 }
 
 @media (max-width: 1023.98px) {
   :host {
-    padding-bottom: 76px;
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .shell-content {
+    padding: var(--s-4) var(--s-3);
   }
 }

@@ -31,11 +31,12 @@ $pos-breakpoint: 1180.98px;
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 64px;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
     z-index: var(--z-sheet);
     border-radius: var(--r-lg) var(--r-lg) 0 0;
     box-shadow: var(--sh-3);
     max-height: 60vh;
+    max-height: 60dvh;
   }
   .carrito-panel__titulo {
     display: none;

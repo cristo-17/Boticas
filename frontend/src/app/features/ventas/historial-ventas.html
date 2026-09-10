@@ -86,6 +86,30 @@
             </tr>
           }
         </tbody>
+        <div cards>
+          @for (v of ventas(); track v.id) {
+            <div class="historial-ventas__m-card">
+              <div class="historial-ventas__m-card-top">
+                <div class="d-flex align-items-center gap-2">
+                  <span class="num font-bold">#{{ v.id }}</span>
+                  <app-badge [variant]="badgeMetodo(v.metodoPago)">
+                    {{ labelMetodo(v.metodoPago) }}
+                  </app-badge>
+                </div>
+                <span class="num font-bold text-primary fs-5">{{ moneda(v.total) }}</span>
+              </div>
+              <div class="historial-ventas__m-card-mid">
+                <span class="historial-ventas__fecha">{{ formatearFechaHora(v.fecha) }}</span>
+                <span class="field-hint">{{ v.items.length }} ítem(s) · Subtotal: {{ moneda(v.subtotal) }}</span>
+              </div>
+              <div class="historial-ventas__m-card-action">
+                <app-button variant="ghost" [block]="true" (clicked)="verDetalle(v)">
+                  <i class="bi bi-eye me-1"></i> Ver detalle de venta
+                </app-button>
+              </div>
+            </div>
+          }
+        </div>
       </app-table>
 
       @if (pagina(); as p) {
