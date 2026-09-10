@@ -9,6 +9,11 @@ import lombok.Setter;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
+/**
+ * Espeja la tabla mermas. valorVenta (nota 3, nunca "valor" a secas) es
+ * a precio de venta — el costo de la pérdida es Fase 2 (JOIN a
+ * lotes.costo_unitario), no vive acá.
+ */
 @Getter
 @Setter
 @NoArgsConstructor
@@ -23,7 +28,6 @@ public class Merma {
     private Integer cantidad;
     private String motivo;
     private String observacion;
-    /** Precio de venta al momento del registro (presentacion factor_conversion=1 × cantidad). */
     private BigDecimal valorVenta;
     private OffsetDateTime fecha;
 }

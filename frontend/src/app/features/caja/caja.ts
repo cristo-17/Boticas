@@ -9,6 +9,12 @@ import { CierreComponent } from './cierre/cierre';
 
 type TabCaja = 'apertura' | 'cierre';
 
+// rol viaja crudo del backend (Tarea 12, docs/DECISIONES.md) -- el texto bonito se arma acá, el único lugar que lo muestra.
+const ROL_LABEL: Record<'TECNICO' | 'ADMINISTRADOR', string> = {
+  TECNICO: 'Técnico',
+  ADMINISTRADOR: 'Administrador',
+};
+
 /**
  * La pantalla de caja muestra la apertura/cierre de caja del día, según el estado de la caja.
  */
@@ -42,7 +48,7 @@ export class CajaScreen implements OnInit {
 
   readonly usuarioTexto = computed(() => {
     const usuario = this.auth.usuarioActual();
-    return usuario ? `${usuario.nombre} · ${usuario.rol}` : 'Sin sesión';
+    return usuario ? `${usuario.nombre} · ${ROL_LABEL[usuario.rol]}` : 'Sin sesión';
   });
 
   ngOnInit(): void {

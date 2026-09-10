@@ -1,17 +1,19 @@
 package com.botica.backend.controller;
 
 import com.botica.backend.dto.AlertaResponse;
+import com.botica.backend.dto.PaginaResponse;
 import com.botica.backend.dto.ResumenDashboardResponse;
 import com.botica.backend.service.AlertaService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.util.List;
-
+/**
+ * No valida reglas de negocio ni toca la base de datos (Regla 2): recibe
+ * la petición, llama al Service, devuelve la respuesta.
+ */
 @RestController
-@RequestMapping("/api/alertas")
 public class AlertaController {
 
     private final AlertaService alertaService;
@@ -20,13 +22,22 @@ public class AlertaController {
         this.alertaService = alertaService;
     }
 
-    @GetMapping
-    public ResponseEntity<List<AlertaResponse>> listar() {
-        return ResponseEntity.ok(alertaService.listarAlertas());
+    @GetMapping("/api/dashboard/resumen")
+    public ResponseEntity<ResumenDashboardResponse> resumen() {
+        return ResponseEntity.ok(alertaService.resumen());
     }
 
-    @GetMapping("/resumen")
-    public ResponseEntity<ResumenDashboardResponse> obtenerResumen() {
-        return ResponseEntity.ok(alertaService.obtenerResumen());
+    // Alias para compatibilidad hacia atrás
+    @GetMapping("/api/alertas/resumen")
+    public ResponseEntity<ResumenDashboardResponse> resumenAlias() {
+        return ResponseEntity.ok(alertaService.resumen());
+    }
+
+    @GetMapping("/api/alertas")
+    public ResponseEntity<PaginaResponse<AlertaResponse>> listar(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano
+    ) {
+        return ResponseEntity.ok(alertaService.listar(pagina, tamano));
     }
 }

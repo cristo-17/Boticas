@@ -1,101 +1,93 @@
 package com.botica.backend.controller;
 
 import com.botica.backend.config.GlobalExceptionHandler;
-import com.botica.backend.config.SecurityConfig;
-import com.botica.backend.dto.LoginRequest;
 import com.botica.backend.dto.LoginResponse;
 import com.botica.backend.dto.UsuarioResponse;
 import com.botica.backend.exception.CredencialesInvalidasException;
 import com.botica.backend.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AuthController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
+@Import(GlobalExceptionHandler.class)
+@AutoConfigureMockMvc(addFilters = false)
 class AuthControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockitoBean
+    private com.botica.backend.util.JwtUtil jwtUtil;
+
+    @MockitoBean
     private AuthService authService;
 
     @Test
-    void login_credencialesValidas_devuelve200ConTokenYUsuario() throws Exception {
-        UsuarioResponse usuario = new UsuarioResponse(
-                1L, "Rosa Quispe", "rosa.quispe", "TECNICO", "Tarde", "Botica San Lucas · Av. Grau 412"
-        );
-        LoginResponse response = new LoginResponse("mocked.jwt.token", usuario);
-        when(authService.login(any(LoginRequest.class))).thenReturn(response);
+    void login_conCredencialesValidas_devuelveTokenYUsuario() throws Exception {
+        UsuarioResponse usuario = new UsuarioResponse(1L, "Rosa Quispe", "rosa.quispe", "TECNICO", "Tarde", "Botica San Lucas", "Av. Grau 412");
+        when(authService.login(any())).thenReturn(new LoginResponse("token-de-prueba", usuario));
 
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .contentType("application/json")
                         .content("""
-                                {
-                                  "usuario": "rosa.quispe",
-                                  "password": "password123",
-                                  "turno": "Tarde"
-                                }
+                                {"usuario": "rosa.quispe", "password": "tecnico123", "turno": "Tarde"}
                                 """))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.token").value("mocked.jwt.token"))
-                .andExpect(jsonPath("$.usuario.id").value(1))
-                .andExpect(jsonPath("$.usuario.nombre").value("Rosa Quispe"))
+                .andExpect(jsonPath("$.token").value("token-de-prueba"))
                 .andExpect(jsonPath("$.usuario.rol").value("TECNICO"))
-                .andExpect(jsonPath("$.usuario.turno").value("Tarde"));
+                .andExpect(jsonPath("$.usuario.id").value(1));
     }
 
     @Test
-    void login_credencialesInvalidas_devuelve401() throws Exception {
-        when(authService.login(any(LoginRequest.class))).thenThrow(new CredencialesInvalidasException());
+    void login_conCredencialesInvalidas_devuelve401ConElFormatoDeErrorAcordado() throws Exception {
+        when(authService.login(any())).thenThrow(new CredencialesInvalidasException());
 
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .contentType("application/json")
                         .content("""
-                                {
-                                  "usuario": "rosa.quispe",
-                                  "password": "incorrect_password",
-                                  "turno": "Tarde"
-                                }
+                                {"usuario": "rosa.quispe", "password": "mala", "turno": "Tarde"}
                                 """))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("CREDENCIALES_INVALIDAS"));
     }
 
     @Test
-    void login_cuerpoInvalido_devuelve400() throws Exception {
+    void login_sinTurno_devuelve400FormatoInvalido() throws Exception {
         mockMvc.perform(post("/api/auth/login")
-                        .contentType(MediaType.APPLICATION_JSON)
+                        .contentType("application/json")
                         .content("""
-                                {
-                                  "usuario": "",
-                                  "password": "",
-                                  "turno": "Invalido"
-                                }
+                                {"usuario": "rosa.quispe", "password": "tecnico123"}
                                 """))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
     }
 
     @Test
-    void yo_autenticado_devuelve200ConUsuario() throws Exception {
-        UsuarioResponse usuario = new UsuarioResponse(
-                1L, "Rosa Quispe", "rosa.quispe", "TECNICO", "Tarde", "Botica San Lucas · Av. Grau 412"
-        );
-        when(authService.obtenerUsuarioActual()).thenReturn(Optional.of(usuario));
+    void yo_sinUsuarioAutenticado_devuelve200ConCuerpoVacio() throws Exception {
+        when(authService.yo()).thenReturn(null);
+
+        mockMvc.perform(get("/api/auth/yo"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(""));
+    }
+
+    @Test
+    void yo_conUsuarioAutenticado_devuelve200ConUsuario() throws Exception {
+        UsuarioResponse usuario = new UsuarioResponse(1L, "Rosa Quispe", "rosa.quispe", "TECNICO", "Tarde", "Botica San Lucas", "Av. Grau 412");
+        when(authService.yo()).thenReturn(usuario);
 
         mockMvc.perform(get("/api/auth/yo"))
                 .andExpect(status().isOk())

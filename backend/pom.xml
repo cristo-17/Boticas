@@ -34,6 +34,9 @@
 		<db.host>localhost</db.host>
 		<db.port>5432</db.port>
 		<db.name>botica_db</db.name>
+		<!-- Base separada para "./mvnw test" (BE-005, docs/BITACORA.md):
+		     nunca la misma que usa "spring-boot:run" en desarrollo. -->
+		<db.name.test>botica_test</db.name.test>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -156,6 +159,48 @@
 						<version>${flyway.version}</version>
 					</dependency>
 				</dependencies>
+			</plugin>
+			<plugin>
+				<!-- BE-005 (docs/BITACORA.md): "./mvnw test" ya NO toca botica_db.
+				     Activa el perfil "test" (spring.profiles.active) en el JVM
+				     forkeado; application-test.properties (src/test/resources)
+				     redirige el datasource a botica_test, FlywayTestConfig
+				     (src/test/java) la limpia y remigra antes de cada corrida, y
+				     ContextoOperacionTest (@Profile("test")) reemplaza a
+				     ContextoOperacionJwt (@Profile("!test")) para los tests que
+				     llaman Services directo, sin HTTP de por medio. Nada de esto
+				     se empaqueta en el jar de produccion. -->
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<configuration>
+					<systemPropertyVariables>
+						<spring.profiles.active>test</spring.profiles.active>
+					</systemPropertyVariables>
+				</configuration>
+			</plugin>
+			<plugin>
+				<!-- Cobertura (Tarea 13, sección I): "./mvnw test" ya genera el reporte;
+				     prepare-agent instrumenta antes de correr, report lo arma al final
+				     de la misma fase test. Ver docs/PLAN-DE-PRUEBAS.md para el comando y
+				     la ruta exacta del HTML. -->
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<version>0.8.13</version>
+				<executions>
+					<execution>
+						<id>jacoco-prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>jacoco-report</id>
+						<phase>test</phase>
+						<goals>
+							<goal>report</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>

@@ -21,6 +21,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
@@ -30,6 +31,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,7 +55,6 @@ class CajaServiceTest {
     @BeforeEach
     void configurar() {
         config = new ConfigNegocioProperties();
-        // Clock fijo, no Mockito, para que fechaNegocio.hoy()/ahora() sean deterministas de verdad.
         Clock relojFijo = Clock.fixed(
                 HOY.atTime(12, 0).atOffset(ZoneOffset.of("-05:00")).toInstant(),
                 FechaNegocio.ZONA_LIMA);
@@ -147,7 +149,7 @@ class CajaServiceTest {
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);
         when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.of(abierta));
         when(cajaDao.sumarMovimientosEfectivo(BOTICA_ID, abierta.getId())).thenReturn(new BigDecimal("0.00"));
-        // esperado = 100.00 (apertura) + 0 = 100.00; contado 95.00 -> diferencia -5.00, dentro de 10.00
+
         CajaResponse response = service.cerrar(new CerrarCajaRequest(new BigDecimal("95.00"), "faltante"));
 
         assertThat(response.diferencia()).isEqualByComparingTo("-5.00");
@@ -161,7 +163,7 @@ class CajaServiceTest {
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);
         when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.of(abierta));
         when(cajaDao.sumarMovimientosEfectivo(BOTICA_ID, abierta.getId())).thenReturn(new BigDecimal("0.00"));
-        // esperado = 100.00; contado 60.00 -> diferencia -40.00, fuera de 10.00
+
         CajaResponse response = service.cerrar(new CerrarCajaRequest(new BigDecimal("60.00"), null));
 
         assertThat(response.diferencia()).isEqualByComparingTo("-40.00");
@@ -199,13 +201,31 @@ class CajaServiceTest {
 
         ResumenCierreResponse response = service.obtenerResumenCierre(abierta.getId());
 
-        // Conteo ciego (hueco 2): el tipo mismo no tiene campo montoEsperado -- si algún día
-        // alguien lo agrega a ResumenCierreResponse, este assert de campos concretos sigue
-        // documentando la intención sin depender de reflexión.
         assertThat(response.totalVentasEfectivo()).isEqualByComparingTo("50.00");
         assertThat(response.totalVentasDigital()).isEqualByComparingTo("20.00");
         assertThat(response.cantidadVentas()).isEqualTo(3L);
         assertThat(response.cantidadMovimientos()).isEqualTo(4L);
+    }
+
+    @Test
+    void abrir_alas11pmHoraLima_usaElDiaDeLima_noElDeUtcQueYaCambioDeDia() {
+        LocalDate hoyLima = LocalDate.of(2026, 9, 8);
+        Instant instante2300Lima = hoyLima.atTime(23, 0).atOffset(ZoneOffset.of("-05:00")).toInstant();
+        FechaNegocio fechaNegocio = new FechaNegocio(Clock.fixed(instante2300Lima, FechaNegocio.ZONA_LIMA));
+        CajaService servicioTardio = new CajaService(cajaDao, contexto, fechaNegocio, config);
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(contexto.usuarioId()).thenReturn(USUARIO_ID);
+        when(cajaDao.existeCajaAbierta(BOTICA_ID, USUARIO_ID, "Noche", hoyLima)).thenReturn(false);
+        when(cajaDao.insertar(any())).thenAnswer(inv -> {
+            CajaDiaria c = inv.getArgument(0);
+            c.setId(1L);
+            return c;
+        });
+
+        servicioTardio.abrir(new AbrirCajaRequest(new BigDecimal("50.00"), "Noche"));
+
+        verify(cajaDao).existeCajaAbierta(BOTICA_ID, USUARIO_ID, "Noche", hoyLima);
+        verify(cajaDao).insertar(argThat(c -> c.getFecha().equals(hoyLima)));
     }
 
     private CajaDiaria cajaAbierta() {

@@ -1,12 +1,12 @@
 package com.botica.backend.controller;
 
 import com.botica.backend.config.GlobalExceptionHandler;
-import com.botica.backend.config.SecurityConfig;
 import com.botica.backend.dto.ProductoResponse;
 import com.botica.backend.exception.ProductoNoEncontradoException;
 import com.botica.backend.service.ProductoService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -20,15 +20,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.springframework.security.test.context.support.WithMockUser;
-
 @WebMvcTest(ProductoController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
-@WithMockUser(roles = "ADMINISTRADOR")
+@Import(GlobalExceptionHandler.class)
+@AutoConfigureMockMvc(addFilters = false)
 class ProductoControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private com.botica.backend.util.JwtUtil jwtUtil;
+
     @MockitoBean
     private ProductoService productoService;
 

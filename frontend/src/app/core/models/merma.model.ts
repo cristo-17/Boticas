@@ -8,13 +8,12 @@ export interface Merma {
   cantidad: number;
   motivo: MotivoMerma;
   observacion: string | null;
-  /** Precio de venta × cantidad al momento del registro. */
   valorVenta: number;
   usuarioId: number;
   fecha: string; // ISO datetime
 }
 
-/** El motivo 'Robo o pérdida' y 'Otro' exigen observación (se valida también en el backend). */
+/** El motivo 'Robo o pérdida' y 'Otro' exigen observación — se valida también en el backend (nunca solo en el botón deshabilitado). */
 export interface NuevaMermaRequest {
   loteId: number;
   cantidad: number;

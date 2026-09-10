@@ -1,9 +1,6 @@
 package com.botica.backend.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -23,17 +20,24 @@ import java.util.List;
 
 /**
  * Configuración de seguridad Spring Security con autenticación JWT y roles.
- *
- * - Endpoints públicos: /api/auth/**, /api/config, /error, y OPTIONS preflight
- * - Rol ADMINISTRADOR requerido: POST /api/caja/cerrar
- * - Todos los demás endpoints de /api/** requieren autenticación vía Bearer token JWT.
+ * Stateless (sin sesión de servidor) — la identidad viaja en el token,
+ * validado por {@link JwtAuthenticationFilter}.
  */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
-    @Autowired(required = false)
-    private JwtAuthFilter jwtAuthFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JwtAuthenticationEntryPoint authenticationEntryPoint;
+    private final JwtAccessDeniedHandler accessDeniedHandler;
+
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          JwtAuthenticationEntryPoint authenticationEntryPoint,
+                          JwtAccessDeniedHandler accessDeniedHandler) {
+        this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.authenticationEntryPoint = authenticationEntryPoint;
+        this.accessDeniedHandler = accessDeniedHandler;
+    }
 
     @Bean
     public PasswordEncoder passwordEncoder() {
@@ -54,30 +58,26 @@ public class SecurityConfig {
     }
 
     @Bean
-    @ConditionalOnBean(JwtAuthFilter.class)
-    public FilterRegistrationBean<JwtAuthFilter> jwtAuthFilterRegistration(JwtAuthFilter filter) {
-        FilterRegistrationBean<JwtAuthFilter> registration = new FilterRegistrationBean<>(filter);
-        registration.setEnabled(false); // Evita que Spring Boot lo registre como filtro de servlet global dos veces
-        return registration;
-    }
-
-    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth
+                        // Preflight de CORS: nunca pasa por el filtro de JWT
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                        .requestMatchers("/api/auth/**", "/api/config", "/error").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
+                        // GET /api/auth/yo es Usuario|null (docs/API-CONTRATO.md): pasa sin token
+                        .requestMatchers(HttpMethod.GET, "/api/auth/yo").permitAll()
+                        // GET /api/config: sin autenticar -- el frontend lo pide antes de que exista sesión
+                        .requestMatchers(HttpMethod.GET, "/api/config").permitAll()
+                        // Demostrable (Tarea 12): solo ADMINISTRADOR cierra caja
                         .requestMatchers(HttpMethod.POST, "/api/caja/cerrar").hasRole("ADMINISTRADOR")
-                        .anyRequest().authenticated()
-                );
-
-        if (jwtAuthFilter != null) {
-            http.addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
-        }
-
+                        .anyRequest().authenticated())
+                .exceptionHandling(eh -> eh
+                        .authenticationEntryPoint(authenticationEntryPoint)
+                        .accessDeniedHandler(accessDeniedHandler))
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
 }

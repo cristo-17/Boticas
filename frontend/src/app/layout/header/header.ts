@@ -27,6 +27,12 @@ export class HeaderComponent {
   readonly estadoConexion = this.conexion.estado;
   readonly etiquetaConexion = computed(() => ETIQUETAS_CONEXION[this.estadoConexion()]);
 
+  // boticaNombre/boticaDireccion vienen crudos del backend (Tarea 12) -- el "sede" compuesto del mock se arma acá, el único consumidor.
+  readonly sede = computed(() => {
+    const u = this.usuario();
+    return u ? `${u.boticaNombre} · ${u.boticaDireccion}` : 'Sin sesión iniciada';
+  });
+
   alternarConexion(): void {
     this.conexion.alternar();
   }

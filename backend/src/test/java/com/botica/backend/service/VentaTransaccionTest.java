@@ -176,6 +176,36 @@ class VentaTransaccionTest {
     }
 
     @Test
+    void ejecutar_vendiendoUnaCajaDeBlisters_convierteAUnidadesBaseConElFactorDeConversion() {
+        // Presentación "Blíster" con factorConversion=10: comprar 1 blíster = 10 unidades base
+        // descontadas del lote (que guarda stock en unidades base, nunca en "blísteres").
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(contexto.usuarioId()).thenReturn(USUARIO_ID);
+        when(ventaDao.buscarPorClaveIdempotencia(any(), any())).thenReturn(Optional.empty());
+        when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID))
+                .thenReturn(Optional.of(CajaDiaria.builder().id(7L).boticaId(BOTICA_ID).build()));
+        when(productoDao.obtenerPorId(BOTICA_ID, PRODUCTO_ID)).thenReturn(Optional.of(productoDePrueba()));
+        when(productoDao.obtenerPresentacion(BOTICA_ID, PRODUCTO_ID, PRESENTACION_ID))
+                .thenReturn(Optional.of(presentacionDePrueba(10, "6.50"))); // blíster de 10, S/6.50 el blíster
+        when(loteDao.bloquearLotesFefo(BOTICA_ID, PRODUCTO_ID))
+                .thenReturn(List.of(lote(10L, 100, "0.30", LocalDate.of(2027, 1, 1))));
+        when(ventaDao.insertarCabecera(any())).thenAnswer(inv -> {
+            Venta v = inv.getArgument(0);
+            v.setId(70L);
+            return v;
+        });
+        ArgumentCaptor<VentaDetalle> captor = ArgumentCaptor.forClass(VentaDetalle.class);
+        when(ventaDao.insertarDetalle(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
+
+        VentaResponse respuesta = transaccion.ejecutar(pedido(3)); // 3 blísteres = 30 unidades base
+
+        VentaDetalle detalle = captor.getValue();
+        assertThat(detalle.getCantidad()).isEqualTo(30); // 3 blísteres x factor 10, no "3"
+        assertThat(respuesta.total()).isEqualByComparingTo("19.50"); // 3 x 6.50
+        verify(loteDao).descontarStock(10L, 30); // el lote se descuenta en UNIDADES BASE, no en blísteres
+    }
+
+    @Test
     void ejecutar_repartidoEntreDosLotes_cadaDetalleCongelaElCostoDeSuPropioLote_ySumanElTotalExacto() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);

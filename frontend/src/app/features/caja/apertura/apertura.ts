@@ -66,7 +66,7 @@ export class AperturaComponent {
       { k: 'Fecha y hora', v: ahora },
       { k: 'Responsable', v: usuario?.nombre ?? 'Sin sesión' },
       { k: 'Turno', v: usuario?.turno ?? '—' },
-      { k: 'Sede', v: usuario?.sede ?? '—' },
+      { k: 'Sede', v: usuario ? `${usuario.boticaNombre} · ${usuario.boticaDireccion}` : '—' },
     ];
   });
 

@@ -4,8 +4,9 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 
 /**
- * costoUnitario NO aparece acá (D2): es información del dueño.
- * valorVenta = cantidad × precio de la presentación Unidad (factor_conversion=1).
+ * Forma exacta de docs/API-CONTRATO.md, sección Merma. El campo es
+ * valorVenta (nota 3), nunca "valor" a secas — valorCosto no es un
+ * campo de Merma, vive solo en el reporte de Fase 2.
  */
 public record MermaResponse(
         Long id,

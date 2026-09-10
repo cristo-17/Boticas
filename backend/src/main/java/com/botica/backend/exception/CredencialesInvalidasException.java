@@ -2,13 +2,9 @@ package com.botica.backend.exception;
 
 import org.springframework.http.HttpStatus;
 
-/**
- * Lanzada cuando el usuario no existe o la contraseña no coincide.
- * Devuelve 401 CREDENCIALES_INVALIDAS (API-CONTRATO.md).
- */
+/** Usuario inexistente/inactivo o contraseña que no matchea el hash (Regla 8: nunca se distingue cuál de las dos, para no filtrar qué usuarios existen). */
 public class CredencialesInvalidasException extends NegocioException {
-
     public CredencialesInvalidasException() {
-        super(HttpStatus.UNAUTHORIZED, "CREDENCIALES_INVALIDAS", "Usuario o contraseña incorrectos.");
+        super(HttpStatus.UNAUTHORIZED, "CREDENCIALES_INVALIDAS", "Usuario o contraseña incorrectos");
     }
 }

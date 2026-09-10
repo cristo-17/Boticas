@@ -1,56 +1,46 @@
 package com.botica.backend.service;
 
 import com.botica.backend.config.ContextoOperacion;
-import com.botica.backend.dao.CajaDao;
 import com.botica.backend.dao.LoteDao;
 import com.botica.backend.dao.MermaDao;
-import com.botica.backend.dao.ProductoDao;
+import com.botica.backend.dto.ConfigResponse;
 import com.botica.backend.dto.MermaResponse;
 import com.botica.backend.dto.NuevaMermaRequest;
+import com.botica.backend.dto.PaginaResponse;
+import com.botica.backend.exception.CantidadExcedeStockException;
 import com.botica.backend.exception.LoteNoEncontradoException;
+import com.botica.backend.exception.MotivoInvalidoException;
 import com.botica.backend.exception.ObservacionRequeridaException;
-import com.botica.backend.exception.SinCajaAbiertaException;
-import com.botica.backend.exception.StockInsuficienteMermaException;
-import com.botica.backend.model.CajaDiaria;
-import com.botica.backend.model.Lote;
 import com.botica.backend.model.Merma;
-import com.botica.backend.model.MovimientoCaja;
+import com.botica.backend.model.MovimientoStock;
 import com.botica.backend.util.Dinero;
 import com.botica.backend.util.FechaNegocio;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import com.botica.backend.model.PresentacionProducto;
-import java.util.Set;
 
-/** Reglas de negocio de merma — sin SQL aquí (Regla 2). */
+/**
+ * Reglas de negocio de merma (Tarea 11 Bloque C) — sin SQL acá (Regla 2).
+ * Es destructiva y sin deshacer: la cantidad topada al stock real se
+ * valida ACÁ, contra el stock que acaba de leer con FOR UPDATE, nunca
+ * confiando en lo que mandó el cliente ni en un botón deshabilitado.
+ */
 @Service
 public class MermaService {
 
-    private static final Set<String> MOTIVOS_CON_OBSERVACION = Set.of("Robo o pérdida", "Otro");
-
     private final MermaDao mermaDao;
     private final LoteDao loteDao;
-    private final CajaDao cajaDao;
-    private final ProductoDao productoDao;
     private final ContextoOperacion contexto;
+    private final ConfigService configService;
     private final FechaNegocio fechaNegocio;
 
-    public MermaService(MermaDao mermaDao, LoteDao loteDao, CajaDao cajaDao,
-                        ProductoDao productoDao, ContextoOperacion contexto, FechaNegocio fechaNegocio) {
+    public MermaService(MermaDao mermaDao, LoteDao loteDao, ContextoOperacion contexto, ConfigService configService, FechaNegocio fechaNegocio) {
         this.mermaDao = mermaDao;
         this.loteDao = loteDao;
-        this.cajaDao = cajaDao;
-        this.productoDao = productoDao;
         this.contexto = contexto;
+        this.configService = configService;
         this.fechaNegocio = fechaNegocio;
-    }
-
-    public List<MermaResponse> listarDelDia() {
-        return mermaDao.listarDelDia(contexto.boticaId(), fechaNegocio.hoy());
     }
 
     @Transactional
@@ -58,42 +48,29 @@ public class MermaService {
         Long boticaId = contexto.boticaId();
         Long usuarioId = contexto.usuarioId();
 
-        // 1. Caja abierta (merma registra un movimiento de caja)
-        CajaDiaria caja = cajaDao.buscarAbiertaDelUsuario(boticaId, usuarioId)
-                .orElseThrow(SinCajaAbiertaException::new);
-
-        // 2. Lote existe y pertenece a la botica
-        Lote lote = loteDao.buscarPorId(boticaId, request.loteId())
+        // Lock del lote elegido por el usuario -- no FEFO (es lo contrario de una venta: acá el usuario ya sabe qué lote se echó a perder).
+        MermaDao.LoteParaMerma lote = mermaDao.bloquearLoteConPrecio(boticaId, request.loteId())
                 .orElseThrow(LoteNoEncontradoException::new);
 
-        // 3. Stock suficiente
-        if (request.cantidad() > lote.getStock()) {
-            throw new StockInsuficienteMermaException(lote.getStock());
+        ConfigResponse config = configService.obtener();
+        if (!config.motivosMerma().contains(request.motivo())) {
+            throw new MotivoInvalidoException(request.motivo());
         }
-
-        // 4. Motivos que exigen observación
-        if (MOTIVOS_CON_OBSERVACION.contains(request.motivo())
+        if (config.motivosQueRequierenObservacion().contains(request.motivo())
                 && (request.observacion() == null || request.observacion().isBlank())) {
             throw new ObservacionRequeridaException();
         }
+        // La validación real: contra el stock que ACABA de leer con FOR UPDATE, no lo que mandó el cliente ni un botón deshabilitado en pantalla.
+        if (request.cantidad() > lote.stock()) {
+            throw new CantidadExcedeStockException(lote.stock(), request.cantidad());
+        }
 
-        // 5. Valor a precio de venta (presentación Unidad, factor_conversion=1)
-        Map<Long, List<PresentacionProducto>> pMap =
-                productoDao.listarPresentacionesPorProductos(List.of(lote.getProductoId()));
-        BigDecimal precioUnitario = pMap.getOrDefault(lote.getProductoId(), List.of()).stream()
-                .filter(p -> p.getFactorConversion() == 1)
-                .findFirst()
-                .map(PresentacionProducto::getPrecio)
-                .orElse(BigDecimal.ZERO);
+        BigDecimal precioUnitario = lote.precioUnitario() == null ? BigDecimal.ZERO : lote.precioUnitario();
         BigDecimal valorVenta = Dinero.redondear(precioUnitario.multiply(BigDecimal.valueOf(request.cantidad())));
 
-        // 6. Descuento de stock
-        loteDao.descontarStock(lote.getId(), request.cantidad());
-
-        // 7. Insertar merma
         Merma merma = Merma.builder()
                 .boticaId(boticaId)
-                .loteId(lote.getId())
+                .loteId(lote.id())
                 .usuarioId(usuarioId)
                 .cantidad(request.cantidad())
                 .motivo(request.motivo())
@@ -102,25 +79,25 @@ public class MermaService {
                 .build();
         Merma creada = mermaDao.insertar(merma);
 
-        // 8. Movimiento de stock
-        mermaDao.insertarMovimientoStock(boticaId, lote.getId(), request.cantidad(), creada.getId(), usuarioId);
+        loteDao.descontarStock(lote.id(), request.cantidad());
 
-        // 9. Movimiento de caja (afecta_efectivo=false: la merma no mueve el cajón)
-        MovimientoCaja movCaja = MovimientoCaja.builder()
+        // origenCaptura NULL (D4, corregido): una merma no se busca ni se escanea, se selecciona de una lista
+        MovimientoStock movimiento = MovimientoStock.builder()
                 .boticaId(boticaId)
-                .cajaId(caja.getId())
-                .tipo("merma")
-                .descripcion("Merma #" + creada.getId() + " — " + request.motivo())
-                .monto(valorVenta.negate())
-                .afectaEfectivo(false)
+                .loteId(lote.id())
+                .tipo("MERMA")
+                .cantidad(-request.cantidad())
+                .origenCaptura(null)
+                .referenciaMermaId(creada.getId())
                 .creadoPor(usuarioId)
                 .build();
-        cajaDao.insertarMovimiento(movCaja);
+        mermaDao.insertarMovimientoStock(movimiento);
 
-        // 10. Obtener nombre y código para la respuesta
-        return mermaDao.listarDelDia(boticaId, fechaNegocio.hoy()).stream()
-                .filter(r -> r.id().equals(creada.getId()))
-                .findFirst()
-                .orElseThrow(() -> new IllegalStateException("Merma recién creada no se pudo releer, id=" + creada.getId()));
+        return new MermaResponse(creada.getId(), lote.id(), lote.productoNombre(), lote.codigo(),
+                request.cantidad(), request.motivo(), request.observacion(), valorVenta, usuarioId, creada.getFecha());
+    }
+
+    public PaginaResponse<MermaResponse> listarDelDia(int pagina, int tamano, String orden) {
+        return mermaDao.listarPaginado(contexto.boticaId(), fechaNegocio.hoy(), pagina, tamano, orden);
     }
 }

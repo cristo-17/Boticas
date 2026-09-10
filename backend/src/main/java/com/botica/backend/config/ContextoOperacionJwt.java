@@ -1,53 +1,46 @@
 package com.botica.backend.config;
 
-import org.springframework.context.annotation.Primary;
-import org.springframework.security.core.Authentication;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.RequestScope;
 
 /**
- * Implementación de {@link ContextoOperacion} que extrae la identidad del
- * usuario, botica y turno directamente del JWT validado en la petición actual.
- *
- * Reemplaza a {@link ContextoOperacionDev} como bean primario.
+ * Tarea 12: reemplaza a {@code ContextoOperacionDev} (retirada) — lee
+ * usuarioId/boticaId/turno/rol del {@link JwtPrincipal} que
+ * {@link JwtAuthenticationFilter} dejó en el SecurityContext de ESTA
+ * petición.
  */
 @Component
-@Primary
+@RequestScope
+@Profile("!test")
 public class ContextoOperacionJwt implements ContextoOperacion {
-
-    private static final Long DEFAULT_USUARIO_ID = 1L;
-    private static final Long DEFAULT_BOTICA_ID = 1L;
-    private static final String DEFAULT_TURNO = "Tarde";
-
-    private UsuarioPrincipal obtenerPrincipal() {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        if (auth != null && auth.getPrincipal() instanceof UsuarioPrincipal up) {
-            return up;
-        }
-        return null;
-    }
 
     @Override
     public Long usuarioId() {
-        UsuarioPrincipal up = obtenerPrincipal();
-        return up != null && up.usuarioId() != null ? up.usuarioId() : DEFAULT_USUARIO_ID;
+        return principal().usuarioId();
     }
 
     @Override
     public Long boticaId() {
-        UsuarioPrincipal up = obtenerPrincipal();
-        return up != null && up.boticaId() != null ? up.boticaId() : DEFAULT_BOTICA_ID;
+        return principal().boticaId();
     }
 
     @Override
     public String turno() {
-        UsuarioPrincipal up = obtenerPrincipal();
-        return up != null && up.turno() != null ? up.turno() : DEFAULT_TURNO;
+        return principal().turno();
     }
 
     @Override
     public String rol() {
-        UsuarioPrincipal up = obtenerPrincipal();
-        return up != null && up.rol() != null ? up.rol() : "ADMINISTRADOR";
+        return principal().rol();
+    }
+
+    private JwtPrincipal principal() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof JwtPrincipal principal)) {
+            throw new IllegalStateException("ContextoOperacion consultado sin autenticación JWT activa en esta petición");
+        }
+        return principal;
     }
 }

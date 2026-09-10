@@ -1,4 +1,5 @@
 import { Routes } from '@angular/router';
+import { authGuard } from './core/guards/auth.guard';
 import { Shell } from './layout/shell/shell';
 import { authGuard } from './core/guards/auth.guard';
 

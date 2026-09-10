@@ -7,131 +7,162 @@
     </p>
   </div>
 
+  <app-error-banner [mensaje]="error()"></app-error-banner>
+
   <app-card>
-    <form class="merma__form" [formGroup]="form" (ngSubmit)="pedirConfirmacion()">
-      <div class="bs-field">
-        <label for="merma-producto" class="bs-field__label">Producto</label>
-        <select
-          id="merma-producto"
-          class="bs-field__select"
-          [value]="productoIdSeleccionado()"
-          (change)="onProductoSeleccionado($event)"
-        >
-          @for (o of productoOpciones(); track o.value) {
-            <option [value]="o.value">{{ o.label }}</option>
-          }
-        </select>
-      </div>
+    @if (!productoSeleccionado()) {
+      <div class="merma__busqueda">
+        <label for="merma-producto-query" class="bs-field__label">Producto</label>
+        <input
+          id="merma-producto-query"
+          class="bs-field-compact merma__busqueda-input"
+          [value]="productoQuery()"
+          (input)="onProductoQueryInput($event)"
+          placeholder="Nombre, principio activo o código"
+        />
 
-      <div class="merma__fila">
-        <div class="merma__campo merma__campo--lote">
-          <div class="bs-field">
-            <label for="merma-lote" class="bs-field__label">Lote</label>
-            <select
-              id="merma-lote"
-              class="bs-field__select"
-              [value]="loteIdSeleccionado()"
-              (change)="onLoteSeleccionado($event)"
-            >
-              @for (o of loteOpciones(); track o.value) {
-                <option [value]="o.value">{{ o.label }}</option>
-              }
-            </select>
+        <div class="merma__resultados">
+          @if (buscandoProducto()) {
+            <app-skeleton [count]="3"></app-skeleton>
+          } @else {
+            @for (p of resultadosProducto(); track p.id) {
+              <button type="button" class="merma__resultado" (click)="elegirProducto(p)">
+                <span class="merma__resultado-info">
+                  <span class="merma__resultado-nombre">{{ p.nombre }}</span>
+                  <span class="merma__resultado-sub">{{ p.laboratorio }} · {{ p.categoria }}</span>
+                </span>
+              </button>
+            }
+            @if (productoQuery().trim() !== '' && resultadosProducto().length === 0) {
+              <div class="merma__sin-resultados">Sin coincidencias para "{{ productoQuery() }}"</div>
+            }
+          }
+        </div>
+      </div>
+    } @else {
+      <form class="merma__form" [formGroup]="form" (ngSubmit)="pedirConfirmacion()">
+        <div class="merma__producto-elegido">
+          <div>
+            <span class="merma__label">Producto</span>
+            <div class="merma__producto-nombre">{{ productoSeleccionado()!.nombre }}</div>
           </div>
-          @if (loteSeleccionado(); as lote) {
-            <div class="merma__lote-info">
-              Vence el {{ lote.fechaVencimiento }} · {{ lote.stock }} unidades en stock
+          <app-button type="button" variant="ghost" (clicked)="cambiarProducto()">
+            Cambiar
+          </app-button>
+        </div>
+
+        <div class="merma__fila">
+          <div class="merma__campo merma__campo--lote">
+            <div class="bs-field">
+              <label for="merma-lote" class="bs-field__label">Lote</label>
+              <select
+                id="merma-lote"
+                class="bs-field__select"
+                [value]="loteIdSeleccionado()"
+                (change)="onLoteSeleccionado($event)"
+              >
+                @for (o of loteOpciones(); track o.value) {
+                  <option [value]="o.value">{{ o.label }}</option>
+                }
+              </select>
             </div>
-          }
-        </div>
-
-        <div class="merma__campo merma__campo--cantidad">
-          <span class="merma__label">Cantidad</span>
-          <div class="merma__stepper">
-            <button
-              type="button"
-              class="merma__stepper-btn"
-              aria-label="Menos"
-              (click)="decrementarCantidad()"
-            >
-              −
-            </button>
-            <input
-              class="num merma__stepper-input"
-              [class.merma__stepper-input--error]="!cantidadValida()"
-              inputmode="numeric"
-              [formControl]="form.controls.cantidad"
-            />
-            <button
-              type="button"
-              class="merma__stepper-btn"
-              aria-label="Más"
-              (click)="incrementarCantidad()"
-            >
-              +
-            </button>
+            @if (loteSeleccionado(); as lote) {
+              <div class="merma__lote-info">
+                Vence el {{ lote.fechaVencimiento }} · {{ lote.stock }} unidades en stock
+              </div>
+            } @else if (!buscandoProducto()) {
+              <div class="merma__lote-info">Este producto no tiene lotes con stock.</div>
+            }
           </div>
-          @if (!cantidadValida()) {
-            <div class="merma__error">{{ cantidadErrorTexto() }}</div>
+
+          <div class="merma__campo merma__campo--cantidad">
+            <span class="merma__label">Cantidad</span>
+            <div class="merma__stepper">
+              <button
+                type="button"
+                class="merma__stepper-btn"
+                aria-label="Menos"
+                (click)="decrementarCantidad()"
+              >
+                −
+              </button>
+              <input
+                class="num merma__stepper-input"
+                [class.merma__stepper-input--error]="!cantidadValida()"
+                inputmode="numeric"
+                [formControl]="form.controls.cantidad"
+              />
+              <button
+                type="button"
+                class="merma__stepper-btn"
+                aria-label="Más"
+                (click)="incrementarCantidad()"
+              >
+                +
+              </button>
+            </div>
+            @if (!cantidadValida()) {
+              <div class="merma__error">{{ cantidadErrorTexto() }}</div>
+            }
+          </div>
+        </div>
+
+        <div class="merma__campo">
+          <span class="merma__label">Motivo</span>
+          <div class="merma__motivos">
+            @for (m of motivos; track m) {
+              <app-chip [activo]="form.controls.motivo.value === m" (clicked)="seleccionarMotivo(m)">
+                {{ m }}
+              </app-chip>
+            }
+          </div>
+        </div>
+
+        <div class="merma__campo">
+          <label for="merma-obs" class="merma__label">
+            Observación {{ observacionRequerida() ? '(obligatoria)' : '(opcional)' }}
+          </label>
+          <textarea
+            id="merma-obs"
+            class="merma__textarea"
+            [class.merma__textarea--error]="observacionRequerida() && !observacionValida()"
+            rows="3"
+            [formControl]="form.controls.observacion"
+            placeholder="Ej.: caja mojada por filtración en el anaquel B-2"
+          ></textarea>
+          @if (observacionRequerida() && !observacionValida()) {
+            <div class="merma__error">Este motivo requiere una observación.</div>
           }
         </div>
-      </div>
 
-      <div class="merma__campo">
-        <span class="merma__label">Motivo</span>
-        <div class="merma__motivos">
-          @for (m of motivos; track m) {
-            <app-chip [activo]="form.controls.motivo.value === m" (clicked)="seleccionarMotivo(m)">
-              {{ m }}
-            </app-chip>
-          }
+        <div class="merma__resumen">
+          <div class="merma__resumen-fila">
+            <span>Valor de la merma</span>
+            <span class="num merma__resumen-valor merma__resumen-valor--danger">{{
+              formatearMoneda(valorMerma())
+            }}</span>
+          </div>
+          <div class="merma__resumen-fila">
+            <span>Stock después del registro</span>
+            <span class="num merma__resumen-valor">{{ stockDespues() }} unidades</span>
+          </div>
+          <div class="merma__resumen-fila">
+            <span>Responsable</span>
+            <span class="num merma__resumen-valor">{{ responsableTexto() }}</span>
+          </div>
         </div>
-      </div>
 
-      <div class="merma__campo">
-        <label for="merma-obs" class="merma__label">
-          Observación {{ observacionRequerida() ? '(obligatoria)' : '(opcional)' }}
-        </label>
-        <textarea
-          id="merma-obs"
-          class="merma__textarea"
-          [class.merma__textarea--error]="observacionRequerida() && !observacionValida()"
-          rows="3"
-          [formControl]="form.controls.observacion"
-          placeholder="Ej.: caja mojada por filtración en el anaquel B-2"
-        ></textarea>
-        @if (observacionRequerida() && !observacionValida()) {
-          <div class="merma__error">Este motivo requiere una observación.</div>
-        }
-      </div>
-
-      <div class="merma__resumen">
-        <div class="merma__resumen-fila">
-          <span>Valor de la merma</span>
-          <span class="num merma__resumen-valor merma__resumen-valor--danger">{{
-            formatearMoneda(valorMerma())
-          }}</span>
-        </div>
-        <div class="merma__resumen-fila">
-          <span>Stock después del registro</span>
-          <span class="num merma__resumen-valor">{{ stockDespues() }} unidades</span>
-        </div>
-        <div class="merma__resumen-fila">
-          <span>Responsable</span>
-          <span class="num merma__resumen-valor">{{ responsableTexto() }}</span>
-        </div>
-      </div>
-
-      <app-button
-        type="submit"
-        variant="danger"
-        size="lg"
-        [block]="true"
-        [disabled]="!formularioValido()"
-      >
-        Registrar merma
-      </app-button>
-    </form>
+        <app-button
+          type="submit"
+          variant="danger"
+          size="lg"
+          [block]="true"
+          [disabled]="!formularioValido()"
+        >
+          Registrar merma
+        </app-button>
+      </form>
+    }
   </app-card>
 
   @if (mermas().length > 0) {
@@ -180,7 +211,7 @@
     '¿Dar de baja ' +
     (form.controls.cantidad.value ?? 0) +
     ' × ' +
-    (loteSeleccionado()?.productoNombre ?? '') +
+    (productoSeleccionado()?.nombre ?? '') +
     '?'
   "
   [message]="

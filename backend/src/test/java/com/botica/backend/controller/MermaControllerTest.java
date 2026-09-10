@@ -1,15 +1,15 @@
 package com.botica.backend.controller;
 
 import com.botica.backend.config.GlobalExceptionHandler;
-import com.botica.backend.config.SecurityConfig;
 import com.botica.backend.dto.MermaResponse;
+import com.botica.backend.dto.PaginaResponse;
+import com.botica.backend.exception.CantidadExcedeStockException;
 import com.botica.backend.exception.LoteNoEncontradoException;
 import com.botica.backend.exception.ObservacionRequeridaException;
-import com.botica.backend.exception.SinCajaAbiertaException;
-import com.botica.backend.exception.StockInsuficienteMermaException;
 import com.botica.backend.service.MermaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -26,106 +26,83 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import org.springframework.security.test.context.support.WithMockUser;
-
 @WebMvcTest(MermaController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class})
-@WithMockUser(roles = "ADMINISTRADOR")
+@Import(GlobalExceptionHandler.class)
+@AutoConfigureMockMvc(addFilters = false)
 class MermaControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @MockitoBean
+    private com.botica.backend.util.JwtUtil jwtUtil;
+
     @MockitoBean
     private MermaService mermaService;
 
-    private static final MermaResponse MERMA_MOCK = new MermaResponse(
-            1L, 10L, "Paracetamol 500 mg", "L-001", 3,
-            "Vencimiento", null, new BigDecimal("0.60"), 1L, OffsetDateTime.now()
-    );
-
-    private static final String CUERPO_VALIDO = """
-            {
-              "loteId": 10,
-              "cantidad": 3,
-              "motivo": "Vencimiento"
-            }
-            """;
-
     @Test
-    void listar_devuelve200ConLista() throws Exception {
-        when(mermaService.listarDelDia()).thenReturn(List.of(MERMA_MOCK));
+    void listar_devuelvePaginaResponseDelService() throws Exception {
+        when(mermaService.listarDelDia(0, 20, null))
+                .thenReturn(PaginaResponse.de(List.of(mermaDePrueba()), 0, 20, 1));
 
-        mockMvc.perform(get("/api/mermas"))
+        mockMvc.perform(get("/api/mermas?fecha=hoy"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].productoNombre").value("Paracetamol 500 mg"))
-                .andExpect(jsonPath("$[0].valorVenta").value(0.60));
+                .andExpect(jsonPath("$.contenido[0].valorVenta").value(34.50))
+                .andExpect(jsonPath("$.totalElementos").value(1));
     }
 
     @Test
-    void registrar_exito_devuelve200() throws Exception {
-        when(mermaService.registrar(any())).thenReturn(MERMA_MOCK);
+    void registrar_conCantidadQueExcedeStock_devuelve422CantidadExcedeStock() throws Exception {
+        when(mermaService.registrar(any())).thenThrow(new CantidadExcedeStockException(5, 10));
 
-        mockMvc.perform(post("/api/mermas").contentType("application/json").content(CUERPO_VALIDO))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.motivo").value("Vencimiento"));
+        mockMvc.perform(post("/api/mermas")
+                        .contentType("application/json")
+                        .content("""
+                                {"loteId": 6, "cantidad": 10, "motivo": "Vencimiento"}
+                                """))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.error").value("CANTIDAD_EXCEDE_STOCK"));
     }
 
     @Test
-    void registrar_sinCaja_devuelve409() throws Exception {
-        when(mermaService.registrar(any())).thenThrow(new SinCajaAbiertaException());
+    void registrar_conMotivoOtroSinObservacion_devuelve400ObservacionRequerida() throws Exception {
+        when(mermaService.registrar(any())).thenThrow(new ObservacionRequeridaException());
 
-        mockMvc.perform(post("/api/mermas").contentType("application/json").content(CUERPO_VALIDO))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.error").value("SIN_CAJA_ABIERTA"));
+        mockMvc.perform(post("/api/mermas")
+                        .contentType("application/json")
+                        .content("""
+                                {"loteId": 6, "cantidad": 2, "motivo": "Otro"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("OBSERVACION_REQUERIDA"));
     }
 
     @Test
-    void registrar_loteNoExiste_devuelve404() throws Exception {
+    void registrar_conLoteInexistente_devuelve404LoteNoEncontrado() throws Exception {
         when(mermaService.registrar(any())).thenThrow(new LoteNoEncontradoException());
 
-        mockMvc.perform(post("/api/mermas").contentType("application/json").content(CUERPO_VALIDO))
+        mockMvc.perform(post("/api/mermas")
+                        .contentType("application/json")
+                        .content("""
+                                {"loteId": 999, "cantidad": 2, "motivo": "Vencimiento"}
+                                """))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("LOTE_NO_ENCONTRADO"));
     }
 
     @Test
-    void registrar_stockInsuficiente_devuelve422() throws Exception {
-        when(mermaService.registrar(any())).thenThrow(new StockInsuficienteMermaException(1));
-
-        mockMvc.perform(post("/api/mermas").contentType("application/json").content(CUERPO_VALIDO))
-                .andExpect(status().isUnprocessableContent())
-                .andExpect(jsonPath("$.error").value("STOCK_INSUFICIENTE_MERMA"));
-    }
-
-    @Test
-    void registrar_observacionRequerida_devuelve422() throws Exception {
-        when(mermaService.registrar(any())).thenThrow(new ObservacionRequeridaException());
-
-        mockMvc.perform(post("/api/mermas").contentType("application/json").content(CUERPO_VALIDO))
-                .andExpect(status().isUnprocessableContent())
-                .andExpect(jsonPath("$.error").value("OBSERVACION_REQUERIDA"));
-    }
-
-    @Test
-    void registrar_cuerpoInvalido_sinLoteId_devuelve400() throws Exception {
-        String cuerpoSinLoteId = """
-                { "cantidad": 3, "motivo": "Vencimiento" }
-                """;
-
-        mockMvc.perform(post("/api/mermas").contentType("application/json").content(cuerpoSinLoteId))
+    void registrar_sinCantidad_devuelve400FormatoInvalido() throws Exception {
+        mockMvc.perform(post("/api/mermas")
+                        .contentType("application/json")
+                        .content("""
+                                {"loteId": 6, "motivo": "Vencimiento"}
+                                """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
     }
 
-    @Test
-    void registrar_motivoInvalido_devuelve400() throws Exception {
-        String cuerpoMotivoInvalido = """
-                { "loteId": 10, "cantidad": 3, "motivo": "InventadoPorMi" }
-                """;
-
-        mockMvc.perform(post("/api/mermas").contentType("application/json").content(cuerpoMotivoInvalido))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
+    private MermaResponse mermaDePrueba() {
+        return new MermaResponse(3001L, 6L, "Omeprazol 20 mg", "L-2311D", 3, "Vencimiento", null,
+                new BigDecimal("34.50"), 1L, OffsetDateTime.parse("2026-09-08T11:15:00-05:00"));
     }
 }

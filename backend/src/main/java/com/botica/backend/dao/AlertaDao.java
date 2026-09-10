@@ -2,27 +2,44 @@ package com.botica.backend.dao;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalTime;
+import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
 
+/**
+ * No sabe qué es HTTP (Regla 2). Todo KPI se calcula con SQL agregado
+ * (COUNT/SUM/GROUP BY) -- ningún método trae filas de más para filtrar
+ * o contar del lado de Java.
+ */
 public interface AlertaDao {
 
-    record LoteAlertaRow(Long id, String codigo, LocalDate fechaVencimiento, int stock, BigDecimal precioUnitario, String productoNombre) {}
+    BigDecimal totalVentas(Long boticaId, LocalDate fecha);
 
-    record ProductoStockCriticoRow(Long id, String nombre, int stockTotal) {}
+    long contarVentas(Long boticaId, LocalDate fecha);
 
-    record VentasHoyRow(BigDecimal total, int conteo) {}
+    /** Productos con al menos un lote con stock > 0 que vence entre (hoy, hoy+diasMax]. */
+    long contarProductosPorVencer(Long boticaId, LocalDate hoy, int diasMax);
 
-    record CajaEstadoRow(boolean abierta, String usuarioNombre, LocalTime horaApertura, BigDecimal montoApertura) {}
+    /** Productos con al menos un lote con 0 < stock <= umbral. */
+    long contarProductosStockCritico(Long boticaId, int umbralStockBajo);
 
-    List<LoteAlertaRow> listarLotesVencidos(Long boticaId, LocalDate hoy);
+    /** Productos con al menos un lote con stock = 0. */
+    long contarProductosStockAgotado(Long boticaId);
 
-    List<LoteAlertaRow> listarLotesPorVencer(Long boticaId, LocalDate hoy, LocalDate hoyMasCritico);
+    /** Nombres de producto con stock <= umbral (crítico o agotado), para el cuerpo de la alerta agregada. */
+    List<String> nombresProductosStockBajo(Long boticaId, int umbralStockBajo, int limite);
 
-    List<ProductoStockCriticoRow> listarProductosStockCritico(Long boticaId, int umbral);
+    /**
+     * Lotes VENCIDO o CRITICO con stock > 0, uno por fila.
+     */
+    List<LoteAlerta> lotesVencidosOCriticos(Long boticaId, LocalDate hoy, int criticoDias);
 
-    VentasHoyRow obtenerVentasHoy(Long boticaId, LocalDate hoy);
+    /** Cajas ABIERTAS cuya fecha operativa es anterior a hoy. */
+    List<CajaAbierta> cajasSinCerrar(Long boticaId, LocalDate hoy);
 
-    Optional<CajaEstadoRow> obtenerCajaHoy(Long boticaId, LocalDate hoy);
+    record LoteAlerta(Long loteId, String productoNombre, String codigo, String ubicacion, int stock,
+                      LocalDate fechaVencimiento, BigDecimal precioUnitario, String estadoVencimiento) {
+    }
+
+    record CajaAbierta(Long cajaId, String turno, String usuarioNombre, OffsetDateTime horaApertura) {
+    }
 }

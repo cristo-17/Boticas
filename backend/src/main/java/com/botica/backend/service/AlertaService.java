@@ -3,146 +3,162 @@ package com.botica.backend.service;
 import com.botica.backend.config.ConfigNegocioProperties;
 import com.botica.backend.config.ContextoOperacion;
 import com.botica.backend.dao.AlertaDao;
+import com.botica.backend.dao.CajaDao;
 import com.botica.backend.dto.AlertaResponse;
+import com.botica.backend.dto.PaginaResponse;
 import com.botica.backend.dto.ResumenDashboardResponse;
+import com.botica.backend.model.CajaDiaria;
 import com.botica.backend.util.Dinero;
+import com.botica.backend.util.FechaNegocio;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.ZoneId;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
+/**
+ * Reglas de negocio de alertas (Tarea 11 Bloque C) — sin SQL acá (Regla 2).
+ */
 @Service
 public class AlertaService {
 
-    private static final ZoneId ZONA_LIMA = ZoneId.of("America/Lima");
+    private static final DateTimeFormatter FORMATO_FECHA = DateTimeFormatter.ofPattern("dd/MM");
+    private static final DateTimeFormatter FORMATO_HORA = DateTimeFormatter.ofPattern("HH:mm").withZone(FechaNegocio.ZONA_LIMA);
 
     private final AlertaDao alertaDao;
+    private final CajaDao cajaDao;
     private final ContextoOperacion contexto;
     private final ConfigNegocioProperties config;
+    private final FechaNegocio fechaNegocio;
 
-    public AlertaService(AlertaDao alertaDao, ContextoOperacion contexto, ConfigNegocioProperties config) {
+    public AlertaService(AlertaDao alertaDao, CajaDao cajaDao, ContextoOperacion contexto,
+                          ConfigNegocioProperties config, FechaNegocio fechaNegocio) {
         this.alertaDao = alertaDao;
+        this.cajaDao = cajaDao;
         this.contexto = contexto;
         this.config = config;
+        this.fechaNegocio = fechaNegocio;
     }
 
-    public List<AlertaResponse> listarAlertas() {
+    public ResumenDashboardResponse resumen() {
         Long boticaId = contexto.boticaId();
-        LocalDate hoy = LocalDate.now(ZONA_LIMA);
-        LocalDate hoyMasCritico = hoy.plusDays(config.getVencimientoCriticoDias());
+        LocalDate hoy = fechaNegocio.hoy();
+        LocalDate ayer = hoy.minusDays(1);
 
-        List<AlertaResponse> alertas = new ArrayList<>();
+        BigDecimal ventasHoy = Dinero.redondear(alertaDao.totalVentas(boticaId, hoy));
+        BigDecimal ventasAyer = alertaDao.totalVentas(boticaId, ayer);
+        long boletasHoy = alertaDao.contarVentas(boticaId, hoy);
+        long productosPorVencer = alertaDao.contarProductosPorVencer(boticaId, hoy, config.getVencimientoAdvertenciaDias());
+        long productosPorVencerCriticos = alertaDao.contarProductosPorVencer(boticaId, hoy, config.getVencimientoCriticoDias());
+        long stockCritico = alertaDao.contarProductosStockCritico(boticaId, config.getUmbralStockBajo());
+        long stockAgotado = alertaDao.contarProductosStockAgotado(boticaId);
 
-        // 1. Lotes vencidos (Urgente)
-        var vencidos = alertaDao.listarLotesVencidos(boticaId, hoy);
-        for (var lote : vencidos) {
-            BigDecimal totalPerdida = lote.precioUnitario() != null
-                    ? Dinero.redondear(lote.precioUnitario().multiply(BigDecimal.valueOf(lote.stock())))
-                    : BigDecimal.ZERO;
-            alertas.add(new AlertaResponse(
-                    "vencido-" + lote.id(),
-                    "urgente",
-                    lote.productoNombre() + " · lote " + lote.codigo() + " vencido",
-                    lote.stock() + " unidades vencieron el " + lote.fechaVencimiento() + ". Retíralas del anaquel y regístralas como merma.",
-                    "S/ " + totalPerdida,
-                    "Registrar merma",
-                    "/merma",
-                    Map.of("loteId", String.valueOf(lote.id()))
-            ));
-        }
+        Optional<CajaDiaria> cajaPropia = cajaDao.buscarAbiertaDelUsuario(boticaId, contexto.usuarioId());
+        String cajaEstado = cajaPropia.isPresent() ? CajaDiaria.ABIERTA : CajaDiaria.CERRADA;
+        OffsetDateTime cajaHoraApertura = cajaPropia.map(CajaDiaria::getHoraApertura).orElse(null);
 
-        // 2. Lotes por vencer (Atención)
-        var porVencer = alertaDao.listarLotesPorVencer(boticaId, hoy, hoyMasCritico);
-        for (var lote : porVencer) {
-            long dias = ChronoUnit.DAYS.between(hoy, lote.fechaVencimiento());
-            BigDecimal totalValor = lote.precioUnitario() != null
-                    ? Dinero.redondear(lote.precioUnitario().multiply(BigDecimal.valueOf(lote.stock())))
-                    : BigDecimal.ZERO;
-            alertas.add(new AlertaResponse(
-                    "por-vencer-" + lote.id(),
-                    "atencion",
-                    lote.productoNombre() + " vence en " + dias + (dias == 1 ? " día" : " días"),
-                    lote.stock() + " unidades en lote " + lote.codigo() + ". Aplica descuento de rotación o devuelve al proveedor.",
-                    "S/ " + totalValor,
-                    "Ver lote",
-                    "/inventario",
-                    Map.of("vencimiento", "critico")
-            ));
-        }
-
-        // 3. Productos en stock crítico (Atención)
-        var criticos = alertaDao.listarProductosStockCritico(boticaId, config.getUmbralStockBajo());
-        for (var p : criticos) {
-            alertas.add(new AlertaResponse(
-                    "stock-critico-" + p.id(),
-                    "atencion",
-                    p.nombre() + " en stock crítico (" + p.stockTotal() + " un.)",
-                    "Por debajo del mínimo de seguridad (" + config.getUmbralStockBajo() + " unidades). Coordina reposición.",
-                    null,
-                    "Ver inventario",
-                    "/inventario",
-                    Map.of("soloStockBajo", "true")
-            ));
-        }
-
-        // 4. Alerta de caja si no está abierta
-        var cajaOpt = alertaDao.obtenerCajaHoy(boticaId, hoy);
-        if (cajaOpt.isEmpty() || !cajaOpt.get().abierta()) {
-            alertas.add(new AlertaResponse(
-                    "caja-no-abierta",
-                    "atencion",
-                    "Caja sin abrir en el turno de hoy",
-                    "No se registra una caja abierta activa en la botica. Abre caja para registrar cobros en mostrador.",
-                    null,
-                    "Abrir caja",
-                    "/caja",
-                    Map.of("tab", "apertura")
-            ));
-        }
-
-        return alertas;
+        return new ResumenDashboardResponse(ventasHoy, calcularVariacionPct(ventasAyer, ventasHoy), boletasHoy,
+                productosPorVencer, productosPorVencerCriticos, stockCritico, stockAgotado, cajaEstado, cajaHoraApertura);
     }
 
-    public ResumenDashboardResponse obtenerResumen() {
+    public PaginaResponse<AlertaResponse> listar(int pagina, int tamano) {
         Long boticaId = contexto.boticaId();
-        LocalDate hoy = LocalDate.now(ZONA_LIMA);
-        LocalDate hoyMasCritico = hoy.plusDays(config.getVencimientoCriticoDias());
+        LocalDate hoy = fechaNegocio.hoy();
 
-        var ventasHoy = alertaDao.obtenerVentasHoy(boticaId, hoy);
-        var porVencer = alertaDao.listarLotesPorVencer(boticaId, hoy, hoyMasCritico);
-        var vencidos = alertaDao.listarLotesVencidos(boticaId, hoy);
-        var criticos = alertaDao.listarProductosStockCritico(boticaId, config.getUmbralStockBajo());
-        var cajaOpt = alertaDao.obtenerCajaHoy(boticaId, hoy);
+        List<Ordenable> todas = new ArrayList<>();
+        for (AlertaDao.LoteAlerta lote : alertaDao.lotesVencidosOCriticos(boticaId, hoy, config.getVencimientoCriticoDias())) {
+            todas.add(ordenableDeLote(lote, hoy));
+        }
 
-        int totalPorVencerOVencidos = porVencer.size() + vencidos.size();
-        String porVencerNota = vencidos.isEmpty()
-                ? porVencer.size() + " vencen en los próximos " + config.getVencimientoCriticoDias() + " días"
-                : vencidos.size() + " lote(s) vencido(s) que requieren retiro";
+        long stockCritico = alertaDao.contarProductosStockCritico(boticaId, config.getUmbralStockBajo());
+        long stockAgotado = alertaDao.contarProductosStockAgotado(boticaId);
+        long stockBajoTotal = stockCritico + stockAgotado;
+        if (stockBajoTotal > 0) {
+            todas.add(ordenableDeStockBajo(boticaId, stockBajoTotal));
+        }
 
-        String stockCriticoNota = criticos.isEmpty()
-                ? "Inventario en niveles óptimos"
-                : criticos.size() + " con unidades por debajo de " + config.getUmbralStockBajo();
+        for (AlertaDao.CajaAbierta caja : alertaDao.cajasSinCerrar(boticaId, hoy)) {
+            todas.add(ordenableDeCaja(caja));
+        }
 
-        boolean cajaAbierta = cajaOpt.isPresent() && cajaOpt.get().abierta();
-        String cajaEstado = cajaAbierta ? "Abierta" : "Cerrada";
-        String cajaNota = cajaAbierta
-                ? "Por " + cajaOpt.get().usuarioNombre() + " · aperturada con S/ " + Dinero.redondear(cajaOpt.get().montoApertura())
-                : "Sin caja abierta actualmente para cobros";
+        todas.sort(Comparator.comparingInt((Ordenable o) -> o.rango)
+                .thenComparing((Ordenable o) -> o.monto, Comparator.reverseOrder()));
 
-        return new ResumenDashboardResponse(
-                "S/ " + Dinero.redondear(ventasHoy.total()),
-                ventasHoy.conteo() + " boleta(s) registradas hoy",
-                totalPorVencerOVencidos,
-                porVencerNota,
-                criticos.size(),
-                stockCriticoNota,
-                cajaEstado,
-                cajaNota
-        );
+        int paginaSegura = Math.max(pagina, 0);
+        int tamanoSeguro = Math.min(Math.max(tamano, 1), 100);
+        int desde = Math.min(paginaSegura * tamanoSeguro, todas.size());
+        int hasta = Math.min(desde + tamanoSeguro, todas.size());
+        List<AlertaResponse> pagina2 = todas.subList(desde, hasta).stream().map(o -> o.response).toList();
+        return PaginaResponse.de(pagina2, paginaSegura, tamanoSeguro, todas.size());
+    }
+
+    private Ordenable ordenableDeLote(AlertaDao.LoteAlerta lote, LocalDate hoy) {
+        boolean vencido = "VENCIDO".equals(lote.estadoVencimiento());
+        long dias = ChronoUnit.DAYS.between(hoy, lote.fechaVencimiento());
+        String ubicacionTexto = (lote.ubicacion() != null && !lote.ubicacion().isBlank()) ? " en " + lote.ubicacion() : "";
+        String titulo = vencido
+                ? lote.productoNombre() + " · lote " + lote.codigo() + " vencido"
+                : lote.productoNombre() + " vence en " + dias + " días";
+        String cuerpo = vencido
+                ? lote.stock() + " unidades vencieron el " + FORMATO_FECHA.format(lote.fechaVencimiento()) + ubicacionTexto + ". Retíralas y regístralas como merma."
+                : lote.stock() + " unidades" + ubicacionTexto + ". Aplica descuento de rotación o devuelve al proveedor esta semana.";
+        BigDecimal precio = lote.precioUnitario() == null ? BigDecimal.ZERO : lote.precioUnitario();
+        BigDecimal monto = Dinero.redondear(precio.multiply(BigDecimal.valueOf(lote.stock())));
+
+        AlertaResponse response = new AlertaResponse(
+                "venc-" + lote.loteId(), "urgente", titulo, cuerpo, formatearSoles(monto),
+                vencido ? "Retirar lote" : "Ver lote", "/inventario",
+                Map.of("vencimiento", vencido ? "vencido" : "critico"));
+        return new Ordenable(0, monto, response);
+    }
+
+    private Ordenable ordenableDeStockBajo(Long boticaId, long total) {
+        List<String> nombres = alertaDao.nombresProductosStockBajo(boticaId, config.getUmbralStockBajo(), 2);
+        long masCount = total - nombres.size();
+        String listado = String.join(", ", nombres);
+        String cuerpo = (listado.isEmpty() ? "" : listado + (masCount > 0 ? " y " + masCount + " más " : " "))
+                + "por debajo del mínimo del turno.";
+        AlertaResponse response = new AlertaResponse(
+                "stock-critico", "atencion", total + " productos en stock crítico", cuerpo, null,
+                "Ver inventario", "/inventario", Map.of("soloStockBajo", "true"));
+        return new Ordenable(1, BigDecimal.ZERO, response);
+    }
+
+    private Ordenable ordenableDeCaja(AlertaDao.CajaAbierta caja) {
+        String horaTexto = caja.horaApertura() != null ? FORMATO_HORA.format(caja.horaApertura()) : "--:--";
+        String titulo = "Caja sin cerrar del turno " + caja.turno().toLowerCase(Locale.ROOT);
+        String cuerpo = caja.usuarioNombre() + " abrió a las " + horaTexto + " y no registró el cierre. Cuadra cuanto antes.";
+        AlertaResponse response = new AlertaResponse(
+                "caja-" + caja.cajaId(), "atencion", titulo, cuerpo, null,
+                "Cerrar caja", "/caja", Map.of("tab", "cierre"));
+        return new Ordenable(1, BigDecimal.ZERO, response);
+    }
+
+    private String formatearSoles(BigDecimal monto) {
+        return "S/ " + Dinero.redondear(monto).toPlainString();
+    }
+
+    private int calcularVariacionPct(BigDecimal ayer, BigDecimal hoy) {
+        if (ayer.compareTo(BigDecimal.ZERO) == 0) {
+            return 0;
+        }
+        return hoy.subtract(ayer)
+                .divide(ayer, 4, RoundingMode.HALF_UP)
+                .multiply(BigDecimal.valueOf(100))
+                .setScale(0, RoundingMode.HALF_UP)
+                .intValue();
+    }
+
+    /** Envoltorio interno para ordenar por nivel (0=urgente) y monto desc antes de formatear. */
+    private record Ordenable(int rango, BigDecimal monto, AlertaResponse response) {
     }
 }

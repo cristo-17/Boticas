@@ -6,7 +6,7 @@ import { CredencialesLogin, LoginResponse, Usuario } from '../models/usuario.mod
 import { environment } from '../../../environments/environment';
 
 const BASE_URL = `${environment.apiUrl}/auth`;
-const TOKEN_KEY = 'boticasys_token';
+const CLAVE_TOKEN = 'boticasys_token';
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
@@ -16,62 +16,75 @@ export class AuthService {
   readonly usuarioActual = this._usuarioActual.asReadonly();
   readonly estaAutenticado = computed(() => this._usuarioActual() !== null);
 
+  /**
+   * NO es un signal a propósito: el interceptor lo lee de forma
+   * síncrona en cada petición saliente, no necesita reactividad.
+   * Persistencia (Tarea 12): localStorage sobrevive a recargar la
+   * página.
+   */
+  private _token: string | null = typeof localStorage !== 'undefined' ? localStorage.getItem(CLAVE_TOKEN) : null;
+
+  token(): string | null {
+    return this._token;
+  }
+
+  /** Alias para compatibilidad con SSE / componentes que llamen obtenerToken() */
+  obtenerToken(): string | null {
+    return this.token();
+  }
+
   // POST /api/auth/login
   iniciarSesion(credenciales: CredencialesLogin): Observable<Usuario> {
     return this.http.post<LoginResponse>(`${BASE_URL}/login`, credenciales).pipe(
-      tap((res) => {
-        this.guardarToken(res.token);
-        this._usuarioActual.set(res.usuario);
-      }),
-      map((res) => res.usuario),
+      tap((respuesta) => this.guardarSesion(respuesta)),
+      map((respuesta) => respuesta.usuario),
     );
   }
 
-  limpiarSesion(): void {
-    this.removerToken();
-    this._usuarioActual.set(null);
-  }
-
-  // POST /api/auth/logout
+  // POST /api/auth/logout -- stateless: igual se limpia la sesión local aunque la llamada falle
   cerrarSesion(): Observable<void> {
     return this.http.post<void>(`${BASE_URL}/logout`, {}).pipe(
-      catchError(() => of(undefined as void)),
-      tap(() => this.limpiarSesion()),
+      tap(() => this.limpiarSesionLocal()),
+      catchError(() => {
+        this.limpiarSesionLocal();
+        return of(undefined);
+      }),
     );
   }
 
-  // GET /api/auth/yo — restaura la sesión al recargar la app.
+  // GET /api/auth/yo -- rehidrata la sesión al arrancar la app. Sin token guardado, ni se llama.
   obtenerUsuarioActual(): Observable<Usuario | null> {
-    const token = this.obtenerToken();
-    if (!token) {
-      this._usuarioActual.set(null);
+    if (!this._token) {
       return of(null);
     }
-    return this.http.get<Usuario>(`${BASE_URL}/yo`).pipe(
+    return this.http.get<Usuario | null>(`${BASE_URL}/yo`).pipe(
       tap((usuario) => this._usuarioActual.set(usuario)),
       catchError(() => {
-        this.limpiarSesion();
+        this.limpiarSesionLocal();
         return of(null);
       }),
     );
   }
 
-  obtenerToken(): string | null {
-    if (typeof sessionStorage !== 'undefined') {
-      return sessionStorage.getItem(TOKEN_KEY);
+  /** Limpia la sesión SIN llamar al backend */
+  limpiarSesionLocal(): void {
+    this._token = null;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.removeItem(CLAVE_TOKEN);
     }
-    return null;
+    this._usuarioActual.set(null);
   }
 
-  private guardarToken(token: string): void {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem(TOKEN_KEY, token);
-    }
+  /** Alias para compatibilidad con llamadas existentes a limpiarSesion() */
+  limpiarSesion(): void {
+    this.limpiarSesionLocal();
   }
 
-  private removerToken(): void {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.removeItem(TOKEN_KEY);
+  private guardarSesion(respuesta: LoginResponse): void {
+    this._token = respuesta.token;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(CLAVE_TOKEN, respuesta.token);
     }
+    this._usuarioActual.set(respuesta.usuario);
   }
 }

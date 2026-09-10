@@ -1,72 +1,67 @@
 package com.botica.backend.service;
 
-import com.botica.backend.config.ContextoOperacion;
-import com.botica.backend.config.JwtUtil;
+import com.botica.backend.config.JwtPrincipal;
 import com.botica.backend.dao.UsuarioDao;
-import com.botica.backend.dto.LoginRequest;
+import com.botica.backend.dto.CredencialesLoginRequest;
 import com.botica.backend.dto.LoginResponse;
 import com.botica.backend.dto.UsuarioResponse;
 import com.botica.backend.exception.CredencialesInvalidasException;
 import com.botica.backend.model.Usuario;
+import com.botica.backend.util.JwtUtil;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Optional;
+import java.util.Map;
 
+/**
+ * Reglas de negocio de autenticación — sin SQL acá (Regla 2). No usa
+ * ContextoOperacion (Regla: esa interfaz asume una identidad YA
+ * validada): login todavía no tiene una, y yo() debe funcionar incluso
+ * SIN token (contrato: Usuario | null, nunca 401) leyendo el
+ * SecurityContext directo.
+ */
 @Service
 public class AuthService {
 
     private final UsuarioDao usuarioDao;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
-    private final ContextoOperacion contextoOperacion;
 
-    public AuthService(UsuarioDao usuarioDao, PasswordEncoder passwordEncoder, JwtUtil jwtUtil, ContextoOperacion contextoOperacion) {
+    public AuthService(UsuarioDao usuarioDao, PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
         this.usuarioDao = usuarioDao;
         this.passwordEncoder = passwordEncoder;
         this.jwtUtil = jwtUtil;
-        this.contextoOperacion = contextoOperacion;
     }
 
-    public LoginResponse login(LoginRequest req) {
-        Usuario usuario = usuarioDao.buscarPorUsuario(req.usuario().trim().toLowerCase())
+    public LoginResponse login(CredencialesLoginRequest request) {
+        Usuario usuario = usuarioDao.buscarPorUsuario(request.usuario())
+                .filter(u -> passwordEncoder.matches(request.password(), u.getPasswordHash()))
                 .orElseThrow(CredencialesInvalidasException::new);
 
-        if (!passwordEncoder.matches(req.password(), usuario.getPasswordHash())) {
-            throw new CredencialesInvalidasException();
-        }
+        String token = jwtUtil.generar(Map.of(
+                "sub", usuario.getUsuario(),
+                "usuarioId", usuario.getId(),
+                "boticaId", usuario.getBoticaId(),
+                "rol", usuario.getRol(),
+                "turno", request.turno()));
 
-        String turnoElegido = req.turno();
-        String token = jwtUtil.generarToken(
-                usuario.getId(),
-                usuario.getUsuario(),
-                usuario.getRolNombre(),
-                turnoElegido,
-                usuario.getBoticaId()
-        );
-
-        UsuarioResponse usuarioResponse = construirUsuarioResponse(usuario, turnoElegido);
-        return new LoginResponse(token, usuarioResponse);
+        return new LoginResponse(token, aRespuesta(usuario, request.turno()));
     }
 
-    public Optional<UsuarioResponse> obtenerUsuarioActual() {
-        Long usuarioId = contextoOperacion.usuarioId();
-        return usuarioDao.buscarPorId(usuarioId)
-                .map(u -> construirUsuarioResponse(u, contextoOperacion.turno()));
+    /** Usuario | null (nunca 401): sin token válido no hay nadie que "seas", no es un error. */
+    public UsuarioResponse yo() {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (!(auth != null && auth.getPrincipal() instanceof JwtPrincipal principal)) {
+            return null;
+        }
+        return usuarioDao.buscarPorId(principal.usuarioId())
+                .map(u -> aRespuesta(u, principal.turno()))
+                .orElse(null);
     }
 
-    private UsuarioResponse construirUsuarioResponse(Usuario usuario, String turno) {
-        String sede = usuario.getBoticaNombre();
-        if (usuario.getBoticaDireccion() != null && !usuario.getBoticaDireccion().isBlank()) {
-            sede = sede + " · " + usuario.getBoticaDireccion();
-        }
-        return new UsuarioResponse(
-                usuario.getId(),
-                usuario.getNombre(),
-                usuario.getUsuario(),
-                usuario.getRolNombre(),
-                turno,
-                sede
-        );
+    private UsuarioResponse aRespuesta(Usuario usuario, String turno) {
+        return new UsuarioResponse(usuario.getId(), usuario.getNombre(), usuario.getUsuario(),
+                usuario.getRol(), turno, usuario.getBoticaNombre(), usuario.getBoticaDireccion());
     }
 }

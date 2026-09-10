@@ -1,6 +1,9 @@
 import { HttpErrorResponse, HttpInterceptorFn } from '@angular/common/http';
+import { inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { throwError } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { AuthService } from '../services/auth.service';
 
 /** Forma exacta del error del backend (Regla 7, docs/API-CONTRATO.md). */
 export interface ErrorBackend {
@@ -68,10 +71,23 @@ function traducir(respuesta: HttpErrorResponse): ErrorTraducido {
  * `err.traducido.mensaje` / `err.traducido.silencioso` en vez de tener
  * su propio texto hardcodeado.
  */
-export const errorInterceptor: HttpInterceptorFn = (req, next) =>
-  next(req).pipe(
+/**
+ * Un 401 cierra sesión y redirige a login (Tarea 12) -- salvo en el
+ * propio POST /auth/login, donde un 401 es "contraseña incorrecta",
+ * no "tu sesión murió" (si no se excluye, la pantalla de login se
+ * redirigiría a sí misma en cada intento fallido).
+ */
+export const errorInterceptor: HttpInterceptorFn = (req, next) => {
+  const auth = inject(AuthService);
+  const router = inject(Router);
+  return next(req).pipe(
     catchError((respuesta: HttpErrorResponse) => {
       (respuesta as HttpErrorResponse & { traducido: ErrorTraducido }).traducido = traducir(respuesta);
+      if (respuesta.status === 401 && !req.url.endsWith('/auth/login')) {
+        auth.limpiarSesionLocal();
+        router.navigateByUrl('/login');
+      }
       return throwError(() => respuesta);
     }),
   );
+};

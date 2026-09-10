@@ -19,5 +19,8 @@ public interface ContextoOperacion {
 
     String turno();
 
-    String rol();
+    default String rol() {
+        return "ADMINISTRADOR";
+    }
 }
+
