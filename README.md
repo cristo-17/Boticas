@@ -35,9 +35,3 @@ npm start                   # ng serve, http://localhost:4200
 npm test                    # ng test (Vitest)
 npm run build                # build de producción a dist/
 ```
-
-## Estado del proyecto
-
-El avance real (qué módulo está hecho, en curso, o pendiente) vive en
-[`docs/ESTADO.md`](./docs/ESTADO.md) y se actualiza en cada tarea —
-no se duplica aquí para no tener dos fuentes de verdad desincronizadas.
