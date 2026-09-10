@@ -34,14 +34,20 @@ describe('textoAlertaVencimiento', () => {
   it('para VENCIDO redacta "Vencido hace N días"', () => {
     const ayer = new Date();
     ayer.setDate(ayer.getDate() - 3);
-    const iso = ayer.toISOString().slice(0, 10);
+    const anio = ayer.getFullYear();
+    const mes = String(ayer.getMonth() + 1).padStart(2, '0');
+    const dia = String(ayer.getDate()).padStart(2, '0');
+    const iso = `${anio}-${mes}-${dia}`;
     expect(textoAlertaVencimiento('VENCIDO', iso)).toBe('Vencido hace 3 días');
   });
 
   it('para CRITICO redacta "Vence en N días"', () => {
     const enUnaSemana = new Date();
     enUnaSemana.setDate(enUnaSemana.getDate() + 7);
-    const iso = enUnaSemana.toISOString().slice(0, 10);
+    const anio = enUnaSemana.getFullYear();
+    const mes = String(enUnaSemana.getMonth() + 1).padStart(2, '0');
+    const dia = String(enUnaSemana.getDate()).padStart(2, '0');
+    const iso = `${anio}-${mes}-${dia}`;
     expect(textoAlertaVencimiento('CRITICO', iso)).toBe('Vence en 7 días');
   });
 });

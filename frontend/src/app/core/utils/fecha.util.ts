@@ -24,10 +24,11 @@ import type { EstadoVencimiento } from '../models/estados.model';
 export function textoAlertaVencimiento(
   estado: EstadoVencimiento | null | undefined,
   fechaVencimiento: string | null | undefined,
+  desde?: Date,
 ): string | null {
   if (!fechaVencimiento || (estado !== 'CRITICO' && estado !== 'VENCIDO')) {
     return null;
   }
-  const dias = diasHasta(fechaVencimiento);
+  const dias = diasHasta(fechaVencimiento, desde);
   return dias < 0 ? `Vencido hace ${Math.abs(dias)} días` : `Vence en ${dias} días`;
 }
