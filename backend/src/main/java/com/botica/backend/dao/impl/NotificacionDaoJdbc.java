@@ -15,6 +15,7 @@ import java.util.List;
 public class NotificacionDaoJdbc implements NotificacionDao {
 
     private final NamedParameterJdbcTemplate jdbc;
+    private final NotificacionRowMapper notificacionRowMapper = new NotificacionRowMapper();
 
     public NotificacionDaoJdbc(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -23,8 +24,8 @@ public class NotificacionDaoJdbc implements NotificacionDao {
     @Override
     public Notificacion insertar(Notificacion n) {
         String sql = """
-                INSERT INTO notificaciones (botica_id, usuario_id, rol_destinatario, tipo, titulo, mensaje, leido)
-                VALUES (:boticaId, :usuarioId, :rolDestinatario, :tipo, :titulo, :mensaje, :leido)
+                INSERT INTO notificaciones (botica_id, usuario_id, rol_destinatario, tipo, titulo, mensaje, leido, creado_por)
+                VALUES (:boticaId, :usuarioId, :rolDestinatario, :tipo, :titulo, :mensaje, :leido, :creadoPor)
                 """;
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", n.getBoticaId())
@@ -33,16 +34,17 @@ public class NotificacionDaoJdbc implements NotificacionDao {
                 .addValue("tipo", n.getTipo())
                 .addValue("titulo", n.getTitulo())
                 .addValue("mensaje", n.getMensaje())
-                .addValue("leido", n.isLeido());
+                .addValue("leido", n.isLeido())
+                .addValue("creadoPor", n.getCreadoPor());
 
         KeyHolder kh = new GeneratedKeyHolder();
-        jdbc.update(sql, params, kh, new String[]{"id", "fecha_creacion"});
+        jdbc.update(sql, params, kh, new String[]{"id", "creado_en"});
         if (kh.getKeys() != null) {
             Number id = (Number) kh.getKeys().get("id");
             if (id != null) n.setId(id.longValue());
-            Object fc = kh.getKeys().get("fecha_creacion");
-            if (fc instanceof OffsetDateTime odt) {
-                n.setFechaCreacion(odt);
+            Object ce = kh.getKeys().get("creado_en");
+            if (ce instanceof OffsetDateTime odt) {
+                n.setCreadoEn(odt);
             }
         }
         return n;
@@ -51,11 +53,11 @@ public class NotificacionDaoJdbc implements NotificacionDao {
     @Override
     public List<Notificacion> listarRecientes(Long boticaId, String rol, int limite) {
         String sql = """
-                SELECT id, botica_id, usuario_id, rol_destinatario, tipo, titulo, mensaje, leido, fecha_creacion
+                SELECT id, botica_id, usuario_id, rol_destinatario, tipo, titulo, mensaje, leido, creado_en, creado_por
                 FROM notificaciones
                 WHERE botica_id = :boticaId 
                   AND (rol_destinatario IS NULL OR rol_destinatario = :rol)
-                ORDER BY fecha_creacion DESC
+                ORDER BY creado_en DESC
                 LIMIT :limite
                 """;
         var params = new MapSqlParameterSource()
@@ -63,17 +65,7 @@ public class NotificacionDaoJdbc implements NotificacionDao {
                 .addValue("rol", rol)
                 .addValue("limite", limite);
 
-        return jdbc.query(sql, params, (rs, rowNum) -> Notificacion.builder()
-                .id(rs.getLong("id"))
-                .boticaId(rs.getLong("botica_id"))
-                .usuarioId((Long) rs.getObject("usuario_id"))
-                .rolDestinatario(rs.getString("rol_destinatario"))
-                .tipo(rs.getString("tipo"))
-                .titulo(rs.getString("titulo"))
-                .mensaje(rs.getString("mensaje"))
-                .leido(rs.getBoolean("leido"))
-                .fechaCreacion(rs.getObject("fecha_creacion", OffsetDateTime.class))
-                .build());
+        return jdbc.query(sql, params, notificacionRowMapper);
     }
 
     @Override
@@ -93,12 +85,19 @@ public class NotificacionDaoJdbc implements NotificacionDao {
     }
 
     @Override
-    public void marcarComoLeida(Long boticaId, Long id) {
-        String sql = "UPDATE notificaciones SET leido = true WHERE botica_id = :boticaId AND id = :id";
+    public int marcarComoLeida(Long boticaId, String rol, Long id) {
+        String sql = """
+                UPDATE notificaciones
+                SET leido = true
+                WHERE botica_id = :boticaId
+                  AND id = :id
+                  AND (rol_destinatario IS NULL OR rol_destinatario = :rol)
+                """;
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", boticaId)
+                .addValue("rol", rol)
                 .addValue("id", id);
-        jdbc.update(sql, params);
+        return jdbc.update(sql, params);
     }
 
     @Override

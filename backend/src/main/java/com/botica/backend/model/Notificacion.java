@@ -23,5 +23,7 @@ public class Notificacion {
     private String titulo;
     private String mensaje;
     private boolean leido;
-    private OffsetDateTime fechaCreacion;
+    private OffsetDateTime creadoEn;
+    /** NULL = generada por el sistema (V7). */
+    private Long creadoPor;
 }

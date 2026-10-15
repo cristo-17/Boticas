@@ -25,6 +25,9 @@ public interface CajaDao {
 
     Optional<CajaDiaria> buscarPorId(Long boticaId, Long id);
 
+    /** D-E2-1: cajas ABIERTAS de la botica, de cualquier usuario -- para que el ADMINISTRADOR elija cuál cerrar. Orden fijo: la más antigua primero. */
+    PaginaResponse<CajaDiaria> listarAbiertasPaginado(Long boticaId, int pagina, int tamano);
+
     void actualizarCierre(CajaDiaria caja);
 
     BigDecimal sumarMovimientosEfectivo(Long boticaId, Long cajaId);

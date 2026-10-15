@@ -11,6 +11,7 @@ import com.botica.backend.exception.CajaNoAbiertaException;
 import com.botica.backend.exception.CajaNoEncontradaException;
 import com.botica.backend.exception.CajaYaAbiertaException;
 import com.botica.backend.exception.MontoInvalidoException;
+import com.botica.backend.exception.SinPermisoException;
 import com.botica.backend.model.CajaDiaria;
 import com.botica.backend.util.FechaNegocio;
 import org.junit.jupiter.api.BeforeEach;
@@ -110,7 +111,7 @@ class CajaServiceTest {
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);
         when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.empty());
 
-        CerrarCajaRequest request = new CerrarCajaRequest(new BigDecimal("100.00"), null);
+        CerrarCajaRequest request = new CerrarCajaRequest(new BigDecimal("100.00"), null, null);
 
         assertThatThrownBy(() -> service.cerrar(request))
                 .isInstanceOf(CajaNoAbiertaException.class);
@@ -118,7 +119,7 @@ class CajaServiceTest {
 
     @Test
     void cerrar_montoNegativo_lanzaMontoInvalidoException_antesDeBuscarLaCaja() {
-        CerrarCajaRequest request = new CerrarCajaRequest(new BigDecimal("-5.00"), null);
+        CerrarCajaRequest request = new CerrarCajaRequest(new BigDecimal("-5.00"), null, null);
 
         assertThatThrownBy(() -> service.cerrar(request))
                 .isInstanceOf(MontoInvalidoException.class);
@@ -133,7 +134,7 @@ class CajaServiceTest {
         when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.of(abierta));
         when(cajaDao.sumarMovimientosEfectivo(BOTICA_ID, abierta.getId())).thenReturn(new BigDecimal("12.20"));
 
-        CajaResponse response = service.cerrar(new CerrarCajaRequest(new BigDecimal("112.20"), null));
+        CajaResponse response = service.cerrar(new CerrarCajaRequest(new BigDecimal("112.20"), null, null));
 
         assertThat(response.montoEsperado()).isEqualByComparingTo("112.20");
         assertThat(response.diferencia()).isEqualByComparingTo("0.00");
@@ -150,7 +151,7 @@ class CajaServiceTest {
         when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.of(abierta));
         when(cajaDao.sumarMovimientosEfectivo(BOTICA_ID, abierta.getId())).thenReturn(new BigDecimal("0.00"));
 
-        CajaResponse response = service.cerrar(new CerrarCajaRequest(new BigDecimal("95.00"), "faltante"));
+        CajaResponse response = service.cerrar(new CerrarCajaRequest(new BigDecimal("95.00"), "faltante", null));
 
         assertThat(response.diferencia()).isEqualByComparingTo("-5.00");
         assertThat(response.semaforoDescuadre()).isEqualTo("LEVE");
@@ -164,7 +165,7 @@ class CajaServiceTest {
         when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.of(abierta));
         when(cajaDao.sumarMovimientosEfectivo(BOTICA_ID, abierta.getId())).thenReturn(new BigDecimal("0.00"));
 
-        CajaResponse response = service.cerrar(new CerrarCajaRequest(new BigDecimal("60.00"), null));
+        CajaResponse response = service.cerrar(new CerrarCajaRequest(new BigDecimal("60.00"), null, null));
 
         assertThat(response.diferencia()).isEqualByComparingTo("-40.00");
         assertThat(response.semaforoDescuadre()).isEqualTo("GRAVE");
@@ -226,6 +227,63 @@ class CajaServiceTest {
 
         verify(cajaDao).existeCajaAbierta(BOTICA_ID, USUARIO_ID, "Noche", hoyLima);
         verify(cajaDao).insertar(argThat(c -> c.getFecha().equals(hoyLima)));
+    }
+
+    // D-E2-1 (DECISIONES 2026-10-14): el TECNICO cierra solo la suya; el ADMINISTRADOR, cualquier caja abierta de su botica.
+    @Test
+    void cerrar_administradorConCajaIdDeOtroUsuario_laCierra() {
+        CajaDiaria ajena = cajaAbiertaDe(2L);
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(contexto.rol()).thenReturn("ADMINISTRADOR");
+        when(cajaDao.buscarPorId(BOTICA_ID, ajena.getId())).thenReturn(Optional.of(ajena));
+        when(cajaDao.sumarMovimientosEfectivo(BOTICA_ID, ajena.getId())).thenReturn(new BigDecimal("0.00"));
+
+        CajaResponse response = service.cerrar(new CerrarCajaRequest(new BigDecimal("100.00"), null, ajena.getId()));
+
+        assertThat(response.abierta()).isFalse();
+        verify(cajaDao).actualizarCierre(argThat(c -> c.getId().equals(ajena.getId())));
+    }
+
+    @Test
+    void cerrar_tecnicoConCajaIdDeOtroUsuario_lanzaSinPermiso_yNoLaToca() {
+        CajaDiaria ajena = cajaAbiertaDe(2L);
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(contexto.usuarioId()).thenReturn(USUARIO_ID);
+        when(contexto.rol()).thenReturn("TECNICO");
+        when(cajaDao.buscarPorId(BOTICA_ID, ajena.getId())).thenReturn(Optional.of(ajena));
+
+        assertThatThrownBy(() -> service.cerrar(new CerrarCajaRequest(new BigDecimal("100.00"), null, ajena.getId())))
+                .isInstanceOf(SinPermisoException.class);
+        verify(cajaDao, never()).actualizarCierre(any());
+    }
+
+    @Test
+    void cerrar_administradorConCajaIdDeOtraBotica_noLaEncuentra() {
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(cajaDao.buscarPorId(BOTICA_ID, 99L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.cerrar(new CerrarCajaRequest(new BigDecimal("100.00"), null, 99L)))
+                .isInstanceOf(CajaNoEncontradaException.class);
+        verify(cajaDao, never()).actualizarCierre(any());
+    }
+
+    @Test
+    void cerrar_administradorConCajaIdYaCerrada_lanzaCajaNoAbierta() {
+        CajaDiaria cerrada = cajaAbiertaDe(2L);
+        cerrada.setEstado(CajaDiaria.CERRADA);
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(contexto.rol()).thenReturn("ADMINISTRADOR");
+        when(cajaDao.buscarPorId(BOTICA_ID, cerrada.getId())).thenReturn(Optional.of(cerrada));
+
+        assertThatThrownBy(() -> service.cerrar(new CerrarCajaRequest(new BigDecimal("100.00"), null, cerrada.getId())))
+                .isInstanceOf(CajaNoAbiertaException.class);
+    }
+
+    private CajaDiaria cajaAbiertaDe(Long usuarioId) {
+        CajaDiaria caja = cajaAbierta();
+        caja.setId(20L);
+        caja.setUsuarioId(usuarioId);
+        return caja;
     }
 
     private CajaDiaria cajaAbierta() {

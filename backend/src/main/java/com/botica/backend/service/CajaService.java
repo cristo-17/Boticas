@@ -12,6 +12,7 @@ import com.botica.backend.exception.CajaNoAbiertaException;
 import com.botica.backend.exception.CajaNoEncontradaException;
 import com.botica.backend.exception.CajaYaAbiertaException;
 import com.botica.backend.exception.MontoInvalidoException;
+import com.botica.backend.exception.SinPermisoException;
 import com.botica.backend.event.DescuadreGraveEvent;
 import com.botica.backend.model.CajaDiaria;
 import com.botica.backend.model.MovimientoCaja;
@@ -99,9 +100,9 @@ public class CajaService {
         validarMontoNoNegativo(request.montoContado());
 
         Long boticaId = contexto.boticaId();
-        Long usuarioId = contexto.usuarioId();
-        CajaDiaria caja = cajaDao.buscarAbiertaDelUsuario(boticaId, usuarioId)
-                .orElseThrow(CajaNoAbiertaException::new);
+        CajaDiaria caja = request.cajaId() == null
+                ? cajaDao.buscarAbiertaDelUsuario(boticaId, contexto.usuarioId()).orElseThrow(CajaNoAbiertaException::new)
+                : cajaAjenaACerrar(boticaId, request.cajaId());
 
         BigDecimal montoEsperado = Dinero.redondear(
                 caja.getMontoApertura().add(cajaDao.sumarMovimientosEfectivo(boticaId, caja.getId())));
@@ -131,6 +132,30 @@ public class CajaService {
         }
 
         return CajaResponse.desde(caja);
+    }
+
+    /**
+     * D-E2-1 (DECISIONES 2026-10-14): con cajaId explícito, el ADMINISTRADOR
+     * cierra cualquier caja abierta de SU botica (abandonada, técnico que se
+     * fue); el TECNICO solo la suya. buscarPorId filtra por botica: una caja
+     * de otra botica es indistinguible de una inexistente.
+     */
+    private CajaDiaria cajaAjenaACerrar(Long boticaId, Long cajaId) {
+        CajaDiaria caja = cajaDao.buscarPorId(boticaId, cajaId).orElseThrow(CajaNoEncontradaException::new);
+        boolean esAdministrador = "ADMINISTRADOR".equals(contexto.rol());
+        if (!esAdministrador && !caja.getUsuarioId().equals(contexto.usuarioId())) {
+            throw new SinPermisoException();
+        }
+        if (!caja.estaAbierta()) {
+            throw new CajaNoAbiertaException();
+        }
+        return caja;
+    }
+
+    public PaginaResponse<CajaResponse> listarAbiertas(int pagina, int tamano) {
+        PaginaResponse<CajaDiaria> abiertas = cajaDao.listarAbiertasPaginado(contexto.boticaId(), pagina, tamano);
+        return PaginaResponse.de(abiertas.contenido().stream().map(CajaResponse::desde).toList(),
+                abiertas.pagina(), abiertas.tamano(), abiertas.totalElementos());
     }
 
     public PaginaResponse<MovimientoCaja> listarMovimientos(Long id, int pagina, int tamano, String orden) {

@@ -1,14 +1,18 @@
 package com.botica.backend.controller;
 
 import com.botica.backend.config.ContextoOperacion;
-import com.botica.backend.dao.NotificacionDao;
+import com.botica.backend.config.JwtPrincipal;
 import com.botica.backend.dto.NotificacionResponse;
-import com.botica.backend.model.Notificacion;
+import com.botica.backend.dto.TicketSseResponse;
+import com.botica.backend.service.NotificacionService;
 import com.botica.backend.service.SseEmitterService;
+import com.botica.backend.service.SseTicketService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -20,16 +24,26 @@ import java.util.List;
 @RequestMapping("/api/notificaciones")
 public class NotificacionController {
 
-    private final NotificacionDao notificacionDao;
+    private final NotificacionService notificacionService;
     private final SseEmitterService sseEmitterService;
+    private final SseTicketService sseTicketService;
     private final ContextoOperacion contexto;
 
-    public NotificacionController(NotificacionDao notificacionDao, SseEmitterService sseEmitterService, ContextoOperacion contexto) {
-        this.notificacionDao = notificacionDao;
+    public NotificacionController(NotificacionService notificacionService, SseEmitterService sseEmitterService,
+                                  SseTicketService sseTicketService, ContextoOperacion contexto) {
+        this.notificacionService = notificacionService;
         this.sseEmitterService = sseEmitterService;
+        this.sseTicketService = sseTicketService;
         this.contexto = contexto;
     }
 
+    // Autenticado por cabecera como todo lo demás. El ticket es lo único que viaja en la URL de /stream (T15-02).
+    @PostMapping("/ticket")
+    public ResponseEntity<TicketSseResponse> pedirTicket(@AuthenticationPrincipal JwtPrincipal principal) {
+        return ResponseEntity.ok(new TicketSseResponse(sseTicketService.emitir(principal), SseTicketService.VIGENCIA_SEGUNDOS));
+    }
+
+    // ?ticket= de POST /ticket -- lo canjea JwtAuthenticationFilter, nunca un JWT.
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter conectarStream() {
         return sseEmitterService.crearConexion(contexto.boticaId(), contexto.usuarioId(), contexto.rol());
@@ -37,29 +51,18 @@ public class NotificacionController {
 
     @GetMapping
     public ResponseEntity<List<NotificacionResponse>> listar() {
-        List<Notificacion> lista = notificacionDao.listarRecientes(contexto.boticaId(), contexto.rol(), 30);
-        List<NotificacionResponse> respuesta = lista.stream()
-                .map(n -> new NotificacionResponse(
-                        n.getId(),
-                        n.getTipo(),
-                        n.getTitulo(),
-                        n.getMensaje(),
-                        n.isLeido(),
-                        n.getFechaCreacion()
-                ))
-                .toList();
-        return ResponseEntity.ok(respuesta);
+        return ResponseEntity.ok(notificacionService.listarRecientes());
     }
 
     @PutMapping("/{id}/leer")
     public ResponseEntity<Void> marcarComoLeida(@PathVariable Long id) {
-        notificacionDao.marcarComoLeida(contexto.boticaId(), id);
+        notificacionService.marcarComoLeida(id);
         return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/leer-todas")
     public ResponseEntity<Void> marcarTodasComoLeidas() {
-        notificacionDao.marcarTodasComoLeidas(contexto.boticaId(), contexto.rol());
+        notificacionService.marcarTodasComoLeidas();
         return ResponseEntity.noContent().build();
     }
 }

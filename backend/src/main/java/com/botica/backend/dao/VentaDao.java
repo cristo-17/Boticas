@@ -23,5 +23,6 @@ public interface VentaDao {
 
     Optional<Venta> buscarPorId(Long boticaId, Long id);
 
-    PaginaResponse<Venta> listarPaginado(Long boticaId, int pagina, int tamano, String orden);
+    /** cajaId null = todas las ventas de la botica (ADMINISTRADOR); con valor, solo las de esa caja (TECNICO, D-E2-2). */
+    PaginaResponse<Venta> listarPaginado(Long boticaId, Long cajaId, int pagina, int tamano, String orden);
 }

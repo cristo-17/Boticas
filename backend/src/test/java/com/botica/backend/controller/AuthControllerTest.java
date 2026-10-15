@@ -33,6 +33,9 @@ class AuthControllerTest {
     private com.botica.backend.util.JwtUtil jwtUtil;
 
     @MockitoBean
+    private com.botica.backend.service.SseTicketService sseTicketService;
+
+    @MockitoBean
     private AuthService authService;
 
     @Test

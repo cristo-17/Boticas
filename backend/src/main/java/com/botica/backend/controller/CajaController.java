@@ -46,6 +46,14 @@ public class CajaController {
         return ResponseEntity.ok(cajaService.obtenerResumenCierre(id));
     }
 
+    // D-E2-1: solo ADMINISTRADOR (SecurityConfig). Paginado, sin ?orden=: la más antigua primero es la que más urge cerrar.
+    @GetMapping("/abiertas")
+    public ResponseEntity<PaginaResponse<CajaResponse>> listarAbiertas(
+            @RequestParam(defaultValue = "0") int pagina,
+            @RequestParam(defaultValue = "20") int tamano) {
+        return ResponseEntity.ok(cajaService.listarAbiertas(pagina, tamano));
+    }
+
     @PostMapping("/cerrar")
     public ResponseEntity<CajaResponse> cerrar(@Valid @RequestBody CerrarCajaRequest request) {
         return ResponseEntity.ok(cajaService.cerrar(request));

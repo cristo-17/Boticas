@@ -12,7 +12,8 @@ public interface NotificacionDao {
 
     int contarNoLeidas(Long boticaId, String rol);
 
-    void marcarComoLeida(Long boticaId, Long id);
+    /** Devuelve las filas tocadas: 0 = no existe, es de otra botica o no es para ese rol. */
+    int marcarComoLeida(Long boticaId, String rol, Long id);
 
     void marcarTodasComoLeidas(Long boticaId, String rol);
 }

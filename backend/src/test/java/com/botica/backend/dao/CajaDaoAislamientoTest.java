@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -76,6 +77,22 @@ class CajaDaoAislamientoTest {
 
         assertThat(pagina.contenido()).isEmpty();
         assertThat(pagina.totalElementos()).isZero();
+    }
+
+    @Test
+    @Transactional // rollback al terminar: la caja de Vida Sana vuelve a su estado del seed
+    void listarAbiertasPaginado_nuncaIncluyeCajasAbiertasDeOtraBotica() {
+        // D-E2-1: el ADMINISTRADOR ve TODAS las cajas abiertas... de SU botica, nunca de otra.
+        jdbcTemplate.update("UPDATE caja_diaria SET estado = 'ABIERTA', hora_cierre = NULL WHERE id = ?", cajaDeVidaSanaId);
+
+        PaginaResponse<CajaDiaria> deSanLucas = cajaDao.listarAbiertasPaginado(boticaSanLucasId, 0, 100);
+        PaginaResponse<CajaDiaria> deVidaSana = cajaDao.listarAbiertasPaginado(boticaVidaSanaId, 0, 100);
+
+        assertThat(deSanLucas.contenido()).extracting(CajaDiaria::getId).doesNotContain(cajaDeVidaSanaId);
+        assertThat(deSanLucas.contenido()).allSatisfy(c -> assertThat(c.getBoticaId()).isEqualTo(boticaSanLucasId));
+        assertThat(deVidaSana.contenido()).extracting(CajaDiaria::getId).contains(cajaDeVidaSanaId);
+        assertThat(deVidaSana.totalElementos()).isEqualTo(jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM caja_diaria WHERE botica_id = ? AND estado = 'ABIERTA'", Long.class, boticaVidaSanaId));
     }
 
     @Test

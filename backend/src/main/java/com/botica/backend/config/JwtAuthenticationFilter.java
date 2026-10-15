@@ -1,5 +1,6 @@
 package com.botica.backend.config;
 
+import com.botica.backend.service.SseTicketService;
 import com.botica.backend.util.JwtUtil;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -22,43 +23,47 @@ import java.util.Map;
  * hay token, o es inválido/expirado, sigue la cadena SIN autenticar
  * (deja que authorizeHttpRequests decida: público sigue pasando,
  * protegido lo rechaza el {@link JwtAuthenticationEntryPoint}).
+ * El JWT NUNCA se lee de la query (T15-02): la única credencial por URL
+ * es el ticket de {@link SseTicketService}, y solo en {@link #RUTA_STREAM}.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-    private final JwtUtil jwtUtil;
+    static final String RUTA_STREAM = "/api/notificaciones/stream";
 
-    public JwtAuthenticationFilter(JwtUtil jwtUtil) {
+    private final JwtUtil jwtUtil;
+    private final SseTicketService sseTicketService;
+
+    public JwtAuthenticationFilter(JwtUtil jwtUtil, SseTicketService sseTicketService) {
         this.jwtUtil = jwtUtil;
+        this.sseTicketService = sseTicketService;
     }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        String token = null;
         String header = request.getHeader("Authorization");
         if (header != null && header.startsWith("Bearer ")) {
-            token = header.substring(7);
-        } else if (request.getParameter("token") != null) {
-            token = request.getParameter("token");
-        }
-
-        if (token != null) {
             try {
-                Map<String, Object> claims = jwtUtil.verificarYExtraer(token);
-                JwtPrincipal principal = new JwtPrincipal(
+                Map<String, Object> claims = jwtUtil.verificarYExtraer(header.substring(7));
+                autenticar(new JwtPrincipal(
                         ((Number) claims.get("usuarioId")).longValue(),
                         ((Number) claims.get("boticaId")).longValue(),
                         (String) claims.get("rol"),
                         (String) claims.get("turno"),
-                        (String) claims.get("sub"));
-                List<GrantedAuthority> autoridades = List.of(new SimpleGrantedAuthority("ROLE_" + principal.rol()));
-                var auth = new UsernamePasswordAuthenticationToken(principal, null, autoridades);
-                SecurityContextHolder.getContext().setAuthentication(auth);
+                        (String) claims.get("sub")));
             } catch (RuntimeException e) {
                 SecurityContextHolder.clearContext();
             }
+        } else if (RUTA_STREAM.equals(request.getRequestURI()) && request.getParameter("ticket") != null) {
+            sseTicketService.canjear(request.getParameter("ticket")).ifPresent(this::autenticar);
         }
         chain.doFilter(request, response);
+    }
+
+    private void autenticar(JwtPrincipal principal) {
+        List<GrantedAuthority> autoridades = List.of(new SimpleGrantedAuthority("ROLE_" + principal.rol()));
+        var auth = new UsernamePasswordAuthenticationToken(principal, null, autoridades);
+        SecurityContextHolder.getContext().setAuthentication(auth);
     }
 }

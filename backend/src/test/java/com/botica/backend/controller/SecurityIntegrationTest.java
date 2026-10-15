@@ -36,7 +36,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * secreto de test (app.jwt.secret, application-test.properties).
  */
 @WebMvcTest(CajaController.class)
-@Import({SecurityConfig.class, GlobalExceptionHandler.class, JwtAuthenticationEntryPoint.class, JwtAccessDeniedHandler.class, JwtUtil.class})
+@Import({SecurityConfig.class, GlobalExceptionHandler.class, JwtAuthenticationEntryPoint.class, JwtAccessDeniedHandler.class, JwtUtil.class,
+        com.botica.backend.service.SseTicketService.class, com.botica.backend.util.FechaNegocio.class})
 class SecurityIntegrationTest {
 
     @Autowired
@@ -61,6 +62,15 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    void jwtValidoEnLaQuery_deUnEndpointCualquiera_devuelve401() throws Exception {
+        // T15-02 (H2): el JWT solo viaja en la cabecera. Un token en la URL queda en logs
+        // de acceso y proxies; si el filtro lo aceptara, un enlace con token sería una sesión.
+        mockMvc.perform(get("/api/caja/hoy").param("token", tokenDe("ADMINISTRADOR")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("NO_AUTENTICADO"));
+    }
+
+    @Test
     void endpointProtegido_conTokenValidoDeTecnico_dejaPasar() throws Exception {
         when(cajaService.obtenerCajaDeHoy()).thenReturn(cajaResponseAbierta());
 
@@ -70,17 +80,31 @@ class SecurityIntegrationTest {
     }
 
     @Test
-    void cerrarCaja_conRolTecnico_devuelve403SinPermiso() throws Exception {
-        // Demostrable (Tarea 12): solo ADMINISTRADOR cierra caja -- un TECNICO con token
-        // perfectamente válido igual se queda afuera de ESTE endpoint puntual.
+    void cerrarCaja_conRolTecnico_dejaPasarLaSeguridad() throws Exception {
+        // D-E2-1 (2026-10-14) reemplaza la regla de la Tarea 12: el TECNICO cierra SU caja;
+        // que no pueda cerrar una ajena lo decide CajaService (SIN_PERMISO), no el filtro.
+        when(cajaService.cerrar(any(CerrarCajaRequest.class))).thenReturn(cajaResponseAbierta());
+
         mockMvc.perform(post("/api/caja/cerrar")
                         .header("Authorization", "Bearer " + tokenDe("TECNICO"))
                         .contentType("application/json")
                         .content("""
                                 {"montoContado": 100.00}
                                 """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void listarCajasAbiertas_conRolTecnico_devuelve403SinPermiso() throws Exception {
+        mockMvc.perform(get("/api/caja/abiertas").header("Authorization", "Bearer " + tokenDe("TECNICO")))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("SIN_PERMISO"));
+    }
+
+    @Test
+    void listarCajasAbiertas_conRolAdministrador_devuelve200() throws Exception {
+        mockMvc.perform(get("/api/caja/abiertas").header("Authorization", "Bearer " + tokenDe("ADMINISTRADOR")))
+                .andExpect(status().isOk());
     }
 
     @Test

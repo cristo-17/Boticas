@@ -55,6 +55,25 @@ public class CajaDaoJdbc implements CajaDao {
     }
 
     @Override
+    public PaginaResponse<CajaDiaria> listarAbiertasPaginado(Long boticaId, int pagina, int tamano) {
+        int paginaSegura = Math.max(pagina, 0);
+        int tamanoSeguro = Math.min(Math.max(tamano, 1), 100);
+        var params = new MapSqlParameterSource()
+                .addValue("boticaId", boticaId)
+                .addValue("limite", tamanoSeguro)
+                .addValue("offset", paginaSegura * tamanoSeguro);
+
+        String sqlDatos = SELECT_CAJA + "WHERE c.botica_id = :boticaId AND c.estado = 'ABIERTA' " +
+                "ORDER BY c.fecha ASC, c.hora_apertura ASC, c.id ASC LIMIT :limite OFFSET :offset";
+        List<CajaDiaria> contenido = jdbc.query(sqlDatos, params, cajaRowMapper);
+
+        String sqlCount = "SELECT COUNT(*) FROM caja_diaria WHERE botica_id = :boticaId AND estado = 'ABIERTA'";
+        Long total = jdbc.queryForObject(sqlCount, params, Long.class);
+
+        return PaginaResponse.de(contenido, paginaSegura, tamanoSeguro, total == null ? 0L : total);
+    }
+
+    @Override
     public boolean existeCajaAbierta(Long boticaId, Long usuarioId, String turno, LocalDate fecha) {
         String sql = "SELECT COUNT(*) FROM caja_diaria " +
                 "WHERE botica_id = :boticaId AND usuario_id = :usuarioId " +

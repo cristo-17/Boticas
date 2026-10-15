@@ -49,7 +49,7 @@ public class NotificacionEventListener {
                 n.getTitulo(),
                 n.getMensaje(),
                 n.isLeido(),
-                n.getFechaCreacion()
+                n.getCreadoEn()
         );
 
         sseEmitterService.despachar(n.getBoticaId(), n.getRolDestinatario(), resp);
@@ -80,7 +80,7 @@ public class NotificacionEventListener {
                 n.getTitulo(),
                 n.getMensaje(),
                 n.isLeido(),
-                n.getFechaCreacion()
+                n.getCreadoEn()
         );
 
         sseEmitterService.despachar(n.getBoticaId(), n.getRolDestinatario(), resp);

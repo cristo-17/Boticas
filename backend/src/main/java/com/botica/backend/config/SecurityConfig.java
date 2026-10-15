@@ -71,8 +71,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/auth/yo").permitAll()
                         // GET /api/config: sin autenticar -- el frontend lo pide antes de que exista sesión
                         .requestMatchers(HttpMethod.GET, "/api/config").permitAll()
-                        // Demostrable (Tarea 12): solo ADMINISTRADOR cierra caja
-                        .requestMatchers(HttpMethod.POST, "/api/caja/cerrar").hasRole("ADMINISTRADOR")
+                        // D-E2-1 (2026-10-14): cada uno cierra su caja (CajaService decide la ajena); solo ADMINISTRADOR ve todas las abiertas
+                        .requestMatchers(HttpMethod.GET, "/api/caja/abiertas").hasRole("ADMINISTRADOR")
                         .anyRequest().authenticated())
                 .exceptionHandling(eh -> eh
                         .authenticationEntryPoint(authenticationEntryPoint)

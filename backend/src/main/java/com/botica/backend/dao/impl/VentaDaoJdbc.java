@@ -129,7 +129,7 @@ public class VentaDaoJdbc implements VentaDao {
     }
 
     @Override
-    public PaginaResponse<Venta> listarPaginado(Long boticaId, int pagina, int tamano, String orden) {
+    public PaginaResponse<Venta> listarPaginado(Long boticaId, Long cajaId, int pagina, int tamano, String orden) {
         int paginaSegura = Math.max(pagina, 0);
         int tamanoSeguro = Math.min(Math.max(tamano, 1), 100);
 
@@ -151,14 +151,18 @@ public class VentaDaoJdbc implements VentaDao {
 
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", boticaId)
+                .addValue("cajaId", cajaId)
                 .addValue("limite", tamanoSeguro)
                 .addValue("offset", paginaSegura * tamanoSeguro);
 
-        String sqlDatos = "SELECT * FROM ventas WHERE botica_id = :boticaId " +
+        // D-E2-2: el filtro de caja va en el SQL (no en memoria) para que el COUNT de la página coincida.
+        String where = "WHERE botica_id = :boticaId" + (cajaId == null ? " " : " AND caja_id = :cajaId ");
+
+        String sqlDatos = "SELECT * FROM ventas " + where +
                 "ORDER BY " + orderBy + " LIMIT :limite OFFSET :offset";
         List<Venta> contenido = jdbc.query(sqlDatos, params, ventaRowMapper);
 
-        String sqlCount = "SELECT COUNT(*) FROM ventas WHERE botica_id = :boticaId";
+        String sqlCount = "SELECT COUNT(*) FROM ventas " + where;
         Long total = jdbc.queryForObject(sqlCount, params, Long.class);
 
         return PaginaResponse.de(contenido, paginaSegura, tamanoSeguro, total == null ? 0L : total);

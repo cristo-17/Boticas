@@ -1,16 +1,20 @@
 package com.botica.backend.service;
 
 import com.botica.backend.config.ContextoOperacion;
+import com.botica.backend.dao.CajaDao;
 import com.botica.backend.dao.VentaDao;
 import com.botica.backend.dto.NuevaVentaRequest;
 import com.botica.backend.dto.PaginaResponse;
 import com.botica.backend.dto.VentaResponse;
+import com.botica.backend.exception.SinPermisoException;
 import com.botica.backend.exception.VentaNoEncontradaException;
+import com.botica.backend.model.CajaDiaria;
 import com.botica.backend.model.Venta;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Punto de entrada público de Ventas (Tarea 11 Bloque B) — deliberadamente
@@ -27,11 +31,13 @@ public class VentaService {
 
     private final VentaTransaccion transaccion;
     private final VentaDao ventaDao;
+    private final CajaDao cajaDao;
     private final ContextoOperacion contexto;
 
-    public VentaService(VentaTransaccion transaccion, VentaDao ventaDao, ContextoOperacion contexto) {
+    public VentaService(VentaTransaccion transaccion, VentaDao ventaDao, CajaDao cajaDao, ContextoOperacion contexto) {
         this.transaccion = transaccion;
         this.ventaDao = ventaDao;
+        this.cajaDao = cajaDao;
         this.contexto = contexto;
     }
 
@@ -51,8 +57,21 @@ public class VentaService {
         }
     }
 
+    /**
+     * D-E2-2: el ADMINISTRADOR ve todas las ventas de su botica; el TECNICO solo
+     * las de su caja abierta (sin caja abierta, la página sale vacía). Un técnico
+     * que ve todos los turnos ve cuánto vendió cada compañero.
+     */
     public PaginaResponse<VentaResponse> listar(int pagina, int tamano, String orden) {
-        PaginaResponse<Venta> paginaVentas = ventaDao.listarPaginado(contexto.boticaId(), pagina, tamano, orden);
+        Long cajaId = null;
+        if (!esAdministrador()) {
+            Optional<CajaDiaria> caja = cajaActualDelTecnico();
+            if (caja.isEmpty()) {
+                return PaginaResponse.de(List.of(), Math.max(pagina, 0), Math.min(Math.max(tamano, 1), 100), 0L);
+            }
+            cajaId = caja.get().getId();
+        }
+        PaginaResponse<Venta> paginaVentas = ventaDao.listarPaginado(contexto.boticaId(), cajaId, pagina, tamano, orden);
         List<VentaResponse> respuestas = paginaVentas.contenido().stream()
                 .map(transaccion::construirRespuestaDesdeVentaExistente)
                 .toList();
@@ -62,6 +81,22 @@ public class VentaService {
     public VentaResponse obtenerPorId(Long id) {
         Venta venta = ventaDao.buscarPorId(contexto.boticaId(), id)
                 .orElseThrow(VentaNoEncontradaException::new);
+        // Mismo criterio que CajaService.cajaAjenaACerrar: otra botica = 404 (indistinguible
+        // de inexistente); misma botica pero otra caja = 403.
+        if (!esAdministrador()) {
+            boolean deSuCaja = cajaActualDelTecnico().map(c -> c.getId().equals(venta.getCajaId())).orElse(false);
+            if (!deSuCaja) {
+                throw new SinPermisoException();
+            }
+        }
         return transaccion.construirRespuestaDesdeVentaExistente(venta);
+    }
+
+    private boolean esAdministrador() {
+        return "ADMINISTRADOR".equals(contexto.rol());
+    }
+
+    private Optional<CajaDiaria> cajaActualDelTecnico() {
+        return cajaDao.buscarAbiertaDelUsuario(contexto.boticaId(), contexto.usuarioId());
     }
 }

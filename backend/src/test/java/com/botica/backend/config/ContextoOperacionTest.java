@@ -21,6 +21,8 @@ public class ContextoOperacionTest implements ContextoOperacion {
     private static final Long USUARIO_ID = 1L;
     private static final Long BOTICA_ID = 1L;
     private static final String TURNO = "Tarde";
+    // usuario 1 del seed de dev es TECNICO (db/seed/dev/V4__seed.sql).
+    private static final String ROL = "TECNICO";
 
     @Override
     public Long usuarioId() {
@@ -35,5 +37,10 @@ public class ContextoOperacionTest implements ContextoOperacion {
     @Override
     public String turno() {
         return TURNO;
+    }
+
+    @Override
+    public String rol() {
+        return ROL;
     }
 }

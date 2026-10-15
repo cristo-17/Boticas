@@ -19,8 +19,7 @@ public interface ContextoOperacion {
 
     String turno();
 
-    default String rol() {
-        return "ADMINISTRADOR";
-    }
+    /** Sin valor por defecto (T15-10): un contexto que no lo defina no puede heredar el rol de mayor privilegio. */
+    String rol();
 }
 

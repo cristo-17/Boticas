@@ -5,6 +5,7 @@ import com.botica.backend.dto.ItemVentaResponse;
 import com.botica.backend.dto.PaginaResponse;
 import com.botica.backend.dto.VentaResponse;
 import com.botica.backend.exception.SinCajaAbiertaException;
+import com.botica.backend.exception.SinPermisoException;
 import com.botica.backend.exception.StockInsuficienteException;
 import com.botica.backend.exception.VentaNoEncontradaException;
 import com.botica.backend.service.VentaService;
@@ -40,6 +41,9 @@ class VentaControllerTest {
 
     @MockitoBean
     private com.botica.backend.util.JwtUtil jwtUtil;
+
+    @MockitoBean
+    private com.botica.backend.service.SseTicketService sseTicketService;
 
     @MockitoBean
     private VentaService ventaService;
@@ -151,5 +155,15 @@ class VentaControllerTest {
         mockMvc.perform(get("/api/ventas/999"))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.error").value("VENTA_NO_ENCONTRADA"));
+    }
+
+    @Test
+    void obtenerPorId_tecnicoConVentaDeOtraCaja_devuelve403() throws Exception {
+        // D-E2-2: la regla vive en VentaService (ver VentaServiceTest); acá solo el contrato HTTP.
+        when(ventaService.obtenerPorId(5L)).thenThrow(new SinPermisoException());
+
+        mockMvc.perform(get("/api/ventas/5"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.error").value("SIN_PERMISO"));
     }
 }

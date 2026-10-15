@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(NotificacionController.class)
-@Import(GlobalExceptionHandler.class)
+@Import({GlobalExceptionHandler.class, com.botica.backend.service.NotificacionService.class})
 @AutoConfigureMockMvc(addFilters = false)
 class NotificacionControllerTest {
 
@@ -37,6 +37,9 @@ class NotificacionControllerTest {
 
     @MockitoBean
     private com.botica.backend.util.JwtUtil jwtUtil;
+
+    @MockitoBean
+    private com.botica.backend.service.SseTicketService sseTicketService;
 
     @MockitoBean
     private NotificacionDao notificacionDao;
@@ -59,7 +62,7 @@ class NotificacionControllerTest {
                 .titulo("Descuadre en caja #1")
                 .mensaje("Diferencia de S/ 50.00")
                 .leido(false)
-                .fechaCreacion(OffsetDateTime.now())
+                .creadoEn(OffsetDateTime.now())
                 .build();
 
         when(notificacionDao.listarRecientes(anyLong(), anyString(), anyInt()))
@@ -75,11 +78,25 @@ class NotificacionControllerTest {
     @Test
     void marcarComoLeida_devuelve204() throws Exception {
         when(contexto.boticaId()).thenReturn(1L);
+        when(contexto.rol()).thenReturn("TECNICO");
+        when(notificacionDao.marcarComoLeida(1L, "TECNICO", 1L)).thenReturn(1);
 
         mockMvc.perform(put("/api/notificaciones/1/leer"))
                 .andExpect(status().isNoContent());
 
-        verify(notificacionDao).marcarComoLeida(1L, 1L);
+        verify(notificacionDao).marcarComoLeida(1L, "TECNICO", 1L);
+    }
+
+    @Test
+    void marcarComoLeida_inexistenteOAjena_devuelve404() throws Exception {
+        // T15-12: antes respondía 204 aunque no tocara ninguna fila.
+        when(contexto.boticaId()).thenReturn(1L);
+        when(contexto.rol()).thenReturn("TECNICO");
+        when(notificacionDao.marcarComoLeida(1L, "TECNICO", 999L)).thenReturn(0);
+
+        mockMvc.perform(put("/api/notificaciones/999/leer"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("NOTIFICACION_NO_ENCONTRADA"));
     }
 
     @Test

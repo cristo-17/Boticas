@@ -11,6 +11,23 @@ import java.io.IOException;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+/**
+ * Conexiones SSE abiertas, en memoria (una sola instancia del backend).
+ *
+ * El único job programado del proyecto es {@link #heartbeat()} (H7, R18):
+ * manda un comentario cada 45 s para que proxies no corten un stream
+ * inactivo y para descartar clientes muertos. NO detecta ni calcula nada
+ * de negocio: stock crítico, vencidos y cajas sin cerrar salen de
+ * GET /api/alertas y /api/dashboard/resumen al consultar, y cada
+ * notificación queda guardada en la tabla aunque nadie esté conectado.
+ *
+ * Si el job no corre 8 horas (Render gratis dormido): los streams ya se
+ * cayeron con el contenedor, el navegador reconecta al despertar, y la
+ * campana recupera lo pendiente con GET /api/notificaciones. Lo único que
+ * se pierde es el aviso "en el momento"; ningún dato. Con el contenedor
+ * despierto y el job parado, un cliente muerto queda en la lista hasta que
+ * el siguiente despachar() falle al escribirle y lo quite.
+ */
 @Service
 public class SseEmitterService {
 
