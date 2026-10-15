@@ -18,14 +18,9 @@
   <!-- KPIs rápidos de la vista -->
   <div class="historial-ventas__kpis">
     <div class="historial-ventas__kpi-card">
-      <span class="historial-ventas__kpi-label">Comprobantes totales</span>
+      <span class="historial-ventas__kpi-label">Ventas</span>
       <span class="historial-ventas__kpi-valor num">{{ totalElementos() }}</span>
-      <span class="field-hint">En el sistema</span>
-    </div>
-    <div class="historial-ventas__kpi-card">
-      <span class="historial-ventas__kpi-label">Subtotal página</span>
-      <span class="historial-ventas__kpi-valor num">{{ moneda(totalFacturadoPagina()) }}</span>
-      <span class="field-hint">{{ ventas().length }} boleta(s) listadas</span>
+      <span class="field-hint">{{ esTecnico() ? 'De tu caja abierta' : 'De toda la botica' }}</span>
     </div>
     <div class="historial-ventas__kpi-card historial-ventas__kpi-card--action">
       <app-button variant="ghost" [block]="true" (clicked)="cargarVentas()">
@@ -42,8 +37,10 @@
       </div>
     } @else if (ventas().length === 0) {
       <app-empty-state
-        titulo="No se encontraron ventas"
-        mensaje="Aún no se han registrado transacciones de venta en esta botica."
+        title="No se encontraron ventas"
+        [text]="esTecnico()
+          ? 'No hay ventas en tu caja abierta (o no tienes una caja abierta).'
+          : 'Aún no se han registrado transacciones de venta en esta botica.'"
       ></app-empty-state>
     } @else {
       <app-table>
@@ -162,7 +159,6 @@
                 <th>Presentación</th>
                 <th class="text-center">Cant.</th>
                 <th class="text-end">P. Unit.</th>
-                <th class="text-end">Importe</th>
               </tr>
             </thead>
             <tbody>
@@ -172,9 +168,6 @@
                   <td>{{ item.presentacion }}</td>
                   <td class="text-center num">{{ item.cantidad }}</td>
                   <td class="text-end num">{{ moneda(item.precioUnitario) }}</td>
-                  <td class="text-end num font-bold">
-                    {{ moneda(item.cantidad * item.precioUnitario) }}
-                  </td>
                 </tr>
               }
             </tbody>

@@ -1,48 +1,39 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
-import { ButtonComponent } from '../../../shared/components/button/button';
-import { CardComponent } from '../../../shared/components/card/card';
+import { Component, OnInit, computed, inject, signal, viewChild } from '@angular/core';
 import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner';
-import { ModalComponent } from '../../../shared/components/modal/modal';
 import { PaginacionComponent } from '../../../shared/components/paginacion/paginacion';
 import { ToastComponent, ToastVariant } from '../../../shared/components/toast/toast';
 import { ErrorTraducido } from '../../../core/interceptors/error.interceptor';
+import { MovimientoCaja } from '../../../core/models/caja.model';
 import { CajaService } from '../../../core/services/caja.service';
 import { ConfigService } from '../../../core/services/config.service';
 import { formatearMoneda } from '../../../core/utils/moneda.util';
+import { ConteoCierre, ConteoCierreComponent } from '../conteo-cierre/conteo-cierre';
+import {
+  ResultadoCierreComponent,
+  UMBRAL_DESCUADRE_LEVE_DEFECTO,
+  resultadoDeCierre,
+} from '../resultado-cierre/resultado-cierre';
 
 interface FilaMovimiento {
   descripcion: string;
   nota: string | null;
-  monto: number;
+  /** null mientras la caja está abierta: conteo ciego (DECISIONES 2026-10-14). */
+  monto: number | null;
   colorClass:
     'cierre__barra--verde' | 'cierre__barra--azul' | 'cierre__barra--ambar' | 'cierre__barra--rojo';
   afectaEfectivo: boolean;
 }
 
-type TonoDescuadre = 'ok' | 'warn' | 'danger';
-
-interface ResultadoCierre {
-  tono: TonoDescuadre;
-  titulo: string;
-  montoTexto: string;
-  nota: string;
-  montoEsperado: number;
-  montoContado: number;
-}
-
-/** Fallback si /api/config no llegó a cargar todavía (no debería pasar: provideAppInitializer la espera antes de arrancar la app). */
-const UMBRAL_DESCUADRE_LEVE_DEFECTO = 10;
 const TAMANO_PAGINA_MOVIMIENTOS = 20;
 
 @Component({
   selector: 'app-cierre',
   imports: [
-    ButtonComponent,
-    CardComponent,
+    ConteoCierreComponent,
     ErrorBannerComponent,
-    ModalComponent,
     PaginacionComponent,
+    ResultadoCierreComponent,
     ToastComponent,
   ],
   templateUrl: './cierre.html',
@@ -60,33 +51,22 @@ export class CierreComponent implements OnInit {
   readonly error = this.caja.error;
   readonly formatearMoneda = formatearMoneda;
 
-  private readonly umbralDescuadreLeve = computed(
-    () => this.config.config()?.descuadreLeve ?? UMBRAL_DESCUADRE_LEVE_DEFECTO,
-  );
+  /**
+   * Conteo ciego (DECISIONES 2026-09-08, revisada 2026-10-14): mientras la caja
+   * está abierta la lista muestra hora, tipo y método, SIN montos -- una lista
+   * con montos es el esperado listo para sumar. Después del POST, completa.
+   */
+  readonly mostrarMontos = computed(() => this.cajaActual()?.abierta === false);
 
-  readonly legendaDescuadre = computed(() => [
-    { colorClass: 'cierre__barra--verde', label: 'Sin diferencia' },
-    {
-      colorClass: 'cierre__barra--ambar',
-      label: `Hasta ${formatearMoneda(this.umbralDescuadreLeve())} · requiere nota`,
-    },
-    {
-      colorClass: 'cierre__barra--rojo',
-      label: `Más de ${formatearMoneda(this.umbralDescuadreLeve())} · alerta al administrador`,
-    },
-  ]);
-
-  // Apertura + movimientos de caja (paginados), para la tabla de la izquierda. Ya NO incluye
-  // el efectivo esperado: conteo ciego (hueco 2, docs/DECISIONES.md) — eso solo se conoce
-  // después de POST /api/caja/cerrar, nunca antes de que el cajero cuente.
   readonly movimientosVista = computed<FilaMovimiento[]>(() => {
     const caja = this.cajaActual();
+    const conMontos = this.mostrarMontos();
     const apertura: FilaMovimiento[] = caja
       ? [
           {
             descripcion: 'Apertura de caja',
             nota: `${this.horaTexto(caja.horaApertura)} · ${caja.usuarioNombre}`,
-            monto: caja.montoApertura,
+            monto: conMontos ? caja.montoApertura : null,
             colorClass: 'cierre__barra--verde',
             afectaEfectivo: true,
           },
@@ -94,69 +74,21 @@ export class CierreComponent implements OnInit {
       : [];
     const resto = (this.paginaMovimientos()?.contenido ?? []).map((m) => ({
       descripcion: m.descripcion,
-      nota: m.nota,
-      monto: m.monto,
+      nota: [this.horaTexto(m.creadoEn), this.metodo(m), m.nota].filter(Boolean).join(' · '),
+      monto: conMontos ? m.monto : null,
       colorClass: this.colorPorTipo(m.tipo),
       afectaEfectivo: m.afectaEfectivo,
     }));
     return [...apertura, ...resto];
   });
 
-  readonly contadoTexto = signal('');
+  private readonly conteo = viewChild(ConteoCierreComponent);
 
-  private readonly contadoNumero = computed(() =>
-    parseFloat(this.contadoTexto().replace(',', '.')),
+  /** Solo para el texto del toast: la tarjeta de resultado la arma ResultadoCierreComponent. */
+  private readonly resultadoCierre = computed(() =>
+    resultadoDeCierre(this.cajaActual(), this.config.config()?.descuadreLeve ?? UMBRAL_DESCUADRE_LEVE_DEFECTO),
   );
 
-  readonly contadoValido = computed(() => {
-    const texto = this.contadoTexto().trim();
-    return texto !== '' && !isNaN(this.contadoNumero()) && this.contadoNumero() >= 0;
-  });
-
-  // Se llena recién con la respuesta de POST /api/caja/cerrar -- nunca antes (conteo ciego).
-  readonly resultadoCierre = computed<ResultadoCierre | null>(() => {
-    const caja = this.cajaActual();
-    if (!caja || caja.abierta || !caja.semaforoDescuadre) return null;
-    const esperado = caja.montoEsperado ?? 0;
-    const contado = caja.montoContado ?? 0;
-    const d = caja.diferencia ?? 0;
-    const signo = d < 0 ? '−' : d > 0 ? '+' : '';
-    const montoTexto = signo + formatearMoneda(Math.abs(d)).slice(3);
-    if (caja.semaforoDescuadre === 'EXACTO') {
-      return {
-        tono: 'ok',
-        titulo: 'Caja cuadrada',
-        montoTexto: formatearMoneda(0),
-        nota: 'El conteo coincide con lo esperado.',
-        montoEsperado: esperado,
-        montoContado: contado,
-      };
-    }
-    if (caja.semaforoDescuadre === 'LEVE') {
-      return {
-        tono: 'warn',
-        titulo: d < 0 ? 'Descuadre leve · faltante' : 'Descuadre leve · sobrante',
-        montoTexto,
-        nota: `Diferencia menor a ${formatearMoneda(this.umbralDescuadreLeve())}.`,
-        montoEsperado: esperado,
-        montoContado: contado,
-      };
-    }
-    return {
-      tono: 'danger',
-      titulo: d < 0 ? 'Faltante importante' : 'Sobrante importante',
-      montoTexto,
-      nota: 'El administrador recibirá una alerta por este descuadre.',
-      montoEsperado: esperado,
-      montoContado: contado,
-    };
-  });
-
-  readonly observacionHint = computed(() => (this.resultadoCierre() ? '' : '(opcional)'));
-
-  readonly observacion = signal('');
-
-  readonly confirmando = signal(false);
   readonly toastVisible = signal(false);
   readonly toastMensaje = signal('');
   readonly toastVariant = signal<ToastVariant>('success');
@@ -173,37 +105,18 @@ export class CierreComponent implements OnInit {
     });
   }
 
-  onContadoInput(event: Event): void {
-    this.contadoTexto.set((event.target as HTMLInputElement).value);
-  }
-
-  pedirCierre(): void {
-    if (this.contadoValido()) {
-      this.confirmando.set(true);
-    }
-  }
-
-  confirmarCierre(): void {
-    this.caja
-      .cerrarCaja({
-        montoContado: this.contadoNumero(),
-        observaciones: this.observacion().trim() || undefined,
-      })
-      .subscribe({
-        next: () => {
-          this.confirmando.set(false);
-          this.mostrarToast(
-            'success',
-            `Caja cerrada · ${this.resultadoCierre()?.titulo?.toLowerCase() ?? ''}`,
-          );
-          this.contadoTexto.set('');
-          this.observacion.set('');
-        },
-        error: (err: HttpErrorResponse & { traducido?: ErrorTraducido }) => {
-          this.confirmando.set(false);
-          this.mostrarToast('error', err.traducido?.mensaje ?? 'No se pudo cerrar la caja. Reintenta.');
-        },
-      });
+  // POST /api/caja/cerrar sin cajaId: la caja propia (D-E2-1).
+  cerrar(conteo: ConteoCierre): void {
+    this.caja.cerrarCaja(conteo).subscribe({
+      next: () => {
+        this.conteo()?.terminar(true);
+        this.mostrarToast('success', `Caja cerrada · ${this.resultadoCierre()?.titulo?.toLowerCase() ?? ''}`);
+      },
+      error: (err: HttpErrorResponse & { traducido?: ErrorTraducido }) => {
+        this.conteo()?.terminar(false);
+        this.mostrarToast('error', err.traducido?.mensaje ?? 'No se pudo cerrar la caja. Reintenta.');
+      },
+    });
   }
 
   irAPagina(pagina: number): void {
@@ -214,6 +127,13 @@ export class CierreComponent implements OnInit {
     if (!this.cajaActual()?.abierta) return;
     this.caja.obtenerResumenCierre().subscribe({ error: () => {} });
     this.irAPagina(0);
+  }
+
+  /** El movimiento no guarda el medio de pago, solo si toca el cajón: alcanza para el conteo. */
+  private metodo(m: MovimientoCaja): string | null {
+    if (m.tipo === 'venta') return m.afectaEfectivo ? 'Efectivo' : 'Digital (Yape/tarjeta)';
+    if (m.tipo === 'merma') return null;
+    return m.afectaEfectivo ? 'Efectivo' : null;
   }
 
   private colorPorTipo(tipo: string): FilaMovimiento['colorClass'] {

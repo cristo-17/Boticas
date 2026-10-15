@@ -47,6 +47,8 @@ const MENSAJES_POR_CODIGO: Record<string, string> = {
   LOTE_NO_ENCONTRADO: 'El lote indicado no existe o no pertenece a esta botica.',
   STOCK_INSUFICIENTE_MERMA: 'El lote no tiene stock suficiente para esa cantidad.',
   OBSERVACION_REQUERIDA: 'Este motivo de merma requiere una observación.',
+  NOTIFICACION_NO_ENCONTRADA: 'La notificación ya no está disponible.',
+  SIN_PERMISO: 'No tienes permiso para esta acción.',
   ERROR_INTERNO: 'Ocurrió un error inesperado. Intenta de nuevo.',
 };
 

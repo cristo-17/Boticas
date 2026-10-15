@@ -1,0 +1,60 @@
+<div class="conteo">
+  <app-card>
+    <label for="cierre-contado" class="conteo__label">Monto contado en el cajón</label>
+    <div
+      class="conteo__monto-box"
+      [class.conteo__monto-box--error]="contadoTexto().trim() !== '' && !contadoValido()"
+    >
+      <span class="num conteo__monto-prefijo">S/</span>
+      <input
+        id="cierre-contado"
+        class="num conteo__monto-input"
+        inputmode="decimal"
+        [value]="contadoTexto()"
+        (input)="onContadoInput($event)"
+        placeholder="0.00"
+      />
+    </div>
+
+    <label for="cierre-obs" class="conteo__label conteo__label--obs">Observaciones (opcional)</label>
+    <textarea
+      id="cierre-obs"
+      class="conteo__textarea"
+      rows="2"
+      [value]="observacion()"
+      (input)="observacion.set($any($event.target).value)"
+      placeholder="Ej.: se pagó S/ 45 de movilidad al proveedor"
+    ></textarea>
+
+    <app-button
+      variant="action"
+      size="lg"
+      [block]="true"
+      [disabled]="!contadoValido()"
+      (clicked)="pedirCierre()"
+    >
+      Cerrar caja
+    </app-button>
+  </app-card>
+
+  <app-card [flat]="true">
+    <div class="eyebrow conteo__leyenda-titulo">Semáforo de descuadre</div>
+    @for (g of legendaDescuadre(); track g.label) {
+      <div class="conteo__leyenda-fila">
+        <span class="status-bar conteo__leyenda-swatch" [class]="g.colorClass"></span>
+        {{ g.label }}
+      </div>
+    }
+  </app-card>
+</div>
+
+<app-modal
+  [open]="confirmando()"
+  title="¿Cerrar la caja del turno?"
+  message="Después del cierre no se pueden registrar más ventas en este turno."
+  confirmLabel="Sí, cerrar caja"
+  confirmVariant="danger"
+  [confirmando]="cerrando()"
+  (cancelled)="confirmando.set(false)"
+  (confirmed)="confirmar()"
+></app-modal>

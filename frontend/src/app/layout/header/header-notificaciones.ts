@@ -2,12 +2,12 @@ import {
   Component,
   ElementRef,
   HostListener,
-  OnInit,
   computed,
   inject,
   signal,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ErrorBannerComponent } from '../../shared/components/error-banner/error-banner';
 import { Router } from '@angular/router';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { Notificacion, TipoNotificacion } from '../../core/models/notificacion.model';
@@ -15,11 +15,11 @@ import { Notificacion, TipoNotificacion } from '../../core/models/notificacion.m
 @Component({
   selector: 'app-header-notificaciones',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, ErrorBannerComponent],
   templateUrl: './header-notificaciones.html',
   styleUrl: './header-notificaciones.scss',
 })
-export class HeaderNotificacionesComponent implements OnInit {
+export class HeaderNotificacionesComponent {
   private readonly notifService = inject(NotificacionService);
   private readonly router = inject(Router);
   private readonly elementRef = inject(ElementRef);
@@ -30,13 +30,9 @@ export class HeaderNotificacionesComponent implements OnInit {
   readonly conectadoSse = this.notifService.conectadoSse;
   readonly permisoNativo = this.notifService.permisoNativo;
   readonly alertaEnVivo = this.notifService.alertaEnVivo;
+  readonly error = this.notifService.error;
 
   readonly tieneNoLeidas = computed(() => this.noLeidasCount() > 0);
-
-  ngOnInit(): void {
-    this.notifService.conectar();
-    this.notifService.cargarHistorial();
-  }
 
   toggle(): void {
     this.abierto.update((v) => !v);
@@ -49,12 +45,12 @@ export class HeaderNotificacionesComponent implements OnInit {
   marcarLeida(notificacion: Notificacion, event?: MouseEvent): void {
     event?.stopPropagation();
     if (!notificacion.leido) {
-      this.notifService.marcarLeida(notificacion.id);
+      this.notifService.marcarLeida(notificacion.id).subscribe({ error: () => {} }); // el error ya está en error()
     }
   }
 
   marcarTodas(): void {
-    this.notifService.marcarTodasLeidas();
+    this.notifService.marcarTodasLeidas().subscribe({ error: () => {} });
   }
 
   solicitarPermiso(): void {
@@ -94,8 +90,6 @@ export class HeaderNotificacionesComponent implements OnInit {
         return 'bi-exclamation-octagon-fill';
       case 'STOCK_CRITICO':
         return 'bi-box-seam-fill';
-      case 'LOTE_VENCIDO':
-        return 'bi-calendar-x-fill';
       default:
         return 'bi-info-circle-fill';
     }
@@ -107,8 +101,6 @@ export class HeaderNotificacionesComponent implements OnInit {
         return 'notif-item--peligro';
       case 'STOCK_CRITICO':
         return 'notif-item--alerta';
-      case 'LOTE_VENCIDO':
-        return 'notif-item--advertencia';
       default:
         return 'notif-item--info';
     }

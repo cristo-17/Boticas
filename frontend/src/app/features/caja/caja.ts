@@ -6,6 +6,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { CajaService } from '../../core/services/caja.service';
 import { AperturaComponent } from './apertura/apertura';
 import { CierreComponent } from './cierre/cierre';
+import { CierreAdminComponent } from './cierre-admin/cierre-admin';
 
 type TabCaja = 'apertura' | 'cierre';
 
@@ -20,7 +21,7 @@ const ROL_LABEL: Record<'TECNICO' | 'ADMINISTRADOR', string> = {
  */
 @Component({
   selector: 'app-caja',
-  imports: [ChipComponent, AperturaComponent, CierreComponent],
+  imports: [ChipComponent, AperturaComponent, CierreComponent, CierreAdminComponent],
   templateUrl: './caja.html',
   styleUrl: './caja.scss',
 })
@@ -45,6 +46,9 @@ export class CajaScreen implements OnInit {
     month: 'long',
     year: 'numeric',
   });
+
+  /** D-E2-1: el ADMINISTRADOR cierra eligiendo entre las cajas abiertas de la botica; el TECNICO, la suya. */
+  readonly esAdministrador = computed(() => this.auth.usuarioActual()?.rol === 'ADMINISTRADOR');
 
   readonly usuarioTexto = computed(() => {
     const usuario = this.auth.usuarioActual();

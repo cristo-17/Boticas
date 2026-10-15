@@ -1,8 +1,8 @@
 import { Page, expect } from '@playwright/test';
 
 export const TECNICO = { usuario: 'rosa.quispe', password: 'tecnico123' } as const;
-// ADMINISTRADOR: POST /api/caja/cerrar exige este rol (SecurityConfig, Tarea 12) -- un TECNICO
-// puede abrir caja y vender, pero no cerrarla.
+// ADMINISTRADOR: desde T16 (D-E2-1) cada uno cierra su propia caja, y solo este rol
+// ve las cajas abiertas de la botica y cierra una ajena.
 export const ADMIN = { usuario: 'carlos.mendoza', password: 'admin123' } as const;
 
 /**

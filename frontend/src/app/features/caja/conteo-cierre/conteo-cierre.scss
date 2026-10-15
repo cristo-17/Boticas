@@ -1,0 +1,99 @@
+// Formulario de conteo ciego (Tarea 9), movido desde cierre.scss en T16.
+.conteo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.conteo__label {
+  display: block;
+  font-size: 13px;
+  font-weight: var(--fw-black);
+  color: var(--ink-2);
+  margin-bottom: var(--s-2);
+}
+.conteo__label--obs {
+  margin-top: var(--s-4);
+}
+
+.conteo__monto-box {
+  display: flex;
+  align-items: center;
+  border: 2px solid var(--line);
+  border-radius: var(--r-md);
+  padding: 0 var(--s-4);
+}
+.conteo__monto-box--error {
+  border-color: var(--rojo-500);
+}
+
+.conteo__monto-prefijo {
+  font-size: 20px;
+  font-weight: var(--fw-black);
+  color: var(--muted);
+}
+
+.conteo__monto-input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 34px;
+  font-weight: var(--fw-black);
+  letter-spacing: -0.02em;
+  padding: 12px var(--s-3);
+  min-height: 60px;
+}
+
+.conteo__textarea {
+  width: 100%;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  font-size: 15px;
+  font-weight: var(--fw-medium);
+  font-family: inherit;
+  padding: var(--s-3);
+}
+.conteo__textarea:focus {
+  outline: none;
+  border-color: var(--verde-500);
+  box-shadow: 0 0 0 3px var(--verde-50);
+}
+
+.conteo app-button {
+  display: flex;
+  margin-top: var(--s-4);
+}
+
+.conteo__leyenda-titulo {
+  margin-bottom: var(--s-2);
+}
+
+.conteo__leyenda-fila {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  font-size: 13px;
+  font-weight: var(--fw-bold);
+  color: var(--ink-2);
+}
+
+.status-bar.conteo__leyenda-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+
+.status-bar.conteo__barra--verde {
+  background: var(--verde-500);
+}
+.status-bar.conteo__barra--ambar {
+  background: var(--ambar-500);
+}
+.status-bar.conteo__barra--rojo {
+  background: var(--rojo-500);
+}

@@ -12,6 +12,8 @@
 
   @if (tab() === 'apertura') {
     <app-apertura (irACierre)="irA('cierre')"></app-apertura>
+  } @else if (esAdministrador()) {
+    <app-cierre-admin></app-cierre-admin>
   } @else {
     <app-cierre></app-cierre>
   }

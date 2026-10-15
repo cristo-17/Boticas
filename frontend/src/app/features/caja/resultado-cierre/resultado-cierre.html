@@ -1,0 +1,23 @@
+@if (resultado(); as resultado) {
+  <app-card>
+    <div class="eyebrow">Caja cerrada{{ caja()?.usuarioNombre ? ' · ' + caja()?.usuarioNombre : '' }}</div>
+    <div class="resultado__descuadre" [class]="'resultado__descuadre--' + resultado.tono">
+      <div class="resultado__descuadre-head">
+        <span class="resultado__descuadre-dot"></span>
+        <span class="resultado__descuadre-titulo">{{ resultado.titulo }}</span>
+      </div>
+      <div class="num resultado__descuadre-monto">{{ resultado.montoTexto }}</div>
+      <div class="resultado__descuadre-nota">{{ resultado.nota }}</div>
+    </div>
+    <div class="resultado__detalle">
+      <div class="resultado__fila">
+        <span>Efectivo esperado</span>
+        <span class="num">{{ formatearMoneda(resultado.montoEsperado) }}</span>
+      </div>
+      <div class="resultado__fila">
+        <span>Efectivo contado</span>
+        <span class="num">{{ formatearMoneda(resultado.montoContado) }}</span>
+      </div>
+    </div>
+  </app-card>
+}

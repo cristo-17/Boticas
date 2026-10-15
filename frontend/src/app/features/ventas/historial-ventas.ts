@@ -10,6 +10,7 @@ import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
 import { TableComponent } from '../../shared/components/table/table';
 import { Venta } from '../../core/models/venta.model';
 import { VentaService } from '../../core/services/venta.service';
+import { AuthService } from '../../core/services/auth.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
 
 const METODO_BADGE: Record<string, BadgeVariant> = {
@@ -42,6 +43,7 @@ const METODO_LABEL: Record<string, string> = {
 export class HistorialVentasScreen implements OnInit {
   private readonly ventaService = inject(VentaService);
   private readonly router = inject(Router);
+  private readonly auth = inject(AuthService);
 
   readonly paginaActual = signal(0);
   readonly tamanoPagina = 15;
@@ -55,9 +57,8 @@ export class HistorialVentasScreen implements OnInit {
   readonly ventas = computed(() => this.pagina()?.contenido ?? []);
   readonly totalElementos = computed(() => this.pagina()?.totalElementos ?? 0);
 
-  readonly totalFacturadoPagina = computed(() =>
-    this.ventas().reduce((acc, v) => acc + v.total, 0),
-  );
+  /** D-E2-2: el backend ya filtra; acá solo se dice qué se está viendo. */
+  readonly esTecnico = computed(() => this.auth.usuarioActual()?.rol === 'TECNICO');
 
   ngOnInit(): void {
     this.cargarVentas();

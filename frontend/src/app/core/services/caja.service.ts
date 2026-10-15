@@ -28,6 +28,14 @@ export class CajaService {
   private readonly _resumenCierre = signal<ResumenCierre | null>(null);
   readonly resumenCierre = this._resumenCierre.asReadonly();
 
+  /** D-E2-1: solo ADMINISTRADOR. Sin montos que revelen el esperado (CajaResponse de una caja abierta no los trae). */
+  private readonly _abiertas = signal<PaginaResponse<CajaDiaria> | null>(null);
+  readonly abiertas = this._abiertas.asReadonly();
+
+  /** La última caja cerrada desde esta sesión -- la del ADMINISTRADOR puede no ser cajaActual. */
+  private readonly _ultimoCierre = signal<CajaDiaria | null>(null);
+  readonly ultimoCierre = this._ultimoCierre.asReadonly();
+
   private readonly _movimientos = signal<PaginaResponse<MovimientoCaja> | null>(null);
   readonly movimientos = this._movimientos.asReadonly();
 
@@ -97,13 +105,32 @@ export class CajaService {
     );
   }
 
+  // GET /api/caja/abiertas?pagina=&tamano= (solo ADMINISTRADOR, D-E2-1)
+  listarAbiertas(pagina = 0, tamano = 20): Observable<PaginaResponse<CajaDiaria>> {
+    this._cargando.set(true);
+    this._error.set(null);
+    const params = new HttpParams().set('pagina', pagina).set('tamano', tamano);
+    return this.http.get<PaginaResponse<CajaDiaria>>(`${BASE_URL}/abiertas`, { params }).pipe(
+      tap((data) => this._abiertas.set(data)),
+      catchError((err) => this.manejarError(err, 'No se pudieron cargar las cajas abiertas.')),
+      finalize(() => this._cargando.set(false)),
+    );
+  }
+
   // POST /api/caja/cerrar — el servidor calcula montoEsperado/diferencia/semaforoDescuadre; recién acá se conocen.
   cerrarCaja(request: CerrarCajaRequest): Observable<CajaDiaria> {
     this._cargando.set(true);
     this._error.set(null);
     return this.http.post<CajaDiaria>(`${BASE_URL}/cerrar`, request).pipe(
       tap((caja) => {
-        this._cajaActual.set(caja);
+        this._ultimoCierre.set(caja);
+        // Sin cajaId es la propia; con cajaId puede ser la de otro usuario y no tocar cajaActual.
+        if (request.cajaId === undefined || this._cajaActual()?.id === caja.id) {
+          this._cajaActual.set(caja);
+        }
+        this._abiertas.update((p) =>
+          p ? { ...p, contenido: p.contenido.filter((c) => c.id !== caja.id), totalElementos: p.totalElementos - 1 } : p,
+        );
         this.alertaService.obtenerResumen(true).subscribe({ error: () => {} });
       }),
       catchError((err) => this.manejarError(err, 'No se pudo cerrar la caja.')),

@@ -31,6 +31,7 @@ export interface MovimientoCaja {
   monto: number;
   /** false en movimientos que no mueven efectivo del cajón (p.ej. mermas, ventas con Yape/tarjeta). */
   afectaEfectivo: boolean;
+  creadoEn: string; // ISO datetime
 }
 
 /** GET /api/caja/{id}/resumen-cierre — se pide ANTES de contar. Deliberadamente sin montoEsperado (conteo ciego). */
@@ -49,4 +50,6 @@ export interface AbrirCajaRequest {
 export interface CerrarCajaRequest {
   montoContado: number;
   observaciones?: string;
+  /** D-E2-1: sin cajaId cierra la caja propia; con cajaId (solo ADMINISTRADOR) una caja abierta de su botica. */
+  cajaId?: number;
 }

@@ -1,0 +1,61 @@
+@if (error()) {
+  <app-error-banner [mensaje]="error()" class="cierre-admin__error" />
+}
+
+<div class="cierre-admin">
+  <section class="cierre-admin__lista">
+    <div class="cierre-admin__head">
+      <h2 class="cierre-admin__titulo">Cajas abiertas de la botica</h2>
+      <p class="field-hint">Elige la caja a cerrar. El cuadre se conoce recién después de contar.</p>
+    </div>
+
+    @for (c of abiertas()?.contenido ?? []; track c.id) {
+      <button
+        type="button"
+        class="cierre-admin__caja"
+        [class.cierre-admin__caja--activa]="seleccionada()?.id === c.id"
+        (click)="elegir(c)"
+      >
+        <span class="cierre-admin__caja-nombre">{{ c.usuarioNombre }}</span>
+        <span class="field-hint">Turno {{ c.turno }} · abierta {{ c.fecha }} a las {{ horaTexto(c.horaApertura) }}</span>
+      </button>
+    } @empty {
+      @if (!cargando()) {
+        <p class="cierre-admin__vacio">No hay cajas abiertas en la botica.</p>
+      }
+    }
+
+    @if (abiertas(); as pagina) {
+      @if (pagina.totalPaginas > 1) {
+        <div class="cierre-admin__paginacion">
+          <app-paginacion
+            [pagina]="pagina.pagina"
+            [totalPaginas]="pagina.totalPaginas"
+            [totalElementos]="pagina.totalElementos"
+            (anterior)="irAPagina(pagina.pagina - 1)"
+            (siguiente)="irAPagina(pagina.pagina + 1)"
+          ></app-paginacion>
+        </div>
+      }
+    }
+  </section>
+
+  <aside class="cierre-admin__panel">
+    @if (seleccionada(); as c) {
+      <p class="cierre-admin__contando">
+        Contando la caja de <strong>{{ c.usuarioNombre }}</strong> · turno {{ c.turno }}
+        <button type="button" class="cierre-admin__cambiar" (click)="volverALista()">Cambiar</button>
+      </p>
+      <app-conteo-cierre [cerrando]="cargando()" (confirmado)="cerrar($event)" />
+    } @else if (mostrarResultado()) {
+      <app-resultado-cierre [caja]="ultimoCierre()" />
+    }
+  </aside>
+</div>
+
+<app-toast
+  [visible]="toastVisible()"
+  [variant]="toastVariant()"
+  [message]="toastMensaje()"
+  (closed)="toastVisible.set(false)"
+></app-toast>

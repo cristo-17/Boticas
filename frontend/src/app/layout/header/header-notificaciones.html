@@ -73,6 +73,10 @@
         </div>
       }
 
+      @if (error()) {
+        <app-error-banner [mensaje]="error()" />
+      }
+
       <!-- Lista de notificaciones -->
       <div class="header-notif__list">
         @if (notificaciones().length === 0) {

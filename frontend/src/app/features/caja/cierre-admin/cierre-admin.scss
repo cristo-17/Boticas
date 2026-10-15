@@ -1,0 +1,99 @@
+// Layout local de la vista de cierre del ADMINISTRADOR (D-E2-1). Mismo esqueleto que cierre.scss.
+$cierre-admin-breakpoint: 899.98px;
+
+.cierre-admin__error {
+  display: block;
+  margin-bottom: var(--s-4);
+}
+
+.cierre-admin {
+  display: grid;
+  gap: var(--s-4);
+  align-items: start;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+}
+
+@media (max-width: $cierre-admin-breakpoint) {
+  .cierre-admin {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.cierre-admin__lista {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-2);
+  overflow: hidden;
+}
+
+.cierre-admin__head {
+  padding: var(--s-4) var(--s-5);
+  border-bottom: 1px solid var(--line);
+}
+
+.cierre-admin__titulo {
+  font-size: 16px;
+  font-weight: var(--fw-black);
+  margin: 0 0 4px;
+}
+
+.cierre-admin__caja {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  border-left: 4px solid transparent;
+  padding: var(--s-3) var(--s-5);
+  font-family: inherit;
+  cursor: pointer;
+}
+.cierre-admin__caja:hover {
+  background: var(--bg);
+}
+.cierre-admin__caja--activa {
+  border-left-color: var(--verde-500);
+  background: var(--verde-50);
+}
+
+.cierre-admin__caja-nombre {
+  font-size: 15px;
+  font-weight: var(--fw-black);
+  color: var(--ink-2);
+}
+
+.cierre-admin__vacio {
+  padding: var(--s-4) var(--s-5);
+  margin: 0;
+  color: var(--muted);
+}
+
+.cierre-admin__paginacion {
+  padding: var(--s-3) var(--s-5);
+}
+
+.cierre-admin__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.cierre-admin__contando {
+  margin: 0;
+  font-size: 14px;
+  color: var(--ink-2);
+}
+
+.cierre-admin__cambiar {
+  border: 0;
+  background: transparent;
+  color: var(--verde-700);
+  font-weight: var(--fw-bold);
+  font-family: inherit;
+  cursor: pointer;
+  padding: 0 0 0 var(--s-2);
+}

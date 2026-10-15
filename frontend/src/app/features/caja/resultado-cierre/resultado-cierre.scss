@@ -1,0 +1,96 @@
+// Tarjeta post-cierre (Tarea 9, conteo ciego), movida desde cierre.scss en T16:
+// la usan el cierre del TECNICO y el del ADMINISTRADOR.
+.resultado__descuadre {
+  margin-top: var(--s-4);
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: var(--r-md);
+  padding: var(--s-4);
+}
+.resultado__descuadre--ok {
+  border-color: var(--verde-100);
+  background: var(--verde-50);
+}
+.resultado__descuadre--warn {
+  border-color: var(--ambar-100);
+  background: var(--ambar-50);
+}
+.resultado__descuadre--danger {
+  border-color: var(--rojo-100);
+  background: var(--rojo-50);
+}
+
+.resultado__descuadre-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.resultado__descuadre-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--muted);
+}
+.resultado__descuadre--ok .resultado__descuadre-dot {
+  background: var(--verde-500);
+}
+.resultado__descuadre--warn .resultado__descuadre-dot {
+  background: var(--ambar-500);
+}
+.resultado__descuadre--danger .resultado__descuadre-dot {
+  background: var(--rojo-500);
+}
+
+.resultado__descuadre-titulo {
+  font-size: 15px;
+  font-weight: var(--fw-black);
+  color: var(--ink-2);
+}
+.resultado__descuadre--ok .resultado__descuadre-titulo {
+  color: var(--verde-700);
+}
+.resultado__descuadre--warn .resultado__descuadre-titulo {
+  color: var(--ambar-600);
+}
+.resultado__descuadre--danger .resultado__descuadre-titulo {
+  color: var(--rojo-600);
+}
+
+.resultado__descuadre-monto {
+  font-size: 34px;
+  font-weight: var(--fw-black);
+  letter-spacing: -0.02em;
+  margin-top: 6px;
+  color: var(--ink-2);
+}
+.resultado__descuadre--ok .resultado__descuadre-monto {
+  color: var(--verde-700);
+}
+.resultado__descuadre--warn .resultado__descuadre-monto {
+  color: var(--ambar-600);
+}
+.resultado__descuadre--danger .resultado__descuadre-monto {
+  color: var(--rojo-600);
+}
+
+.resultado__descuadre-nota {
+  font-size: 14px;
+  font-weight: var(--fw-medium);
+  color: var(--ink-2);
+  margin-top: 4px;
+}
+
+.resultado__detalle {
+  margin-top: var(--s-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-2);
+}
+.resultado__fila {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  font-weight: var(--fw-medium);
+  color: var(--ink-2);
+}
