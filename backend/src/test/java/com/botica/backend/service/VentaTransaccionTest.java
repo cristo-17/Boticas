@@ -17,6 +17,7 @@ import com.botica.backend.model.Lote;
 import com.botica.backend.model.PresentacionProducto;
 import com.botica.backend.model.Producto;
 import com.botica.backend.model.Venta;
+import com.botica.backend.util.FechaNegocio;
 import com.botica.backend.model.VentaDetalle;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -26,7 +27,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -47,6 +50,7 @@ class VentaTransaccionTest {
     private static final Long USUARIO_ID = 1L;
     private static final Long PRODUCTO_ID = 1L;
     private static final Long PRESENTACION_ID = 1L;
+    private static final LocalDate HOY = LocalDate.of(2026, 10, 30);
 
     @Mock
     private VentaDao ventaDao;
@@ -65,7 +69,8 @@ class VentaTransaccionTest {
     @BeforeEach
     void configurar() {
         config = new ConfigNegocioProperties(); // igv = 0.18 por defecto
-        transaccion = new VentaTransaccion(ventaDao, loteDao, productoDao, cajaDao, contexto, config);
+        Clock relojFijo = Clock.fixed(HOY.atTime(12, 0).atOffset(ZoneOffset.of("-05:00")).toInstant(), FechaNegocio.ZONA_LIMA);
+        transaccion = new VentaTransaccion(ventaDao, loteDao, productoDao, cajaDao, contexto, config, new FechaNegocio(relojFijo));
     }
 
     private NuevaVentaRequest pedido(int cantidad) {
@@ -140,7 +145,7 @@ class VentaTransaccionTest {
         when(productoDao.obtenerPorId(BOTICA_ID, PRODUCTO_ID)).thenReturn(Optional.of(productoDePrueba()));
         when(productoDao.obtenerPresentacion(BOTICA_ID, PRODUCTO_ID, PRESENTACION_ID))
                 .thenReturn(Optional.of(presentacionDePrueba(1, "0.50")));
-        when(loteDao.bloquearLotesFefo(BOTICA_ID, PRODUCTO_ID))
+        when(loteDao.bloquearLotesFefo(BOTICA_ID, PRODUCTO_ID, HOY))
                 .thenReturn(List.of(lote(10L, 3, "0.30", LocalDate.of(2027, 1, 1))));
 
         assertThatThrownBy(() -> transaccion.ejecutar(pedido(10))).isInstanceOf(StockInsuficienteException.class);
@@ -158,7 +163,7 @@ class VentaTransaccionTest {
         when(productoDao.obtenerPorId(BOTICA_ID, PRODUCTO_ID)).thenReturn(Optional.of(productoDePrueba()));
         when(productoDao.obtenerPresentacion(BOTICA_ID, PRODUCTO_ID, PRESENTACION_ID))
                 .thenReturn(Optional.of(presentacionDePrueba(1, "1.00")));
-        when(loteDao.bloquearLotesFefo(BOTICA_ID, PRODUCTO_ID))
+        when(loteDao.bloquearLotesFefo(BOTICA_ID, PRODUCTO_ID, HOY))
                 .thenReturn(List.of(lote(10L, 100, "0.50", LocalDate.of(2027, 1, 1))));
         when(ventaDao.insertarCabecera(any())).thenAnswer(inv -> {
             Venta v = inv.getArgument(0);
@@ -187,7 +192,7 @@ class VentaTransaccionTest {
         when(productoDao.obtenerPorId(BOTICA_ID, PRODUCTO_ID)).thenReturn(Optional.of(productoDePrueba()));
         when(productoDao.obtenerPresentacion(BOTICA_ID, PRODUCTO_ID, PRESENTACION_ID))
                 .thenReturn(Optional.of(presentacionDePrueba(10, "6.50"))); // blíster de 10, S/6.50 el blíster
-        when(loteDao.bloquearLotesFefo(BOTICA_ID, PRODUCTO_ID))
+        when(loteDao.bloquearLotesFefo(BOTICA_ID, PRODUCTO_ID, HOY))
                 .thenReturn(List.of(lote(10L, 100, "0.30", LocalDate.of(2027, 1, 1))));
         when(ventaDao.insertarCabecera(any())).thenAnswer(inv -> {
             Venta v = inv.getArgument(0);
@@ -216,7 +221,7 @@ class VentaTransaccionTest {
         when(productoDao.obtenerPresentacion(BOTICA_ID, PRODUCTO_ID, PRESENTACION_ID))
                 .thenReturn(Optional.of(presentacionDePrueba(1, "0.50")));
         // FEFO: lote 1 (vence antes, solo 6 de stock) se agota primero, lote 2 cubre el resto.
-        when(loteDao.bloquearLotesFefo(BOTICA_ID, PRODUCTO_ID)).thenReturn(List.of(
+        when(loteDao.bloquearLotesFefo(BOTICA_ID, PRODUCTO_ID, HOY)).thenReturn(List.of(
                 lote(1L, 6, "0.30", LocalDate.of(2026, 12, 1)),
                 lote(2L, 100, "0.40", LocalDate.of(2027, 6, 1))));
         when(ventaDao.insertarCabecera(any())).thenAnswer(inv -> {

@@ -146,12 +146,13 @@ public class LoteDaoJdbc implements LoteDao {
     }
 
     @Override
-    public List<Lote> bloquearLotesFefo(Long boticaId, Long productoId) {
+    public List<Lote> bloquearLotesFefo(Long boticaId, Long productoId, LocalDate hoy) {
         String sql = "SELECT * FROM lotes WHERE botica_id = :boticaId AND producto_id = :productoId " +
-                "AND stock > 0 ORDER BY fecha_vencimiento ASC, id ASC FOR UPDATE";
+                "AND stock > 0 AND fecha_vencimiento >= :hoy ORDER BY fecha_vencimiento ASC, id ASC FOR UPDATE";
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", boticaId)
-                .addValue("productoId", productoId);
+                .addValue("productoId", productoId)
+                .addValue("hoy", hoy);
         return jdbc.query(sql, params, loteRowMapper);
     }
 

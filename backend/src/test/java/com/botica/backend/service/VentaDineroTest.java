@@ -15,13 +15,16 @@ import com.botica.backend.model.PresentacionProducto;
 import com.botica.backend.model.Producto;
 import com.botica.backend.model.Venta;
 import com.botica.backend.model.VentaDetalle;
+import com.botica.backend.util.FechaNegocio;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Clock;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -180,6 +183,8 @@ class VentaDineroTest {
         CajaDao cajaDao = mock(CajaDao.class);
         ContextoOperacion contexto = mock(ContextoOperacion.class);
         ConfigNegocioProperties config = new ConfigNegocioProperties(); // igv = 0.18
+        LocalDate hoy = LocalDate.of(2026, 10, 30);
+        FechaNegocio fechaNegocio = new FechaNegocio(Clock.fixed(hoy.atTime(12, 0).atOffset(ZoneOffset.of("-05:00")).toInstant(), FechaNegocio.ZONA_LIMA));
 
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);
@@ -201,10 +206,10 @@ class VentaDineroTest {
                             .id(presentacionId).productoId(productoId).etiqueta("Presentación")
                             .factorConversion(item.factorConversion()).precio(item.precioPresentacion()).build()));
             // Stock amplio a propósito: este test mide dinero, no FEFO -- un solo lote sin partir la línea.
-            when(loteDao.bloquearLotesFefo(BOTICA_ID, productoId)).thenReturn(List.of(
+            when(loteDao.bloquearLotesFefo(BOTICA_ID, productoId, hoy)).thenReturn(List.of(
                     Lote.builder().id(loteId).productoId(productoId)
                             .stock(item.cantidad() * item.factorConversion() + 1000)
-                            .costoUnitario(new BigDecimal("0.01")).fechaVencimiento(LocalDate.now().plusYears(1)).build()));
+                            .costoUnitario(new BigDecimal("0.01")).fechaVencimiento(hoy.plusYears(1)).build()));
 
             pedidoItems.add(new ItemVentaRequest(productoId, presentacionId, item.cantidad(), "BUSQUEDA"));
         }
@@ -218,7 +223,7 @@ class VentaDineroTest {
         ArgumentCaptor<VentaDetalle> captor = ArgumentCaptor.forClass(VentaDetalle.class);
         when(ventaDao.insertarDetalle(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
 
-        VentaTransaccion transaccion = new VentaTransaccion(ventaDao, loteDao, productoDao, cajaDao, contexto, config);
+        VentaTransaccion transaccion = new VentaTransaccion(ventaDao, loteDao, productoDao, cajaDao, contexto, config, fechaNegocio);
         NuevaVentaRequest request = new NuevaVentaRequest(UUID.randomUUID(), pedidoItems, "efectivo");
         VentaResponse respuesta = transaccion.ejecutar(request);
         detallesCapturados.addAll(captor.getAllValues());

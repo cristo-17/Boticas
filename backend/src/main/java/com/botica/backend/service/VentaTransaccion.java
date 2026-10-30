@@ -23,6 +23,7 @@ import com.botica.backend.model.Venta;
 import com.botica.backend.model.VentaDetalle;
 import com.botica.backend.event.StockCriticoEvent;
 import com.botica.backend.util.Dinero;
+import com.botica.backend.util.FechaNegocio;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -59,16 +60,17 @@ class VentaTransaccion {
     private final CajaDao cajaDao;
     private final ContextoOperacion contexto;
     private final ConfigNegocioProperties config;
+    private final FechaNegocio fechaNegocio;
     private final ApplicationEventPublisher eventPublisher;
 
     VentaTransaccion(VentaDao ventaDao, LoteDao loteDao, ProductoDao productoDao, CajaDao cajaDao,
-                     ContextoOperacion contexto, ConfigNegocioProperties config) {
-        this(ventaDao, loteDao, productoDao, cajaDao, contexto, config, null);
+                     ContextoOperacion contexto, ConfigNegocioProperties config, FechaNegocio fechaNegocio) {
+        this(ventaDao, loteDao, productoDao, cajaDao, contexto, config, fechaNegocio, null);
     }
 
     @Autowired
     VentaTransaccion(VentaDao ventaDao, LoteDao loteDao, ProductoDao productoDao, CajaDao cajaDao,
-                     ContextoOperacion contexto, ConfigNegocioProperties config,
+                     ContextoOperacion contexto, ConfigNegocioProperties config, FechaNegocio fechaNegocio,
                      @Autowired(required = false) ApplicationEventPublisher eventPublisher) {
         this.ventaDao = ventaDao;
         this.loteDao = loteDao;
@@ -76,6 +78,7 @@ class VentaTransaccion {
         this.cajaDao = cajaDao;
         this.contexto = contexto;
         this.config = config;
+        this.fechaNegocio = fechaNegocio;
         this.eventPublisher = eventPublisher;
     }
 
@@ -114,8 +117,8 @@ class VentaTransaccion {
             BigDecimal precioUnitarioBase = Dinero.redondear(
                     presentacion.getPrecio().divide(BigDecimal.valueOf(factorConversion), ESCALA_INTERMEDIA, RoundingMode.HALF_UP));
 
-            // Paso 5: lock FEFO. Paso 4: consumir en ese orden, repartiendo si hace falta.
-            List<Lote> lotesBloqueados = loteDao.bloquearLotesFefo(boticaId, item.productoId());
+            // Paso 5: lock FEFO, sin lotes vencidos. Paso 4: consumir en ese orden, repartiendo si hace falta.
+            List<Lote> lotesBloqueados = loteDao.bloquearLotesFefo(boticaId, item.productoId(), fechaNegocio.hoy());
             int disponibleTotal = lotesBloqueados.stream().mapToInt(Lote::getStock).sum();
             if (disponibleTotal < cantidadBaseTotal) {
                 // Paso 6: rollback completo -- lanzar acá basta, @Transactional revierte todo lo ya insertado en este método.

@@ -35,12 +35,14 @@ public interface LoteDao {
     boolean existeProducto(Long boticaId, Long productoId);
 
     /**
-     * Lotes de un producto con stock > 0, orden FEFO, bloqueados con
-     * SELECT ... FOR UPDATE — para que dos ventas simultáneas no
-     * consuman el mismo stock (Tarea 11 Bloque B). Debe llamarse
-     * dentro de una transacción; el lock se libera al terminarla.
+     * Lotes de un producto con stock > 0 y no vencidos (fecha_vencimiento
+     * >= hoy: un lote que vence hoy todavía se vende), orden FEFO,
+     * bloqueados con SELECT ... FOR UPDATE — para que dos ventas
+     * simultáneas no consuman el mismo stock (Tarea 11 Bloque B). Debe
+     * llamarse dentro de una transacción; el lock se libera al terminarla.
+     * Un lote vencido nunca se dispensa (Tarea 0, entrega final).
      */
-    List<Lote> bloquearLotesFefo(Long boticaId, Long productoId);
+    List<Lote> bloquearLotesFefo(Long boticaId, Long productoId, LocalDate hoy);
 
     void descontarStock(Long loteId, int cantidad);
 }
