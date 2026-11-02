@@ -6,13 +6,16 @@ import com.botica.backend.dao.CajaDao;
 import com.botica.backend.dto.AbrirCajaRequest;
 import com.botica.backend.dto.CajaResponse;
 import com.botica.backend.dto.CerrarCajaRequest;
+import com.botica.backend.dto.RegistrarEgresoRequest;
 import com.botica.backend.dto.ResumenCierreResponse;
 import com.botica.backend.exception.CajaNoAbiertaException;
 import com.botica.backend.exception.CajaNoEncontradaException;
 import com.botica.backend.exception.CajaYaAbiertaException;
 import com.botica.backend.exception.MontoInvalidoException;
+import com.botica.backend.exception.MotivoInvalidoException;
 import com.botica.backend.exception.SinPermisoException;
 import com.botica.backend.model.CajaDiaria;
+import com.botica.backend.model.MovimientoCaja;
 import com.botica.backend.util.FechaNegocio;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -290,6 +293,60 @@ class CajaServiceTest {
         when(cajaDao.buscarPorId(BOTICA_ID, cerrada.getId())).thenReturn(Optional.of(cerrada));
 
         assertThatThrownBy(() -> service.cerrar(new CerrarCajaRequest(new BigDecimal("100.00"), null, cerrada.getId())))
+                .isInstanceOf(CajaNoAbiertaException.class);
+    }
+
+    @Test
+    void registrarEgreso_exito_guardaMotivoEnDescripcionDetalleEnNotaYMontoNegativo_sinConsultarSaldoDeCaja() {
+        CajaDiaria abierta = cajaAbierta();
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(contexto.usuarioId()).thenReturn(USUARIO_ID);
+        when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.of(abierta));
+        when(cajaDao.insertarMovimiento(any())).thenAnswer(inv -> {
+            MovimientoCaja m = inv.getArgument(0);
+            m.setId(55L);
+            return m;
+        });
+
+        // Incluso un egreso mayor al monto de apertura (500.00 > 100.00) se registra sin consultar el saldo:
+        // validar contra el efectivo revelaría el esperado y rompería el conteo ciego.
+        MovimientoCaja creado = service.registrarEgreso(new RegistrarEgresoRequest(
+                new BigDecimal("500.00"), "Insumos y limpieza", "Compra de lejía y bolsas", null));
+
+        assertThat(creado.getId()).isEqualTo(55L);
+        assertThat(creado.getTipo()).isEqualTo("egreso");
+        assertThat(creado.getDescripcion()).isEqualTo("Insumos y limpieza");
+        assertThat(creado.getNota()).isEqualTo("Compra de lejía y bolsas");
+        assertThat(creado.getMonto()).isEqualByComparingTo("-500.00");
+        assertThat(creado.isAfectaEfectivo()).isTrue();
+        assertThat(creado.getCreadoPor()).isEqualTo(USUARIO_ID);
+        verify(cajaDao, never()).sumarMovimientosEfectivo(any(), any());
+    }
+
+    @Test
+    void registrarEgreso_conMotivoFueraDeConfig_lanzaMotivoInvalido() {
+        assertThatThrownBy(() -> service.registrarEgreso(new RegistrarEgresoRequest(
+                new BigDecimal("15.00"), "Capricho", "Algo no listado", null)))
+                .isInstanceOf(MotivoInvalidoException.class);
+        verify(cajaDao, never()).insertarMovimiento(any());
+    }
+
+    @Test
+    void registrarEgreso_conMontoCeroONegativo_lanzaMontoInvalido() {
+        assertThatThrownBy(() -> service.registrarEgreso(new RegistrarEgresoRequest(
+                BigDecimal.ZERO, "Otro", "Ajuste", null)))
+                .isInstanceOf(MontoInvalidoException.class);
+        verify(cajaDao, never()).insertarMovimiento(any());
+    }
+
+    @Test
+    void registrarEgreso_sinCajaAbierta_lanzaCajaNoAbierta() {
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(contexto.usuarioId()).thenReturn(USUARIO_ID);
+        when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.registrarEgreso(new RegistrarEgresoRequest(
+                new BigDecimal("15.00"), "Servicios básicos", "Recibo de agua", null)))
                 .isInstanceOf(CajaNoAbiertaException.class);
     }
 

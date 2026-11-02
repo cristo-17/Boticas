@@ -89,4 +89,80 @@ describe('CierreComponent — conteo ciego del TECNICO (revisión 2026-10-14)', 
     expect(texto).toContain('8.88');
     expect(texto).toContain('Efectivo esperado');
   });
+
+  it('permite registrar un egreso de caja con confirmación (Tarea 18)', async () => {
+    const btnAbrir = [...el().querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Registrar gasto'),
+    )!;
+    btnAbrir.click();
+    await render();
+
+    const inputMonto = el().querySelector<HTMLInputElement>('#egreso-monto')!;
+    inputMonto.value = '15.50';
+    inputMonto.dispatchEvent(new Event('input'));
+    const selectMotivo = el().querySelector<HTMLSelectElement>('#egreso-motivo')!;
+    selectMotivo.value = 'Servicios básicos';
+    selectMotivo.dispatchEvent(new Event('change'));
+    const inputDesc = el().querySelector<HTMLInputElement>('#egreso-descripcion')!;
+    inputDesc.value = 'Recibo de agua';
+    inputDesc.dispatchEvent(new Event('input'));
+    await render();
+
+    const btnContinuar = [...el().querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Continuar'),
+    )!;
+    btnContinuar.click();
+    await render();
+
+    const btnConfirmar = [...el().querySelectorAll('button')].find((b) =>
+      b.textContent?.includes('Sí, registrar gasto'),
+    )!;
+    btnConfirmar.click();
+
+    const post = http.expectOne({ method: 'POST', url: `${BASE_URL}/egresos` });
+    expect(post.request.body).toEqual({
+      monto: 15.5,
+      motivo: 'Servicios básicos',
+      descripcion: 'Recibo de agua',
+      cajaId: undefined,
+    });
+    post.flush({
+      id: 7,
+      cajaId: 3,
+      tipo: 'egreso',
+      descripcion: 'Servicios básicos',
+      nota: 'Recibo de agua',
+      monto: -15.5,
+      afectaEfectivo: true,
+      creadoEn: '2026-10-14T16:00:00-05:00',
+    });
+
+    http
+      .expectOne(`${BASE_URL}/3/resumen-cierre`)
+      .flush({ totalVentasDigital: 4.44, cantidadVentas: 2, cantidadMovimientos: 4 });
+    http
+      .expectOne((r) => r.url === `${BASE_URL}/3/movimientos`)
+      .flush({
+        contenido: [
+          {
+            id: 7,
+            cajaId: 3,
+            tipo: 'egreso',
+            descripcion: 'Servicios básicos',
+            nota: 'Recibo de agua',
+            monto: -15.5,
+            afectaEfectivo: true,
+            creadoEn: '2026-10-14T16:00:00-05:00',
+          },
+        ],
+        pagina: 0,
+        tamano: 20,
+        totalElementos: 1,
+        totalPaginas: 1,
+      });
+    await render();
+
+    expect(el().textContent).toContain('Servicios básicos');
+    expect(el().textContent).toContain('Recibo de agua');
+  });
 });

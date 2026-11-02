@@ -56,6 +56,11 @@ export const routes: Routes = [
         canActivate: [rolGuard('ADMINISTRADOR')],
         loadComponent: () => import('./features/usuarios/usuarios').then((m) => m.UsuariosScreen),
       },
+      {
+        path: 'reportes',
+        canActivate: [rolGuard('ADMINISTRADOR')],
+        loadComponent: () => import('./features/reportes/reportes').then((m) => m.ReportesScreen),
+      },
     ],
   },
   { path: '**', redirectTo: 'alertas' },

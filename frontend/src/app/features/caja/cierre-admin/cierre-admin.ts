@@ -7,6 +7,7 @@ import { ErrorTraducido } from '../../../core/interceptors/error.interceptor';
 import { CajaDiaria } from '../../../core/models/caja.model';
 import { CajaService } from '../../../core/services/caja.service';
 import { ConteoCierre, ConteoCierreComponent } from '../conteo-cierre/conteo-cierre';
+import { EgresoCajaComponent } from '../egreso-caja/egreso-caja';
 import { ResultadoCierreComponent } from '../resultado-cierre/resultado-cierre';
 
 const TAMANO_PAGINA = 20;
@@ -18,7 +19,14 @@ const TAMANO_PAGINA = 20;
  */
 @Component({
   selector: 'app-cierre-admin',
-  imports: [ConteoCierreComponent, ErrorBannerComponent, PaginacionComponent, ResultadoCierreComponent, ToastComponent],
+  imports: [
+    ConteoCierreComponent,
+    EgresoCajaComponent,
+    ErrorBannerComponent,
+    PaginacionComponent,
+    ResultadoCierreComponent,
+    ToastComponent,
+  ],
   templateUrl: './cierre-admin.html',
   styleUrl: './cierre-admin.scss',
 })
@@ -55,6 +63,10 @@ export class CierreAdminComponent implements OnInit {
 
   volverALista(): void {
     this.seleccionada.set(null);
+  }
+
+  onGastoRegistrado(): void {
+    this.mostrarToast('success', 'Gasto registrado');
   }
 
   // POST /api/caja/cerrar con cajaId (solo ADMINISTRADOR cierra una caja ajena).

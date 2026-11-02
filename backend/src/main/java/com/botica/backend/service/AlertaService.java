@@ -54,8 +54,14 @@ public class AlertaService {
         LocalDate hoy = fechaNegocio.hoy();
         LocalDate ayer = hoy.minusDays(1);
 
-        BigDecimal ventasHoy = Dinero.redondear(alertaDao.totalVentas(boticaId, hoy));
-        BigDecimal ventasAyer = alertaDao.totalVentas(boticaId, ayer);
+        boolean esAdministrador = "ADMINISTRADOR".equals(contexto.rol());
+        BigDecimal ventasHoy = null;
+        Integer variacionPct = null;
+        if (esAdministrador) {
+            ventasHoy = Dinero.redondear(alertaDao.totalVentas(boticaId, hoy));
+            BigDecimal ventasAyer = alertaDao.totalVentas(boticaId, ayer);
+            variacionPct = calcularVariacionPct(ventasAyer, ventasHoy);
+        }
         long boletasHoy = alertaDao.contarVentas(boticaId, hoy);
         long productosPorVencer = alertaDao.contarProductosPorVencer(boticaId, hoy, config.getVencimientoAdvertenciaDias());
         long productosPorVencerCriticos = alertaDao.contarProductosPorVencer(boticaId, hoy, config.getVencimientoCriticoDias());
@@ -66,7 +72,7 @@ public class AlertaService {
         String cajaEstado = cajaPropia.isPresent() ? CajaDiaria.ABIERTA : CajaDiaria.CERRADA;
         OffsetDateTime cajaHoraApertura = cajaPropia.map(CajaDiaria::getHoraApertura).orElse(null);
 
-        return new ResumenDashboardResponse(ventasHoy, calcularVariacionPct(ventasAyer, ventasHoy), boletasHoy,
+        return new ResumenDashboardResponse(ventasHoy, variacionPct, boletasHoy,
                 productosPorVencer, productosPorVencerCriticos, stockCritico, stockAgotado, cajaEstado, cajaHoraApertura);
     }
 

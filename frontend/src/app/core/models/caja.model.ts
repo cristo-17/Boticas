@@ -52,3 +52,10 @@ export interface CerrarCajaRequest {
   /** D-E2-1: sin cajaId cierra la caja propia; con cajaId (solo ADMINISTRADOR) una caja abierta de su botica. */
   cajaId?: number;
 }
+
+export interface RegistrarEgresoRequest {
+  monto: number;
+  motivo: string;
+  descripcion: string;
+  cajaId?: number;
+}

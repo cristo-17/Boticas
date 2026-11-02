@@ -32,6 +32,14 @@ $cierre-breakpoint: 899.98px;
   border-bottom: 1px solid var(--line);
 }
 
+.cierre__movimientos-head-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
 .cierre__titulo {
   margin: 0;
   font-size: 19px;

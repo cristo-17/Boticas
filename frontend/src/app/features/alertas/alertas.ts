@@ -141,15 +141,26 @@ export class AlertasScreen implements OnInit, OnDestroy {
     const r = this.resumen();
     if (!r) return [];
     const criticoDias = this.config.config()?.vencimiento.criticoDias ?? 30;
-    const signoVariacion = r.ventasHoyVariacionPct >= 0 ? '+' : '';
+    const variacion = r.ventasHoyVariacionPct ?? 0;
+    const signoVariacion = variacion >= 0 ? '+' : '';
+    const tarjetaVentas: KpiVista =
+      r.ventasHoy !== null
+        ? {
+            label: 'Ventas del día',
+            valor: formatearMoneda(r.ventasHoy),
+            nota: `${signoVariacion}${variacion}% vs. ayer · ${r.boletasHoy} boletas`,
+            variant: 'default',
+            ruta: '/punto-venta',
+          }
+        : {
+            label: 'Boletas del día',
+            valor: String(r.boletasHoy),
+            nota: `${r.boletasHoy === 1 ? '1 venta registrada hoy' : `${r.boletasHoy} ventas registradas hoy`}`,
+            variant: 'default',
+            ruta: '/punto-venta',
+          };
     return [
-      {
-        label: 'Ventas del día',
-        valor: formatearMoneda(r.ventasHoy),
-        nota: `${signoVariacion}${r.ventasHoyVariacionPct}% vs. ayer · ${r.boletasHoy} boletas`,
-        variant: 'default',
-        ruta: '/punto-venta',
-      },
+      tarjetaVentas,
       {
         label: 'Productos por vencer',
         valor: String(r.productosPorVencer),
@@ -226,4 +237,3 @@ export class AlertasScreen implements OnInit, OnDestroy {
     this.irA(alerta.accionRuta, alerta.accionQueryParams);
   }
 }
-

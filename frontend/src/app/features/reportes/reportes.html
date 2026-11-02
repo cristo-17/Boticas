@@ -1,0 +1,179 @@
+<div class="reportes">
+  <header class="reportes__header">
+    <div>
+      <div class="reportes__eyebrow">
+        <app-badge variant="info">Reporte interno, sin valor tributario</app-badge>
+        <span class="field-hint">Montos con IGV incluido · Día calendario de Lima</span>
+      </div>
+      <h1 class="reportes__titulo">Reporte de resultados</h1>
+    </div>
+
+    <div class="reportes__acciones-header">
+      <app-button
+        variant="secondary"
+        [loading]="descargandoCsv()"
+        (clicked)="exportarCsv()"
+      >
+        <i class="bi bi-file-earmark-spreadsheet"></i> Exportar CSV
+      </app-button>
+    </div>
+  </header>
+
+  <app-error-banner [mensaje]="error()" />
+
+  <app-card class="reportes__filtros">
+    <form class="reportes__filtros-grid" (ngSubmit)="consultar()">
+      <div class="reportes__campo">
+        <label class="field-label" for="reporte-desde">Desde</label>
+        <input
+          id="reporte-desde"
+          type="date"
+          class="input num"
+          name="desde"
+          [ngModel]="desde()"
+          (ngModelChange)="desde.set($event)"
+        />
+      </div>
+
+      <div class="reportes__campo">
+        <label class="field-label" for="reporte-hasta">Hasta</label>
+        <input
+          id="reporte-hasta"
+          type="date"
+          class="input num"
+          name="hasta"
+          [ngModel]="hasta()"
+          (ngModelChange)="hasta.set($event)"
+        />
+      </div>
+
+      <div class="reportes__campo">
+        <span class="field-label">Agrupar por</span>
+        <div class="reportes__chips">
+          <app-chip
+            [activo]="agrupar() === 'dia'"
+            (clicked)="cambiarAgrupacion('dia')"
+          >
+            Día
+          </app-chip>
+          <app-chip
+            [activo]="agrupar() === 'mes'"
+            (clicked)="cambiarAgrupacion('mes')"
+          >
+            Mes
+          </app-chip>
+        </div>
+      </div>
+
+      <div class="reportes__campo reportes__campo--boton">
+        <app-button
+          type="submit"
+          variant="primary"
+          [loading]="cargando()"
+        >
+          <i class="bi bi-funnel"></i> Consultar
+        </app-button>
+      </div>
+    </form>
+  </app-card>
+
+  @if (cargando() && !reporte()) {
+    <div class="reportes__skeletons">
+      <app-skeleton variant="block" />
+      <app-skeleton [count]="4" />
+    </div>
+  } @else if (reporte(); as rep) {
+    <section class="reportes__kpis" aria-label="Totales del período">
+      <app-summary-card
+        label="Ventas del período"
+        [value]="formatearMoneda(rep.totales.ventas)"
+        [note]="'Costo de ventas: ' + formatearMoneda(rep.totales.costoVentas)"
+        variant="default"
+      />
+      <app-summary-card
+        label="Margen bruto"
+        [value]="formatearConSigno(rep.totales.margenBruto)"
+        note="Ventas menos costo congelado de lote"
+        variant="info"
+      />
+      <app-summary-card
+        label="Mermas y egresos"
+        [value]="formatearMoneda(rep.totales.mermasCosto)"
+        [note]="'Egresos de caja: ' + formatearMoneda(rep.totales.egresos)"
+        variant="warn"
+      />
+      <app-summary-card
+        label="Resultado neto"
+        [value]="formatearConSigno(rep.totales.resultado)"
+        [note]="rep.nota"
+        [variant]="rep.totales.resultado < 0 ? 'danger' : 'default'"
+      />
+    </section>
+
+    <app-card class="reportes__tabla-card">
+      @if (rep.filas.length === 0) {
+        <app-empty-state
+          title="Sin períodos en el rango"
+          text="Ajusta las fechas y vuelve a consultar."
+        />
+      } @else {
+        <div class="reportes__tabla-wrap">
+          <table class="reportes__tabla">
+            <thead>
+              <tr>
+                <th>Período</th>
+                <th class="reportes__col-num">Ventas</th>
+                <th class="reportes__col-num">Costo de ventas</th>
+                <th class="reportes__col-num">Margen bruto</th>
+                <th class="reportes__col-num">Mermas (costo)</th>
+                <th class="reportes__col-num">Egresos de caja</th>
+                <th class="reportes__col-num">Resultado neto</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (f of rep.filas; track f.periodo) {
+                <tr [class.reportes__fila--cero]="f.ventas === 0 && f.mermasCosto === 0 && f.egresos === 0">
+                  <td class="num reportes__periodo">{{ f.periodo }}</td>
+                  <td class="num reportes__col-num">{{ formatearMoneda(f.ventas) }}</td>
+                  <td class="num reportes__col-num">{{ formatearMoneda(f.costoVentas) }}</td>
+                  <td class="num reportes__col-num">{{ formatearConSigno(f.margenBruto) }}</td>
+                  <td class="num reportes__col-num">{{ formatearMoneda(f.mermasCosto) }}</td>
+                  <td class="num reportes__col-num">{{ formatearMoneda(f.egresos) }}</td>
+                  <td
+                    class="num reportes__col-num reportes__resultado"
+                    [class.reportes__resultado--negativo]="f.resultado < 0"
+                  >
+                    {{ formatearConSigno(f.resultado) }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="reportes__fila-total">
+                <td>TOTAL</td>
+                <td class="num reportes__col-num">{{ formatearMoneda(rep.totales.ventas) }}</td>
+                <td class="num reportes__col-num">{{ formatearMoneda(rep.totales.costoVentas) }}</td>
+                <td class="num reportes__col-num">{{ formatearConSigno(rep.totales.margenBruto) }}</td>
+                <td class="num reportes__col-num">{{ formatearMoneda(rep.totales.mermasCosto) }}</td>
+                <td class="num reportes__col-num">{{ formatearMoneda(rep.totales.egresos) }}</td>
+                <td
+                  class="num reportes__col-num reportes__resultado"
+                  [class.reportes__resultado--negativo]="rep.totales.resultado < 0"
+                >
+                  {{ formatearConSigno(rep.totales.resultado) }}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      }
+    </app-card>
+  }
+</div>
+
+<app-toast
+  [visible]="toastVisible()"
+  [variant]="toastVariant()"
+  [message]="toastMensaje()"
+  (closed)="toastVisible.set(false)"
+></app-toast>

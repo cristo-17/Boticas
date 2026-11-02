@@ -7,6 +7,7 @@ import {
   CajaDiaria,
   CerrarCajaRequest,
   MovimientoCaja,
+  RegistrarEgresoRequest,
   ResumenCierre,
 } from '../models/caja.model';
 import { PaginaResponse } from '../models/pagina.model';
@@ -113,6 +114,16 @@ export class CajaService {
     return this.http.get<PaginaResponse<CajaDiaria>>(`${BASE_URL}/abiertas`, { params }).pipe(
       tap((data) => this._abiertas.set(data)),
       catchError((err) => this.manejarError(err, 'No se pudieron cargar las cajas abiertas.')),
+      finalize(() => this._cargando.set(false)),
+    );
+  }
+
+  // POST /api/caja/egresos (Tarea 18, Bloque A)
+  registrarEgreso(request: RegistrarEgresoRequest): Observable<MovimientoCaja> {
+    this._cargando.set(true);
+    this._error.set(null);
+    return this.http.post<MovimientoCaja>(`${BASE_URL}/egresos`, request).pipe(
+      catchError((err) => this.manejarError(err, 'No se pudo registrar el gasto de caja.')),
       finalize(() => this._cargando.set(false)),
     );
   }

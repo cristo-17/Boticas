@@ -4,6 +4,7 @@ import com.botica.backend.dto.AbrirCajaRequest;
 import com.botica.backend.dto.CajaResponse;
 import com.botica.backend.dto.CerrarCajaRequest;
 import com.botica.backend.dto.PaginaResponse;
+import com.botica.backend.dto.RegistrarEgresoRequest;
 import com.botica.backend.dto.ResumenCierreResponse;
 import com.botica.backend.model.MovimientoCaja;
 import com.botica.backend.service.CajaService;
@@ -57,6 +58,11 @@ public class CajaController {
     @PostMapping("/cerrar")
     public ResponseEntity<CajaResponse> cerrar(@Valid @RequestBody CerrarCajaRequest request) {
         return ResponseEntity.ok(cajaService.cerrar(request));
+    }
+
+    @PostMapping("/egresos")
+    public ResponseEntity<MovimientoCaja> registrarEgreso(@Valid @RequestBody RegistrarEgresoRequest request) {
+        return ResponseEntity.ok(cajaService.registrarEgreso(request));
     }
 
     @GetMapping("/{id}/movimientos")

@@ -392,6 +392,7 @@
                   "  pm.expect(c.umbralStockBajo).to.be.a(\"number\");",
                   "  pm.expect(c.motivosMerma).to.include(\"Rotura\");",
                   "  pm.expect(c.motivosQueRequierenObservacion).to.include(\"Otro\");",
+                  "  pm.expect(c.motivosEgreso).to.include(\"Servicios básicos\");",
                   "  pm.expect(c.vencimiento).to.include.keys(\"criticoDias\", \"advertenciaDias\");",
                   "});",
                   "// R25: el commit que sirve el backend (\"local\" fuera de Render).",
@@ -2173,9 +2174,42 @@
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
                   "const d = pm.response.json();",
-                  "pm.test(\"números crudos, sin montos esperados de caja\", () => {",
+                  "pm.test(\"números crudos, sin montos esperados de caja y sin ventasHoy para TECNICO (Tarea 18)\", () => {",
                   "  pm.expect(d).to.include.keys(\"ventasHoy\", \"boletasHoy\", \"stockCritico\", \"stockAgotado\", \"cajaEstado\");",
+                  "  pm.expect(d.ventasHoy).to.eql(null);",
+                  "  pm.expect(d.ventasHoyVariacionPct).to.eql(null);",
+                  "  pm.expect(d.boletasHoy).to.be.a(\"number\");",
                   "  pm.expect(d).to.not.have.property(\"montoEsperado\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumen del dashboard (ADMINISTRADOR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/dashboard/resumen"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"ADMINISTRADOR sí ve ventasHoy y ventasHoyVariacionPct\", () => {",
+                  "  pm.expect(d.ventasHoy).to.be.a(\"number\");",
+                  "  pm.expect(d.ventasHoyVariacionPct).to.be.a(\"number\");",
+                  "  pm.expect(d.boletasHoy).to.be.a(\"number\");",
                   "});"
                 ]
               }
@@ -4152,6 +4186,414 @@
       ]
     },
     {
+      "name": "Reportes y Egresos (Tarea 18)",
+      "description": "Egresos de caja (POST /api/caja/egresos) y reporte de resultados + exportación CSV UTF-8 con BOM (GET /api/reportes/resultados, solo ADMINISTRADOR, D-E2-3).",
+      "item": [
+        {
+          "name": "Abrir caja del ADMINISTRADOR para pruebas de egreso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/abrir",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"turno\": \"Tarde\",\n  \"montoInicial\": 100.00\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"cajaAdminId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar egreso de caja",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/egresos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 12.50,\n  \"motivo\": \"Servicios básicos\",\n  \"descripcion\": \"Recibo de luz Postman\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const m = pm.response.json();",
+                  "pm.test(\"guarda motivo en descripcion, detalle en nota y monto negativo\", () => {",
+                  "  pm.expect(m.tipo).to.eql(\"egreso\");",
+                  "  pm.expect(m.descripcion).to.eql(\"Servicios básicos\");",
+                  "  pm.expect(m.nota).to.eql(\"Recibo de luz Postman\");",
+                  "  pm.expect(m.monto).to.eql(-12.5);",
+                  "  pm.expect(m.afectaEfectivo).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar egreso con motivo fuera de la lista → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/egresos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 5.00,\n  \"motivo\": \"Capricho\",\n  \"descripcion\": \"No válido\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = MOTIVO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"MOTIVO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar egreso con monto 0 → 400",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/egresos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 0,\n  \"motivo\": \"Otro\",\n  \"descripcion\": \"Detalle\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FORMATO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FORMATO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cerrar caja del ADMINISTRADOR descontando el egreso",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/cerrar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoContado\": 87.50,\n  \"observaciones\": \"Cierre de prueba egreso Postman\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json();",
+                  "pm.test(\"el egreso restó del esperado (100 - 12.50 = 87.50)\", () => {",
+                  "  pm.expect(c.abierta).to.eql(false);",
+                  "  pm.expect(c.montoEsperado).to.eql(87.5);",
+                  "  pm.expect(c.diferencia).to.eql(0);",
+                  "  pm.expect(c.semaforoDescuadre).to.eql(\"EXACTO\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar egreso sin caja abierta → 409",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/egresos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"monto\": 5.00,\n  \"motivo\": \"Servicios básicos\",\n  \"descripcion\": \"Sin caja\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error = CAJA_NO_ABIERTA\", () => pm.expect(pm.response.json().error).to.eql(\"CAJA_NO_ABIERTA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reporte de resultados por día (ADMINISTRADOR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/reportes/resultados?desde=2026-01-01&hasta=2026-01-03&agrupar=dia"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"incluye todos los días del rango, nota interna sin valor tributario y totales\", () => {",
+                  "  pm.expect(r.agrupar).to.eql(\"dia\");",
+                  "  pm.expect(r.filas.length).to.eql(3);",
+                  "  pm.expect(r.nota).to.include(\"Reporte interno, sin valor tributario\");",
+                  "  pm.expect(r.nota.toLowerCase()).to.not.include(\"factura\");",
+                  "  pm.expect(r.totales).to.include.keys(\"ventas\", \"costoVentas\", \"margenBruto\", \"mermasCosto\", \"egresos\", \"resultado\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reporte de resultados por mes (ADMINISTRADOR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/reportes/resultados?desde=2026-01-01&hasta=2026-03-31&agrupar=mes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"agrupa por mes YYYY-MM\", () => {",
+                  "  pm.expect(r.agrupar).to.eql(\"mes\");",
+                  "  pm.expect(r.filas.map((f) => f.periodo)).to.eql([\"2026-01\", \"2026-02\", \"2026-03\"]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Exportar CSV en UTF-8 con BOM (ADMINISTRADOR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/reportes/resultados/csv?desde=2026-01-01&hasta=2026-01-03&agrupar=dia"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Content-Type text/csv y cabecera con tildes y fila TOTAL\", () => {",
+                  "  pm.expect(pm.response.headers.get(\"Content-Type\")).to.include(\"text/csv\");",
+                  "  const txt = pm.response.text();",
+                  "  pm.expect(txt).to.include(\"Período,Ventas (S/),Costo de ventas (S/),Margen bruto (S/),Mermas a costo (S/),Egresos de caja (S/),Resultado neto (S/)\");",
+                  "  pm.expect(txt).to.include(\"TOTAL,\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reporte con desde > hasta → 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/reportes/resultados?desde=2026-05-10&hasta=2026-05-01"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = RANGO_FECHAS_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"RANGO_FECHAS_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reporte con rango mayor a 1 año → 400",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/reportes/resultados?desde=2025-01-01&hasta=2026-01-02"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = RANGO_FECHAS_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"RANGO_FECHAS_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO consulta reporte de resultados → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/reportes/resultados?desde=2026-01-01&hasta=2026-01-03"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO exporta CSV de resultados → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/reportes/resultados/csv?desde=2026-01-01&hasta=2026-01-03"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Solo lectura",
       "description": "No escribe nada (login no modifica datos). Es la ÚNICA carpeta que se corre contra producción, y solo con usuarios demo (R23): newman run ... --folder \"Solo lectura\".",
       "item": [
@@ -4475,9 +4917,42 @@
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
                   "const d = pm.response.json();",
-                  "pm.test(\"números crudos, sin montos esperados de caja\", () => {",
+                  "pm.test(\"números crudos, sin montos esperados de caja y sin ventasHoy para TECNICO (Tarea 18)\", () => {",
                   "  pm.expect(d).to.include.keys(\"ventasHoy\", \"boletasHoy\", \"stockCritico\", \"stockAgotado\", \"cajaEstado\");",
+                  "  pm.expect(d.ventasHoy).to.eql(null);",
+                  "  pm.expect(d.ventasHoyVariacionPct).to.eql(null);",
+                  "  pm.expect(d.boletasHoy).to.be.a(\"number\");",
                   "  pm.expect(d).to.not.have.property(\"montoEsperado\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumen del dashboard (ADMINISTRADOR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/dashboard/resumen"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"ADMINISTRADOR sí ve ventasHoy y ventasHoyVariacionPct\", () => {",
+                  "  pm.expect(d.ventasHoy).to.be.a(\"number\");",
+                  "  pm.expect(d.ventasHoyVariacionPct).to.be.a(\"number\");",
+                  "  pm.expect(d.boletasHoy).to.be.a(\"number\");",
                   "});"
                 ]
               }

@@ -6,10 +6,13 @@ import java.time.OffsetDateTime;
 /**
  * Forma de docs/API-CONTRATO.md: números crudos para que el frontend
  * formatee "+12% vs. ayer · 64 boletas" según corresponda.
+ * Tarea 18: ventasHoy y ventasHoyVariacionPct van en null para TECNICO
+ * (con un solo cajero, el total vendido del día es casi el efectivo esperado
+ * y rompería el conteo ciego, igual que "Total cobrado" en historial de ventas).
  */
 public record ResumenDashboardResponse(
         BigDecimal ventasHoy,
-        int ventasHoyVariacionPct,
+        Integer ventasHoyVariacionPct,
         long boletasHoy,
         long productosPorVencer,
         long productosPorVencerCriticos,

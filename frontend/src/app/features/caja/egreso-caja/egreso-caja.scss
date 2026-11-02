@@ -1,0 +1,47 @@
+.egreso {
+  display: block;
+  margin-bottom: 1rem;
+}
+
+.egreso__head {
+  margin-bottom: 0.75rem;
+}
+
+.egreso__titulo {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 0.15rem;
+}
+
+.egreso__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.egreso__full {
+  grid-column: 1 / -1;
+}
+
+.egreso__label {
+  display: block;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  margin-bottom: 0.25rem;
+}
+
+.egreso__input {
+  width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--bs-border-color, #d0d5dd);
+  border-radius: 0.5rem;
+  background: var(--bs-surface, #fff);
+  font-size: 0.9375rem;
+}
+
+.egreso__acciones {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}

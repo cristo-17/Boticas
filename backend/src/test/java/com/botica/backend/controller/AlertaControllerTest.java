@@ -56,6 +56,19 @@ class AlertaControllerTest {
     }
 
     @Test
+    void resumen_paraTecnico_devuelveVentasHoyYVariacionEnNull() throws Exception {
+        when(alertaService.resumen()).thenReturn(new ResumenDashboardResponse(
+                null, null, 64L, 14L, 5L, 6L, 2L,
+                CajaDiaria.ABIERTA, OffsetDateTime.parse("2026-09-08T08:02:00-05:00")));
+
+        mockMvc.perform(get("/api/dashboard/resumen"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ventasHoy").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.ventasHoyVariacionPct").value(org.hamcrest.Matchers.nullValue()))
+                .andExpect(jsonPath("$.boletasHoy").value(64));
+    }
+
+    @Test
     void listar_devuelvePaginaResponseDelService() throws Exception {
         AlertaResponse alerta = new AlertaResponse("venc-6", "urgente", "Omeprazol 20 mg · lote L-2311D vencido",
                 "7 unidades vencieron el 25/08 en B-2. Retíralas y regístralas como merma.", "S/ 80.50",

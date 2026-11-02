@@ -187,9 +187,10 @@ public class CajaDaoJdbc implements CajaDao {
     }
 
     @Override
-    public void insertarMovimiento(MovimientoCaja movimiento) {
-        String sql = "INSERT INTO movimientos_caja (botica_id, caja_id, tipo, descripcion, nota, monto, afecta_efectivo, creado_por) " +
-                "VALUES (:boticaId, :cajaId, :tipo, :descripcion, :nota, :monto, :afectaEfectivo, :creadoPor)";
+    public MovimientoCaja insertarMovimiento(MovimientoCaja movimiento) {
+        String sql = "INSERT INTO movimientos_caja (botica_id, caja_id, tipo, descripcion, nota, monto, afecta_efectivo, creado_en, creado_por) " +
+                "VALUES (:boticaId, :cajaId, :tipo, :descripcion, :nota, :monto, :afectaEfectivo, COALESCE(:creadoEn, now()), :creadoPor) " +
+                "RETURNING *";
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", movimiento.getBoticaId())
                 .addValue("cajaId", movimiento.getCajaId())
@@ -198,7 +199,8 @@ public class CajaDaoJdbc implements CajaDao {
                 .addValue("nota", movimiento.getNota())
                 .addValue("monto", movimiento.getMonto())
                 .addValue("afectaEfectivo", movimiento.isAfectaEfectivo())
+                .addValue("creadoEn", movimiento.getCreadoEn())
                 .addValue("creadoPor", movimiento.getCreadoPor());
-        jdbc.update(sql, params);
+        return jdbc.queryForObject(sql, params, movimientoRowMapper);
     }
 }

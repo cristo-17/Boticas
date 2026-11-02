@@ -2,16 +2,18 @@ import { MAX_ACCESOS_BARRA, NAV_ITEMS, navItemsDe, repartirBarraMovil } from './
 
 /** R17: una pantalla de un solo rol no aparece en el menú del otro. */
 describe('navItemsDe', () => {
-  it('el ADMINISTRADOR ve Catálogo y Usuarios', () => {
+  it('el ADMINISTRADOR ve Catálogo, Usuarios y Resultados', () => {
     const rutas = navItemsDe('ADMINISTRADOR').map((i) => i.path);
     expect(rutas).toContain('/catalogo');
     expect(rutas).toContain('/usuarios');
+    expect(rutas).toContain('/reportes');
   });
 
-  it('el TECNICO no ve Catálogo ni Usuarios, pero sí el resto', () => {
+  it('el TECNICO no ve Catálogo, Usuarios ni Resultados, pero sí el resto', () => {
     const rutas = navItemsDe('TECNICO').map((i) => i.path);
     expect(rutas).not.toContain('/catalogo');
     expect(rutas).not.toContain('/usuarios');
+    expect(rutas).not.toContain('/reportes');
     expect(rutas).toContain('/punto-venta');
     expect(rutas).toHaveLength(6);
   });

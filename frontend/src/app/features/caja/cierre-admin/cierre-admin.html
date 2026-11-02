@@ -46,6 +46,7 @@
         Contando la caja de <strong>{{ c.usuarioNombre }}</strong> · turno {{ c.turno }}
         <button type="button" class="cierre-admin__cambiar" (click)="volverALista()">Cambiar</button>
       </p>
+      <app-egreso-caja [cajaId]="c.id" (registrado)="onGastoRegistrado()" />
       <app-conteo-cierre [cerrando]="cargando()" (confirmado)="cerrar($event)" />
     } @else if (mostrarResultado()) {
       <app-resultado-cierre [caja]="ultimoCierre()" />

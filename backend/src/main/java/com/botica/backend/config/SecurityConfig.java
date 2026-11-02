@@ -79,6 +79,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PUT, "/api/productos/*").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/productos/*/estado").hasRole("ADMINISTRADOR")
                         .requestMatchers("/api/usuarios", "/api/usuarios/**").hasRole("ADMINISTRADOR")
+                        // Tarea 18 (D-E2-3): el reporte de resultados y su exportación CSV son exclusivos de ADMINISTRADOR
+                        .requestMatchers("/api/reportes", "/api/reportes/**").hasRole("ADMINISTRADOR")
                         .anyRequest().authenticated())
                 .exceptionHandling(eh -> eh
                         .authenticationEntryPoint(authenticationEntryPoint)

@@ -21,8 +21,9 @@ export interface Alerta {
  * autenticado, no un agregado de la botica.
  */
 export interface ResumenDashboard {
-  ventasHoy: number;
-  ventasHoyVariacionPct: number;
+  /** null para TECNICO (Tarea 18): mostrar el monto total vendido del día rompería el conteo ciego con un solo cajero. */
+  ventasHoy: number | null;
+  ventasHoyVariacionPct: number | null;
   boletasHoy: number;
   productosPorVencer: number;
   productosPorVencerCriticos: number;

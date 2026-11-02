@@ -15,6 +15,8 @@ public class ConfigService {
             List.of("Vencimiento", "Rotura", "Deterioro", "Robo o pérdida", "Otro");
     private static final List<String> MOTIVOS_QUE_REQUIEREN_OBSERVACION =
             List.of("Robo o pérdida", "Otro");
+    public static final List<String> MOTIVOS_EGRESO =
+            List.of("Pago a proveedor", "Servicios básicos", "Insumos y limpieza", "Movilidad y encomiendas", "Otro");
 
     private final ConfigNegocioProperties propiedades;
     private final String version;
@@ -31,6 +33,7 @@ public class ConfigService {
                 propiedades.getDescuadreLeve(),
                 MOTIVOS_MERMA,
                 MOTIVOS_QUE_REQUIEREN_OBSERVACION,
+                MOTIVOS_EGRESO,
                 new VencimientoConfig(propiedades.getVencimientoCriticoDias(), propiedades.getVencimientoAdvertenciaDias()),
                 version
         );

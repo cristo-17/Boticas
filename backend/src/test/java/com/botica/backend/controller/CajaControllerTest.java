@@ -127,6 +127,38 @@ class CajaControllerTest {
                 .andExpect(jsonPath("$.semaforoDescuadre").doesNotExist());
     }
 
+    @Test
+    void registrarEgreso_exito_devuelve200ConElMovimientoCreado() throws Exception {
+        com.botica.backend.model.MovimientoCaja mov = com.botica.backend.model.MovimientoCaja.builder()
+                .id(77L).boticaId(1L).cajaId(1L).tipo("egreso")
+                .descripcion("Insumos y limpieza").nota("Compra de bolsas")
+                .monto(new BigDecimal("-15.00")).afectaEfectivo(true)
+                .creadoEn(OffsetDateTime.now()).creadoPor(1L).build();
+        when(cajaService.registrarEgreso(any())).thenReturn(mov);
+
+        mockMvc.perform(post("/api/caja/egresos")
+                        .contentType("application/json")
+                        .content("""
+                                {"monto": 15.00, "motivo": "Insumos y limpieza", "descripcion": "Compra de bolsas"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.tipo").value("egreso"))
+                .andExpect(jsonPath("$.descripcion").value("Insumos y limpieza"))
+                .andExpect(jsonPath("$.nota").value("Compra de bolsas"))
+                .andExpect(jsonPath("$.monto").value(-15.00));
+    }
+
+    @Test
+    void registrarEgreso_sinDescripcionOMontoCero_devuelve400FormatoInvalido() throws Exception {
+        mockMvc.perform(post("/api/caja/egresos")
+                        .contentType("application/json")
+                        .content("""
+                                {"monto": 0, "motivo": "Insumos y limpieza", "descripcion": ""}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
+    }
+
     private CajaResponse cajaResponseAbierta() {
         return new CajaResponse(
                 1L, LocalDate.now(), 1L, "Rosa Quispe", "Tarde",

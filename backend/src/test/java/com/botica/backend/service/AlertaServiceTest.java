@@ -54,6 +54,7 @@ class AlertaServiceTest {
     @Test
     void resumen_conCajaAbiertaDelUsuario_reportaCajaEstadoAbierta() {
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);
+        when(contexto.rol()).thenReturn("ADMINISTRADOR");
         when(alertaDao.totalVentas(BOTICA_ID, HOY)).thenReturn(new BigDecimal("2964.50"));
         when(alertaDao.totalVentas(BOTICA_ID, HOY.minusDays(1))).thenReturn(new BigDecimal("2647.77"));
         when(alertaDao.contarVentas(BOTICA_ID, HOY)).thenReturn(64L);
@@ -73,12 +74,14 @@ class AlertaServiceTest {
         assertThat(resumen.productosPorVencerCriticos()).isEqualTo(5L);
         assertThat(resumen.stockCritico()).isEqualTo(6L);
         assertThat(resumen.stockAgotado()).isEqualTo(2L);
+        assertThat(resumen.ventasHoy()).isEqualByComparingTo("2964.50");
         assertThat(resumen.ventasHoyVariacionPct()).isEqualTo(12); // (2964.50-2647.77)/2647.77 ~ 11.96% -> 12
     }
 
     @Test
     void resumen_sinCajaAbiertaDelUsuario_reportaCajaEstadoCerrada() {
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);
+        when(contexto.rol()).thenReturn("ADMINISTRADOR");
         when(alertaDao.totalVentas(BOTICA_ID, HOY)).thenReturn(BigDecimal.ZERO);
         when(alertaDao.totalVentas(BOTICA_ID, HOY.minusDays(1))).thenReturn(BigDecimal.ZERO);
         when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.empty());
@@ -88,6 +91,20 @@ class AlertaServiceTest {
         assertThat(resumen.cajaEstado()).isEqualTo("CERRADA");
         assertThat(resumen.cajaHoraApertura()).isNull();
         assertThat(resumen.ventasHoyVariacionPct()).isEqualTo(0); // ayer=0 -> sin división por cero
+    }
+
+    @Test
+    void resumen_paraTecnico_ocultaVentasHoyYVariacion_peroConservaBoletasHoy() {
+        when(contexto.usuarioId()).thenReturn(USUARIO_ID);
+        when(contexto.rol()).thenReturn("TECNICO");
+        when(alertaDao.contarVentas(BOTICA_ID, HOY)).thenReturn(19L);
+        when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.empty());
+
+        ResumenDashboardResponse resumen = service.resumen();
+
+        assertThat(resumen.ventasHoy()).isNull();
+        assertThat(resumen.ventasHoyVariacionPct()).isNull();
+        assertThat(resumen.boletasHoy()).isEqualTo(19L);
     }
 
     @Test

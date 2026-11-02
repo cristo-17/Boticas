@@ -7,11 +7,13 @@ import com.botica.backend.dto.AbrirCajaRequest;
 import com.botica.backend.dto.CajaResponse;
 import com.botica.backend.dto.CerrarCajaRequest;
 import com.botica.backend.dto.PaginaResponse;
+import com.botica.backend.dto.RegistrarEgresoRequest;
 import com.botica.backend.dto.ResumenCierreResponse;
 import com.botica.backend.exception.CajaNoAbiertaException;
 import com.botica.backend.exception.CajaNoEncontradaException;
 import com.botica.backend.exception.CajaYaAbiertaException;
 import com.botica.backend.exception.MontoInvalidoException;
+import com.botica.backend.exception.MotivoInvalidoException;
 import com.botica.backend.exception.SinPermisoException;
 import com.botica.backend.event.DescuadreGraveEvent;
 import com.botica.backend.model.CajaDiaria;
@@ -170,6 +172,42 @@ public class CajaService {
         Long boticaId = contexto.boticaId();
         cajaDao.buscarPorId(boticaId, id).orElseThrow(CajaNoEncontradaException::new);
         return cajaDao.listarMovimientosPaginado(boticaId, id, pagina, tamano, orden);
+    }
+
+    /**
+     * Tarea 18, Bloque A: registra un egreso de caja en movimientos_caja con tipo 'egreso'
+     * y monto negativo (afecta_efectivo = true).
+     * - motivo se guarda en movimientos_caja.descripcion; descripcion en movimientos_caja.nota.
+     * - NUNCA se valida contra el efectivo disponible en la caja: decir "supera el efectivo"
+     *   permitiría deducir el esperado probando montos y rompería el conteo ciego.
+     */
+    @Transactional
+    public MovimientoCaja registrarEgreso(RegistrarEgresoRequest request) {
+        if (request.monto() == null || request.monto().compareTo(BigDecimal.ZERO) <= 0) {
+            throw new MontoInvalidoException();
+        }
+        if (request.motivo() == null || !ConfigService.MOTIVOS_EGRESO.contains(request.motivo())) {
+            throw new MotivoInvalidoException(request.motivo());
+        }
+
+        Long boticaId = contexto.boticaId();
+        Long usuarioId = contexto.usuarioId();
+        CajaDiaria caja = request.cajaId() == null
+                ? cajaDao.buscarAbiertaDelUsuario(boticaId, usuarioId).orElseThrow(CajaNoAbiertaException::new)
+                : cajaAjenaACerrar(boticaId, request.cajaId());
+
+        BigDecimal montoNegativo = Dinero.redondear(request.monto()).negate();
+        MovimientoCaja movimiento = MovimientoCaja.builder()
+                .boticaId(boticaId)
+                .cajaId(caja.getId())
+                .tipo("egreso")
+                .descripcion(request.motivo())
+                .nota(request.descripcion() != null ? request.descripcion().trim() : null)
+                .monto(montoNegativo)
+                .afectaEfectivo(true)
+                .creadoPor(usuarioId)
+                .build();
+        return cajaDao.insertarMovimiento(movimiento);
     }
 
     private void validarMontoNoNegativo(BigDecimal monto) {

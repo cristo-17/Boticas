@@ -1,0 +1,81 @@
+@if (!formularioAbierto()) {
+  <app-button variant="secondary" size="default" (clicked)="abrirFormulario()">
+    Registrar gasto
+  </app-button>
+} @else {
+  <app-card class="egreso">
+    <div class="egreso__head">
+      <div>
+        <h3 class="egreso__titulo">Registrar gasto de caja</h3>
+        <p class="field-hint">Se descuenta del efectivo esperado al cerrar la caja.</p>
+      </div>
+    </div>
+
+    <div class="egreso__grid">
+      <div>
+        <label for="egreso-monto" class="egreso__label">Monto (S/)</label>
+        <input
+          id="egreso-monto"
+          type="text"
+          inputmode="decimal"
+          class="num egreso__input"
+          [value]="montoTexto()"
+          (input)="montoTexto.set($any($event.target).value)"
+          placeholder="0.00"
+        />
+      </div>
+
+      <div>
+        <label for="egreso-motivo" class="egreso__label">Motivo</label>
+        <select
+          id="egreso-motivo"
+          class="egreso__input"
+          [value]="motivo()"
+          (change)="motivo.set($any($event.target).value)"
+        >
+          @for (m of motivosEgreso(); track m) {
+            <option [value]="m">{{ m }}</option>
+          }
+        </select>
+      </div>
+
+      <div class="egreso__full">
+        <label for="egreso-descripcion" class="egreso__label">Descripción</label>
+        <input
+          id="egreso-descripcion"
+          type="text"
+          maxlength="250"
+          class="egreso__input"
+          [value]="descripcion()"
+          (input)="descripcion.set($any($event.target).value)"
+          placeholder="Ej.: Compra de bolsas y útiles de limpieza"
+        />
+      </div>
+    </div>
+
+    <div class="egreso__acciones">
+      <app-button variant="ghost" size="default" (clicked)="cerrarFormulario()">
+        Cancelar
+      </app-button>
+      <app-button
+        variant="primary"
+        size="default"
+        [disabled]="!formularioValido()"
+        (clicked)="pedirConfirmacion()"
+      >
+        Continuar
+      </app-button>
+    </div>
+  </app-card>
+}
+
+<app-modal
+  [open]="confirmando()"
+  [title]="tituloConfirmacion()"
+  [message]="mensajeConfirmacion()"
+  confirmLabel="Sí, registrar gasto"
+  confirmVariant="primary"
+  [confirmando]="guardando()"
+  (cancelled)="confirmando.set(false)"
+  (confirmed)="confirmarEgreso()"
+></app-modal>

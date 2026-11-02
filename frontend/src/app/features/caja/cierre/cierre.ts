@@ -9,6 +9,7 @@ import { CajaService } from '../../../core/services/caja.service';
 import { ConfigService } from '../../../core/services/config.service';
 import { formatearMoneda } from '../../../core/utils/moneda.util';
 import { ConteoCierre, ConteoCierreComponent } from '../conteo-cierre/conteo-cierre';
+import { EgresoCajaComponent } from '../egreso-caja/egreso-caja';
 import {
   ResultadoCierreComponent,
   UMBRAL_DESCUADRE_LEVE_DEFECTO,
@@ -31,6 +32,7 @@ const TAMANO_PAGINA_MOVIMIENTOS = 20;
   selector: 'app-cierre',
   imports: [
     ConteoCierreComponent,
+    EgresoCajaComponent,
     ErrorBannerComponent,
     PaginacionComponent,
     ResultadoCierreComponent,
@@ -121,6 +123,11 @@ export class CierreComponent implements OnInit {
 
   irAPagina(pagina: number): void {
     this.caja.listarMovimientos(pagina, TAMANO_PAGINA_MOVIMIENTOS).subscribe({ error: () => {} });
+  }
+
+  onGastoRegistrado(): void {
+    this.cargarDatosDeCierre();
+    this.mostrarToast('success', 'Gasto registrado');
   }
 
   private cargarDatosDeCierre(): void {

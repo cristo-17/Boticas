@@ -16,7 +16,7 @@ const URL_CONFIG = `${environment.apiUrl}/config`;
 
 const CONFIG: ConfigNegocio = {
   igv: 0.18, umbralStockBajo: 15, descuadreLeve: 10,
-  motivosMerma: [], motivosQueRequierenObservacion: [],
+  motivosMerma: [], motivosQueRequierenObservacion: [], motivosEgreso: [],
   vencimiento: { criticoDias: 30, advertenciaDias: 90 },
   version: 'local',
 };

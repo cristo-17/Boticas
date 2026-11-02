@@ -165,4 +165,28 @@ class CajaDaoReglasTest {
                 .as("50.00 (venta efectivo) - 20.00 (egreso) = 30.00; los 999.00 digitales no cuentan")
                 .isEqualByComparingTo("30.00");
     }
+
+    @Test
+    void egresoReal_registradoEnMovimientosCaja_restaDelEsperadoAlCerrarLaCaja() {
+        CajaDiaria caja = cajaDao.insertar(CajaDiaria.builder()
+                .boticaId(boticaId).usuarioId(usuarioId).fecha(LocalDate.of(2026, 6, 21)).turno("Tarde")
+                .montoApertura(new BigDecimal("100.00")).horaApertura(OffsetDateTime.now(FechaNegocio.ZONA_LIMA))
+                .build());
+
+        cajaDao.insertarMovimiento(MovimientoCaja.builder()
+                .boticaId(boticaId).cajaId(caja.getId()).tipo("venta").descripcion("Venta #1")
+                .monto(new BigDecimal("40.00")).afectaEfectivo(true).creadoPor(usuarioId).build());
+        MovimientoCaja egreso = cajaDao.insertarMovimiento(MovimientoCaja.builder()
+                .boticaId(boticaId).cajaId(caja.getId()).tipo("egreso").descripcion("Pago a proveedor")
+                .nota("Adelanto distribuidora").monto(new BigDecimal("-25.50")).afectaEfectivo(true).creadoPor(usuarioId).build());
+
+        assertThat(egreso.getId()).isNotNull();
+        assertThat(egreso.getDescripcion()).isEqualTo("Pago a proveedor");
+        assertThat(egreso.getNota()).isEqualTo("Adelanto distribuidora");
+
+        BigDecimal esperado = caja.getMontoApertura().add(cajaDao.sumarMovimientosEfectivo(boticaId, caja.getId()));
+        assertThat(esperado)
+                .as("100.00 apertura + 40.00 venta - 25.50 egreso = 114.50 esperado al cierre")
+                .isEqualByComparingTo("114.50");
+    }
 }

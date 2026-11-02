@@ -3,10 +3,17 @@
 <div class="cierre">
   <section class="cierre__movimientos">
     <div class="cierre__movimientos-head">
-      <h2 class="cierre__titulo">Movimientos del turno</h2>
-      @if (!mostrarMontos()) {
-        <p class="field-hint">Los montos se muestran después del cierre (conteo ciego).</p>
-      }
+      <div class="cierre__movimientos-head-top">
+        <div>
+          <h2 class="cierre__titulo">Movimientos del turno</h2>
+          @if (!mostrarMontos()) {
+            <p class="field-hint">Los montos se muestran después del cierre (conteo ciego).</p>
+          }
+        </div>
+        @if (cajaActual()?.abierta) {
+          <app-egreso-caja (registrado)="onGastoRegistrado()" />
+        }
+      </div>
     </div>
 
     @for (m of movimientosVista(); track m.descripcion + m.nota) {

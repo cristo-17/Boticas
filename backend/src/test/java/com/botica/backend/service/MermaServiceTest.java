@@ -48,6 +48,7 @@ class MermaServiceTest {
             new BigDecimal("0.18"), 15, new BigDecimal("10.00"),
             List.of("Vencimiento", "Rotura", "Deterioro", "Robo o pérdida", "Otro"),
             List.of("Robo o pérdida", "Otro"),
+            ConfigService.MOTIVOS_EGRESO,
             new VencimientoConfig(30, 90), "local");
 
     @Mock

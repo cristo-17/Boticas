@@ -33,9 +33,17 @@ su 403 para el TECNICO.
 corrida (`pu.` + timestamp), verifica que `password_hash` no salga en el JSON,
 degrada su rol para comprobar que el token viejo queda invalidado (`401`),
 verifica que un administrador no pueda desactivarse ni quitarse el rol, prueba
-el bloqueo por 5 intentos fallidos (`423 CUENTA_BLOQUEADA`), el desbloqueo, el
+ el bloqueo por 5 intentos fallidos (`423 CUENTA_BLOQUEADA`), el desbloqueo, el
 restablecimiento de clave y la baja lógica (que invalida el token activo). Cada
 ruta tiene su 403 para el TECNICO.
+
+**Reportes y Egresos (Tarea 18)** abre una caja del ADMINISTRADOR, registra un
+egreso (`POST /api/caja/egresos`), verifica que reste del efectivo esperado al
+cerrar la caja, consulta el reporte de resultados por día y por mes
+(`GET /api/reportes/resultados`), exporta el CSV con BOM UTF-8
+(`GET /api/reportes/resultados/csv`), valida los errores de rango (`desde > hasta`
+y rango mayor a 1 año → `400 RANGO_FECHAS_INVALIDO`) y verifica el `403 SIN_PERMISO`
+del TECNICO en ambas rutas.
 
 **Solo lectura** no escribe nada y hace su propio login. Es la única carpeta
 que se corre contra producción, y solo con usuarios demo (R23).
