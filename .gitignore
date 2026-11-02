@@ -25,3 +25,5 @@ Thumbs.db
 # Variables de entorno
 .env
 *.local
+# Postman: reportes de Newman (se generan en cada corrida)
+postman/reportes/

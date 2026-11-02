@@ -1,0 +1,3060 @@
+{
+  "info": {
+    "_postman_id": "bd8dd015-3f91-5637-a2f1-05b4a0ef3e4a",
+    "name": "BoticaSys",
+    "description": "Pruebas de API de BoticaSys (Tarea P). Contrato: docs/API-CONTRATO.md. Sin credenciales: las contraseñas se cargan como current value del entorno o con --env-var. Las carpetas se corren en orden; 'Solo lectura' es independiente y la única apta para producción.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// R23: Postman no escribe en producción. Corre antes de CADA petición.",
+          "// Se decide por el entorno, no por baseUrl: un entorno de producción con",
+          "// baseUrl cambiado sigue bloqueado. Falla cerrado: solo un entorno con",
+          "// entorno=local y que no se llame \"produccion\" puede escribir.",
+          "const nombreEntorno = pm.environment.name || \"\";",
+          "const esLocal = pm.environment.get(\"entorno\") === \"local\" && !/produccion/i.test(nombreEntorno);",
+          "const metodo = pm.request.method.toUpperCase();",
+          "const esLogin = metodo === \"POST\" && /\\/api\\/auth\\/login(\\?|$)/.test(pm.request.url.toString());",
+          "if (!esLocal && metodo !== \"GET\" && !esLogin) {",
+          "  pm.test(\"R23: bloqueada, \" + metodo + \" no se envía fuera del entorno local\", () => {",
+          "    pm.expect.fail(\"entorno '\" + nombreEntorno + \"' es de solo lectura\");",
+          "  });",
+          "  pm.execution.skipRequest();",
+          "}"
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Regla 7: todo error del backend tiene la misma forma, en todas las rutas.",
+          "const tipo = pm.response.headers.get(\"Content-Type\") || \"\";",
+          "if (pm.response.code >= 400 && tipo.includes(\"json\")) {",
+          "  pm.test(\"error con formato uniforme\", () => {",
+          "    const b = pm.response.json();",
+          "    pm.expect(b).to.include.keys(\"timestamp\", \"status\", \"error\", \"mensaje\", \"path\");",
+          "    pm.expect(b.status).to.eql(pm.response.code);",
+          "    pm.expect(b.error).to.match(/^[A-Z_]+$/);",
+          "  });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "codigoFefo",
+      "value": "7751234000415",
+      "description": "Loratadina 10 mg (seed de desarrollo)"
+    },
+    {
+      "key": "codigoVenta",
+      "value": "7751234000514",
+      "description": "Omeprazol 20 mg"
+    },
+    {
+      "key": "codigoInsuficiente",
+      "value": "7751234000316",
+      "description": "Ibuprofeno 400 mg"
+    },
+    {
+      "key": "codigoMerma",
+      "value": "7751234000613",
+      "description": "Sales de rehidratación"
+    }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "description": "Login de cada rol (guarda el token en una variable de colección), yo y logout.",
+      "item": [
+        {
+          "name": "Login TECNICO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuarioTecnico}}\",\n  \"password\": \"{{passwordTecnico}}\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"passwordTecnico\")) {",
+                  "  throw new Error(\"Falta passwordTecnico: cárgala como current value del entorno o con --env-var (nunca en el archivo).\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"devuelve token y usuario TECNICO\", () => {",
+                  "  pm.expect(b.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(b.usuario.rol).to.eql(\"TECNICO\");",
+                  "  pm.expect(b.usuario.id).to.be.a(\"number\");",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenTecnico\", b.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login ADMINISTRADOR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuarioAdmin}}\",\n  \"password\": \"{{passwordAdmin}}\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"passwordAdmin\")) {",
+                  "  throw new Error(\"Falta passwordAdmin: cárgala como current value del entorno o con --env-var (nunca en el archivo).\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"devuelve token y usuario ADMINISTRADOR\", () => {",
+                  "  pm.expect(b.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(b.usuario.rol).to.eql(\"ADMINISTRADOR\");",
+                  "  pm.expect(b.usuario.id).to.be.a(\"number\");",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenAdmin\", b.token);",
+                  "pm.collectionVariables.set(\"boticaAdmin\", b.usuario.boticaNombre);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login ADMINISTRADOR de otra botica",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuarioAdminOtraBotica}}\",\n  \"password\": \"{{passwordAdminOtraBotica}}\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"passwordAdminOtraBotica\")) {",
+                  "  throw new Error(\"Falta passwordAdminOtraBotica: cárgala como current value del entorno o con --env-var (nunca en el archivo).\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"devuelve token y usuario ADMINISTRADOR\", () => {",
+                  "  pm.expect(b.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(b.usuario.rol).to.eql(\"ADMINISTRADOR\");",
+                  "  pm.expect(b.usuario.id).to.be.a(\"number\");",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenAdminOtraBotica\", b.token);",
+                  "pm.test(\"es de otra botica\", () => pm.expect(b.usuario.boticaNombre).to.not.eql(pm.collectionVariables.get(\"boticaAdmin\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con contraseña incorrecta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuarioTecnico}}\",\n  \"password\": \"no-es-la-clave\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = CREDENCIALES_INVALIDAS\", () => pm.expect(pm.response.json().error).to.eql(\"CREDENCIALES_INVALIDAS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con turno fuera de la lista",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuarioTecnico}}\",\n  \"password\": \"{{passwordTecnico}}\",\n  \"turno\": \"Madrugada\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FORMATO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FORMATO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Yo con token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/yo"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"es el usuario del token\", () => pm.expect(pm.response.json().usuario).to.eql(pm.variables.get(\"usuarioTecnico\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Yo sin token (público: nadie)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/auth/yo"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"cuerpo vacío = null\", () => pm.expect(pm.response.text()).to.eql(\"\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/logout"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "El token sigue válido después del logout (DIF-02, sin estado)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/yo"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"sigue identificando al usuario\", () => pm.expect(pm.response.json().usuario).to.eql(pm.variables.get(\"usuarioTecnico\")));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Configuración",
+      "description": "Público: el frontend lo pide antes de que exista sesión.",
+      "item": [
+        {
+          "name": "Config sin token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/config"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json();",
+                  "pm.test(\"trae IGV, umbrales, motivos y vencimiento\", () => {",
+                  "  pm.expect(c.igv).to.eql(0.18);",
+                  "  pm.expect(c.umbralStockBajo).to.be.a(\"number\");",
+                  "  pm.expect(c.motivosMerma).to.include(\"Rotura\");",
+                  "  pm.expect(c.motivosQueRequierenObservacion).to.include(\"Otro\");",
+                  "  pm.expect(c.vencimiento).to.include.keys(\"criticoDias\", \"advertenciaDias\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Productos",
+      "description": "Búsqueda (límite 20), código de barras exacto (DIF-04) y más vendidos.",
+      "item": [
+        {
+          "name": "Buscar por nombre",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos?buscar=lorat"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"máximo 20 y encuentra Loratadina\", () => {",
+                  "  pm.expect(r.length).to.be.at.most(20);",
+                  "  pm.expect(r.map((p) => p.nombre).join(\"|\")).to.include(\"Loratadina\");",
+                  "});",
+                  "pm.test(\"cada producto trae presentaciones y vencimiento del primer lote vendible\", () => {",
+                  "  r.forEach((p) => {",
+                  "    pm.expect(p.presentaciones).to.be.an(\"array\");",
+                  "    pm.expect(p.estadoVencimiento).to.not.eql(\"VENCIDO\");",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar vacío (primeros 20)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos?buscar="
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"máximo 20\", () => pm.expect(pm.response.json().length).to.be.at.most(20));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Por código: producto para FEFO",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos/codigo/{{codigoFefo}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test(\"coincidencia exacta del código\", () => pm.expect(p.codigoBarras).to.eql(pm.collectionVariables.get(\"codigoFefo\")));",
+                  "const unidad = p.presentaciones.find((x) => x.factorConversion === 1);",
+                  "pm.test(\"tiene presentación de factor 1\", () => pm.expect(unidad).to.be.an(\"object\"));",
+                  "pm.collectionVariables.set(\"fefoProductoId\", p.id);",
+                  "pm.collectionVariables.set(\"fefoPresentacionId\", unidad.id);",
+                  "pm.collectionVariables.set(\"fefoPrecio\", unidad.precio);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Por código: producto para la venta en efectivo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos/codigo/{{codigoVenta}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test(\"coincidencia exacta del código\", () => pm.expect(p.codigoBarras).to.eql(pm.collectionVariables.get(\"codigoVenta\")));",
+                  "const unidad = p.presentaciones.find((x) => x.factorConversion === 1);",
+                  "pm.test(\"tiene presentación de factor 1\", () => pm.expect(unidad).to.be.an(\"object\"));",
+                  "pm.collectionVariables.set(\"ventaProductoId\", p.id);",
+                  "pm.collectionVariables.set(\"ventaPresentacionId\", unidad.id);",
+                  "pm.collectionVariables.set(\"ventaPrecio\", unidad.precio);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Por código: producto para stock insuficiente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos/codigo/{{codigoInsuficiente}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test(\"coincidencia exacta del código\", () => pm.expect(p.codigoBarras).to.eql(pm.collectionVariables.get(\"codigoInsuficiente\")));",
+                  "const unidad = p.presentaciones.find((x) => x.factorConversion === 1);",
+                  "pm.test(\"tiene presentación de factor 1\", () => pm.expect(unidad).to.be.an(\"object\"));",
+                  "pm.collectionVariables.set(\"insufProductoId\", p.id);",
+                  "pm.collectionVariables.set(\"insufPresentacionId\", unidad.id);",
+                  "pm.collectionVariables.set(\"insufPrecio\", unidad.precio);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Por código: producto para merma",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos/codigo/{{codigoMerma}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "pm.test(\"coincidencia exacta del código\", () => pm.expect(p.codigoBarras).to.eql(pm.collectionVariables.get(\"codigoMerma\")));",
+                  "const unidad = p.presentaciones.find((x) => x.factorConversion === 1);",
+                  "pm.test(\"tiene presentación de factor 1\", () => pm.expect(unidad).to.be.an(\"object\"));",
+                  "pm.collectionVariables.set(\"mermaProductoId\", p.id);",
+                  "pm.collectionVariables.set(\"mermaPresentacionId\", unidad.id);",
+                  "pm.collectionVariables.set(\"mermaPrecio\", unidad.precio);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Por código: un prefijo no encuentra nada (DIF-04)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos/codigo/775123400"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"error = PRODUCTO_NO_ENCONTRADO\", () => pm.expect(pm.response.json().error).to.eql(\"PRODUCTO_NO_ENCONTRADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Más vendidos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos/mas-vendidos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"máximo 6\", () => pm.expect(pm.response.json().length).to.be.at.most(6));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Inventario",
+      "description": "Lotes paginados sin costoUnitario, lista blanca de orden y registro de lotes (DIF-09).",
+      "item": [
+        {
+          "name": "Listar lotes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"ningún lote trae costoUnitario (dato del dueño)\", () => {",
+                  "  const lotes = [].concat(pm.response.json().contenido ?? pm.response.json());",
+                  "  lotes.forEach((l) => pm.expect(l).to.not.have.property(\"costoUnitario\"));",
+                  "});",
+                  "pm.test(\"tamaño por defecto 20\", () => pm.expect(pm.response.json().tamano).to.eql(20));",
+                  "pm.test(\"cada lote trae estados calculados por el servidor\", () => {",
+                  "  pm.response.json().contenido.forEach((l) => {",
+                  "    pm.expect([\"VENCIDO\", \"CRITICO\", \"ADVERTENCIA\", \"OK\"]).to.include(l.estadoVencimiento);",
+                  "    pm.expect([\"OK\", \"CRITICO\", \"AGOTADO\"]).to.include(l.stockEstado);",
+                  "  });",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar lotes: tamaño recortado a 100",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes?tamano=500"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"tamano = 100\", () => pm.expect(pm.response.json().tamano).to.eql(100));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar lotes: orden fuera de la lista blanca",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes?orden=costoUnitario,asc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = ORDEN_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"ORDEN_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar lotes: filtro de vencimiento inválido",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes?vencimiento=pronto"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FILTRO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FILTRO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar lote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productoId\": {{mermaProductoId}},\n  \"codigo\": \"{{codigoLoteMerma}}\",\n  \"fechaVencimiento\": \"{{fechaEnUnAnio}}\",\n  \"stock\": 1,\n  \"ubicacion\": \"PM\",\n  \"costoUnitario\": 0.5\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(Date.now() - 5 * 3600 * 1000);",
+                  "d.setUTCDate(d.getUTCDate() + 365);",
+                  "pm.collectionVariables.set(\"fechaEnUnAnio\", d.toISOString().slice(0, 10));",
+                  "pm.collectionVariables.set(\"codigoLoteMerma\", \"PM-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ningún lote trae costoUnitario (dato del dueño)\", () => {",
+                  "  const lotes = [].concat(pm.response.json().contenido ?? pm.response.json());",
+                  "  lotes.forEach((l) => pm.expect(l).to.not.have.property(\"costoUnitario\"));",
+                  "});",
+                  "const l = pm.response.json();",
+                  "pm.test(\"lote creado con lo enviado\", () => {",
+                  "  pm.expect(l.codigo).to.eql(pm.collectionVariables.get(\"codigoLoteMerma\"));",
+                  "  pm.expect(l.stock).to.eql(1);",
+                  "});",
+                  "pm.collectionVariables.set(\"loteMermaId\", l.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar lote con código repetido",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productoId\": {{mermaProductoId}},\n  \"codigo\": \"{{codigoLoteMerma}}\",\n  \"fechaVencimiento\": \"{{fechaEnUnAnio}}\",\n  \"stock\": 1,\n  \"costoUnitario\": 0.5\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error = LOTE_DUPLICADO\", () => pm.expect(pm.response.json().error).to.eql(\"LOTE_DUPLICADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar lote con stock 0",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productoId\": {{mermaProductoId}},\n  \"codigo\": \"PM-X0\",\n  \"fechaVencimiento\": \"{{fechaEnUnAnio}}\",\n  \"stock\": 0,\n  \"costoUnitario\": 0.5\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FORMATO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FORMATO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar lote con costo negativo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productoId\": {{mermaProductoId}},\n  \"codigo\": \"PM-XN\",\n  \"fechaVencimiento\": \"{{fechaEnUnAnio}}\",\n  \"stock\": 1,\n  \"costoUnitario\": -1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FORMATO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FORMATO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Registrar lote de un producto inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productoId\": 999999999,\n  \"codigo\": \"PM-XP\",\n  \"fechaVencimiento\": \"{{fechaEnUnAnio}}\",\n  \"stock\": 1,\n  \"costoUnitario\": 0.5\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"error = PRODUCTO_NO_ENCONTRADO\", () => pm.expect(pm.response.json().error).to.eql(\"PRODUCTO_NO_ENCONTRADO\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Flujo de caja y venta (en orden)",
+      "description": "Abrir caja → venta → la misma venta con la misma claveIdempotencia → venta que reparte entre dos lotes (FEFO) → stock insuficiente → resumen-cierre sin montoEsperado → cerrar → semáforo. Empieza cerrando la caja que el usuario haya dejado abierta, para no depender de la corrida anterior.",
+      "item": [
+        {
+          "name": "Limpieza: cerrar la caja que haya quedado abierta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/cerrar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoContado\": 0,\n  \"observaciones\": \"Cierre de limpieza de la colección de Postman\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 (había una) o 409 CAJA_NO_ABIERTA (no había)\", () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir caja",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/abrir",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoInicial\": 100.0,\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const c = pm.response.json();",
+                  "pm.test(\"abierta, sin esperado ni semáforo (conteo ciego)\", () => {",
+                  "  pm.expect(c.abierta).to.eql(true);",
+                  "  pm.expect(c.montoEsperado).to.eql(null);",
+                  "  pm.expect(c.semaforoDescuadre).to.eql(null);",
+                  "});",
+                  "pm.collectionVariables.set(\"cajaId\", c.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir una segunda caja",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/abrir",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoInicial\": 50.0,\n  \"turno\": \"Noche\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error = CAJA_YA_ABIERTA\", () => pm.expect(pm.response.json().error).to.eql(\"CAJA_YA_ABIERTA\"));",
+                  "pm.test(\"el mensaje dice cuál cerrar (DIF-12)\", () => pm.expect(pm.response.json().mensaje).to.include(\"Ciérrala\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir caja con turno fuera de la lista",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/abrir",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoInicial\": 50.0,\n  \"turno\": \"Madrugada\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FORMATO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FORMATO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caja de hoy",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/hoy"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"es la caja abierta\", () => { const c = pm.response.json(); pm.expect(c.id).to.eql(pm.collectionVariables.get(\"cajaId\")); pm.expect(c.montoEsperado).to.eql(null); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta en efectivo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{claveVenta}}\",\n  \"metodoPago\": \"efectivo\",\n  \"items\": [\n    {\n      \"productoId\": {{ventaProductoId}},\n      \"presentacionId\": {{ventaPresentacionId}},\n      \"cantidad\": 2,\n      \"origenCaptura\": \"BUSQUEDA\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"claveVenta\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const cent = (x) => Math.round(Number(x) * 100);",
+                  "const v = pm.response.json();",
+                  "pm.test(\"total = 2 × precio (lo calcula el servidor)\", () => pm.expect(cent(v.total)).to.eql(2 * cent(pm.collectionVariables.get(\"ventaPrecio\"))));",
+                  "pm.test(\"Op. gravada + IGV = total, IGV extraído\", () => {",
+                  "  pm.expect(cent(v.subtotal) + cent(v.igv)).to.eql(cent(v.total));",
+                  "  pm.expect(cent(v.subtotal)).to.eql(Math.round(cent(v.total) / 1.18));",
+                  "});",
+                  "pm.collectionVariables.set(\"ventaId\", v.id);",
+                  "pm.collectionVariables.set(\"totalVentaEfectivo\", v.total);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "La misma venta con la misma claveIdempotencia",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{claveVenta}}\",\n  \"metodoPago\": \"efectivo\",\n  \"items\": [\n    {\n      \"productoId\": {{ventaProductoId}},\n      \"presentacionId\": {{ventaPresentacionId}},\n      \"cantidad\": 2,\n      \"origenCaptura\": \"BUSQUEDA\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"devuelve la misma venta, no una segunda\", () => { const v = pm.response.json(); pm.expect(v.id).to.eql(pm.collectionVariables.get(\"ventaId\")); pm.expect(v.total).to.eql(pm.collectionVariables.get(\"totalVentaEfectivo\")); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta por id",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/{{ventaId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"es la venta\", () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"ventaId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "FEFO: lote A (vence hoy, stock 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productoId\": {{fefoProductoId}},\n  \"codigo\": \"{{codigoFefoA}}\",\n  \"fechaVencimiento\": \"{{hoyLima}}\",\n  \"stock\": 2,\n  \"costoUnitario\": 0.1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const hoy = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set(\"hoyLima\", hoy);",
+                  "pm.collectionVariables.set(\"codigoFefoA\", \"PFA-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "FEFO: lote B (vence hoy, stock 1)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"productoId\": {{fefoProductoId}},\n  \"codigo\": \"{{codigoFefoB}}\",\n  \"fechaVencimiento\": \"{{hoyLima}}\",\n  \"stock\": 1,\n  \"costoUnitario\": 0.1\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const hoy = new Date(Date.now() - 5 * 3600 * 1000).toISOString().slice(0, 10);",
+                  "pm.collectionVariables.set(\"hoyLima\", hoy);",
+                  "pm.collectionVariables.set(\"codigoFefoB\", \"PFB-\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "FEFO: lotes del producto antes de vender",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes?productoId={{fefoProductoId}}&tamano=100"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ningún lote trae costoUnitario (dato del dueño)\", () => {",
+                  "  const lotes = [].concat(pm.response.json().contenido ?? pm.response.json());",
+                  "  lotes.forEach((l) => pm.expect(l).to.not.have.property(\"costoUnitario\"));",
+                  "});",
+                  "const hoy = pm.collectionVariables.get(\"hoyLima\");",
+                  "// Mismo orden que FEFO en el servidor: vencimiento y después id; solo lo vendible.",
+                  "const vendibles = pm.response.json().contenido.filter((l) => l.stock > 0 && l.fechaVencimiento >= hoy);",
+                  "pm.test(\"hay al menos dos lotes vendibles\", () => pm.expect(vendibles.length).to.be.at.least(2));",
+                  "pm.collectionVariables.set(\"fefoL1\", JSON.stringify(vendibles[0]));",
+                  "pm.collectionVariables.set(\"fefoL2\", JSON.stringify(vendibles[1]));",
+                  "pm.collectionVariables.set(\"fefoCantidad\", vendibles[0].stock + 1);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "FEFO: venta que reparte entre dos lotes",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{claveVentaFefo}}\",\n  \"metodoPago\": \"yape\",\n  \"items\": [\n    { \"productoId\": {{fefoProductoId}}, \"presentacionId\": {{fefoPresentacionId}}, \"cantidad\": {{fefoCantidad}}, \"origenCaptura\": \"ESCANEO\" }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"claveVentaFefo\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"totalVentaFefo\", pm.response.json().total);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "FEFO: lotes del producto después de vender",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes?productoId={{fefoProductoId}}&tamano=100"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ningún lote trae costoUnitario (dato del dueño)\", () => {",
+                  "  const lotes = [].concat(pm.response.json().contenido ?? pm.response.json());",
+                  "  lotes.forEach((l) => pm.expect(l).to.not.have.property(\"costoUnitario\"));",
+                  "});",
+                  "const l1 = JSON.parse(pm.collectionVariables.get(\"fefoL1\"));",
+                  "const l2 = JSON.parse(pm.collectionVariables.get(\"fefoL2\"));",
+                  "const ahora = pm.response.json().contenido;",
+                  "const stock = (id) => ahora.find((l) => l.id === id).stock;",
+                  "pm.test(\"el lote que vence antes quedó en 0\", () => pm.expect(stock(l1.id)).to.eql(0));",
+                  "pm.test(\"el segundo lote dio la unidad que faltaba\", () => pm.expect(stock(l2.id)).to.eql(l2.stock - 1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stock insuficiente: stock antes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes?productoId={{insufProductoId}}&tamano=100"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ningún lote trae costoUnitario (dato del dueño)\", () => {",
+                  "  const lotes = [].concat(pm.response.json().contenido ?? pm.response.json());",
+                  "  lotes.forEach((l) => pm.expect(l).to.not.have.property(\"costoUnitario\"));",
+                  "});",
+                  "pm.collectionVariables.set(\"stockInsufAntes\", JSON.stringify(pm.response.json().contenido.map((l) => [l.id, l.stock])));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stock insuficiente: venta de 100000 unidades",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{claveVentaInsuf}}\",\n  \"metodoPago\": \"efectivo\",\n  \"items\": [\n    {\n      \"productoId\": {{insufProductoId}},\n      \"presentacionId\": {{insufPresentacionId}},\n      \"cantidad\": 100000,\n      \"origenCaptura\": \"BUSQUEDA\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"claveVentaInsuf\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"error = STOCK_INSUFICIENTE\", () => pm.expect(pm.response.json().error).to.eql(\"STOCK_INSUFICIENTE\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stock insuficiente: stock después, sin cambios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes?productoId={{insufProductoId}}&tamano=100"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ningún lote trae costoUnitario (dato del dueño)\", () => {",
+                  "  const lotes = [].concat(pm.response.json().contenido ?? pm.response.json());",
+                  "  lotes.forEach((l) => pm.expect(l).to.not.have.property(\"costoUnitario\"));",
+                  "});",
+                  "pm.test(\"ningún lote cambió\", () => pm.expect(JSON.stringify(pm.response.json().contenido.map((l) => [l.id, l.stock]))).to.eql(pm.collectionVariables.get(\"stockInsufAntes\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta con una presentación de otro producto",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{claveVentaPres}}\",\n  \"metodoPago\": \"efectivo\",\n  \"items\": [\n    {\n      \"productoId\": {{fefoProductoId}},\n      \"presentacionId\": {{ventaPresentacionId}},\n      \"cantidad\": 1,\n      \"origenCaptura\": \"BUSQUEDA\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"claveVentaPres\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = PRESENTACION_INVALIDA\", () => pm.expect(pm.response.json().error).to.eql(\"PRESENTACION_INVALIDA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Movimientos de la caja",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/{{cajaId}}/movimientos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"incluye las dos ventas\", () => pm.expect(pm.response.json().totalElementos).to.be.at.least(2));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumen de cierre (antes de contar)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/{{cajaId}}/resumen-cierre"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const cent = (x) => Math.round(Number(x) * 100);",
+                  "const r = pm.response.json();",
+                  "pm.test(\"SIN montoEsperado ni totalVentasEfectivo (conteo ciego, DIF-10)\", () => {",
+                  "  pm.expect(r).to.not.have.property(\"montoEsperado\");",
+                  "  pm.expect(r).to.not.have.property(\"totalVentasEfectivo\");",
+                  "});",
+                  "pm.test(\"dos ventas; el digital es la venta Yape\", () => {",
+                  "  pm.expect(r.cantidadVentas).to.eql(2);",
+                  "  pm.expect(cent(r.totalVentasDigital)).to.eql(cent(pm.collectionVariables.get(\"totalVentaFefo\")));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cerrar caja con lo contado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/cerrar",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"montoContado\": {{montoContado}}, \"observaciones\": null }"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const cent = (x) => Math.round(Number(x) * 100);",
+                  "pm.collectionVariables.set(\"montoContado\", ((10000 + cent(pm.collectionVariables.get(\"totalVentaEfectivo\"))) / 100).toFixed(2));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const cent = (x) => Math.round(Number(x) * 100);",
+                  "const c = pm.response.json();",
+                  "pm.test(\"cerrada y, recién ahora, con esperado y diferencia\", () => {",
+                  "  pm.expect(c.abierta).to.eql(false);",
+                  "  pm.expect(cent(c.montoEsperado)).to.eql(cent(pm.collectionVariables.get(\"montoContado\")));",
+                  "  pm.expect(cent(c.diferencia)).to.eql(0);",
+                  "});",
+                  "pm.test(\"semáforo EXACTO (apertura + efectivo = contado)\", () => pm.expect(c.semaforoDescuadre).to.eql(\"EXACTO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cerrar otra vez",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/cerrar",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"montoContado\": 0\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error = CAJA_NO_ABIERTA\", () => pm.expect(pm.response.json().error).to.eql(\"CAJA_NO_ABIERTA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumen de cierre de una caja cerrada",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/{{cajaId}}/resumen-cierre"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error = CAJA_NO_ABIERTA\", () => pm.expect(pm.response.json().error).to.eql(\"CAJA_NO_ABIERTA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta sin caja abierta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{claveVentaSinCaja}}\",\n  \"metodoPago\": \"efectivo\",\n  \"items\": [\n    {\n      \"productoId\": {{ventaProductoId}},\n      \"presentacionId\": {{ventaPresentacionId}},\n      \"cantidad\": 1,\n      \"origenCaptura\": \"BUSQUEDA\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"claveVentaSinCaja\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error = SIN_CAJA_ABIERTA\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_CAJA_ABIERTA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Movimientos de una caja inexistente",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/999999999/movimientos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"error = CAJA_NO_ENCONTRADA\", () => pm.expect(pm.response.json().error).to.eql(\"CAJA_NO_ENCONTRADA\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Ventas",
+      "description": "Historial paginado: ADMINISTRADOR ve toda la botica; TECNICO solo su caja abierta (D-E2-2).",
+      "item": [
+        {
+          "name": "Historial (ADMINISTRADOR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas?orden=fecha,desc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"incluye la venta del flujo\", () => pm.expect(pm.response.json().contenido.map((v) => v.id)).to.include(pm.collectionVariables.get(\"ventaId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Historial con orden fuera de la lista blanca",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas?orden=costo,asc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = ORDEN_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"ORDEN_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Historial (TECNICO sin caja abierta): página vacía",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"sin caja abierta no ve ventas\", () => pm.expect(pm.response.json().totalElementos).to.eql(0));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Merma",
+      "description": "Registrar merma sobre el lote creado en Inventario y sus rechazos.",
+      "item": [
+        {
+          "name": "Registrar merma",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/mermas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loteId\": {{loteMermaId}},\n  \"cantidad\": 1,\n  \"motivo\": \"Rotura\",\n  \"observacion\": null\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const m = pm.response.json();",
+                  "pm.test(\"merma creada con valor a precio de venta\", () => {",
+                  "  pm.expect(m.cantidad).to.eql(1);",
+                  "  pm.expect(m.valorVenta).to.be.a(\"number\");",
+                  "  pm.expect(m).to.not.have.property(\"valorCosto\");",
+                  "});",
+                  "pm.collectionVariables.set(\"mermaId\", m.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Merma mayor al stock del lote",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/mermas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loteId\": {{loteMermaId}},\n  \"cantidad\": 5,\n  \"motivo\": \"Rotura\",\n  \"observacion\": null\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"error = CANTIDAD_EXCEDE_STOCK\", () => pm.expect(pm.response.json().error).to.eql(\"CANTIDAD_EXCEDE_STOCK\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Merma 'Otro' sin observación",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/mermas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loteId\": {{loteMermaId}},\n  \"cantidad\": 1,\n  \"motivo\": \"Otro\",\n  \"observacion\": null\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = OBSERVACION_REQUERIDA\", () => pm.expect(pm.response.json().error).to.eql(\"OBSERVACION_REQUERIDA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Merma con motivo fuera de la lista",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/mermas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loteId\": {{loteMermaId}},\n  \"cantidad\": 1,\n  \"motivo\": \"Capricho\",\n  \"observacion\": null\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = MOTIVO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"MOTIVO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Merma de un lote inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/mermas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"loteId\": 999999999,\n  \"cantidad\": 1,\n  \"motivo\": \"Rotura\",\n  \"observacion\": null\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"error = LOTE_NO_ENCONTRADO\", () => pm.expect(pm.response.json().error).to.eql(\"LOTE_NO_ENCONTRADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mermas de hoy",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/mermas?fecha=hoy"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"incluye la merma registrada\", () => pm.expect(pm.response.json().contenido.map((m) => m.id)).to.include(pm.collectionVariables.get(\"mermaId\")));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Alertas",
+      "description": "Dashboard (stock por producto vendible, DIF-11) y alertas paginadas.",
+      "item": [
+        {
+          "name": "Resumen del dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/dashboard/resumen"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"números crudos, sin montos esperados de caja\", () => {",
+                  "  pm.expect(d).to.include.keys(\"ventasHoy\", \"boletasHoy\", \"stockCritico\", \"stockAgotado\", \"cajaEstado\");",
+                  "  pm.expect(d).to.not.have.property(\"montoEsperado\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alertas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/alertas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumen (alias no contratado)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/alertas/resumen"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"números crudos, sin montos esperados de caja\", () => {",
+                  "  pm.expect(d).to.include.keys(\"ventasHoy\", \"boletasHoy\", \"stockCritico\", \"stockAgotado\", \"cajaEstado\");",
+                  "  pm.expect(d).to.not.have.property(\"montoEsperado\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Notificaciones",
+      "description": "Ticket SSE, listado y marcado de leídas. El stream en sí no se abre acá (no termina nunca); su caso positivo lo cubre NotificacionTicketSeguridadTest.",
+      "item": [
+        {
+          "name": "Pedir ticket SSE",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notificaciones/ticket"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ticket de 60 s\", () => { const t = pm.response.json(); pm.expect(t.ticket).to.be.a(\"string\").and.not.empty; pm.expect(t.expiraEnSegundos).to.eql(60); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notificaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const n = pm.response.json();",
+                  "pm.test(\"máximo 30, más recientes primero\", () => pm.expect(n.length).to.be.at.most(30));",
+                  "pm.collectionVariables.set(\"notificacionId\", n.length ? n[0].id : \"\");"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marcar leída una notificación",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notificaciones/{{notificacionId}}/leer"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get(\"notificacionId\")) { pm.execution.skipRequest(); }"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marcar leída una notificación inexistente",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notificaciones/999999999/leer"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"error = NOTIFICACION_NO_ENCONTRADA\", () => pm.expect(pm.response.json().error).to.eql(\"NOTIFICACION_NO_ENCONTRADA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Marcar todas como leídas",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notificaciones/leer-todas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 204\", () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stream con un ticket inventado",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/notificaciones/stream?ticket=inventado"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stream con el JWT en la query",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/notificaciones/stream?token={{tokenTecnico}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Seguridad",
+      "description": "401 sin credencial válida, 403 por rol y 404 entre boticas.",
+      "item": [
+        {
+          "name": "Sin token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/caja/hoy"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = NO_AUTENTICADO\", () => pm.expect(pm.response.json().error).to.eql(\"NO_AUTENTICADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Token que no es un JWT",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer esto-no-es-un-jwt"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/hoy"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = NO_AUTENTICADO\", () => pm.expect(pm.response.json().error).to.eql(\"NO_AUTENTICADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "JWT en ?token= (solo vale en la cabecera)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/caja/hoy?token={{tokenTecnico}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = NO_AUTENTICADO\", () => pm.expect(pm.response.json().error).to.eql(\"NO_AUTENTICADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Basic auth con el usuario por defecto de Spring",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Basic dXNlcjpjdWFscXVpZXJh"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/hoy",
+            "description": "user:cualquiera. Spring ya no crea el usuario en memoria (Tarea 0B-B)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = NO_AUTENTICADO\", () => pm.expect(pm.response.json().error).to.eql(\"NO_AUTENTICADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO pide las cajas abiertas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/abiertas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "ADMINISTRADOR pide las cajas abiertas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/abiertas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta de otra botica",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdminOtraBotica}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/{{ventaId}}",
+            "description": "La venta del flujo, pedida por el administrador de la otra botica: igual que si no existiera."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"error = VENTA_NO_ENCONTRADA\", () => pm.expect(pm.response.json().error).to.eql(\"VENTA_NO_ENCONTRADA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO pide una venta sin tener caja abierta",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/{{ventaId}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Solo lectura",
+      "description": "No escribe nada (login no modifica datos). Es la ÚNICA carpeta que se corre contra producción, y solo con usuarios demo (R23): newman run ... --folder \"Solo lectura\".",
+      "item": [
+        {
+          "name": "Login TECNICO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuarioTecnico}}\",\n  \"password\": \"{{passwordTecnico}}\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"passwordTecnico\")) {",
+                  "  throw new Error(\"Falta passwordTecnico: cárgala como current value del entorno o con --env-var (nunca en el archivo).\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"devuelve token y usuario TECNICO\", () => {",
+                  "  pm.expect(b.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(b.usuario.rol).to.eql(\"TECNICO\");",
+                  "  pm.expect(b.usuario.id).to.be.a(\"number\");",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenRoTecnico\", b.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login ADMINISTRADOR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuarioAdmin}}\",\n  \"password\": \"{{passwordAdmin}}\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.variables.get(\"passwordAdmin\")) {",
+                  "  throw new Error(\"Falta passwordAdmin: cárgala como current value del entorno o con --env-var (nunca en el archivo).\");",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"devuelve token y usuario ADMINISTRADOR\", () => {",
+                  "  pm.expect(b.token).to.be.a(\"string\").and.not.empty;",
+                  "  pm.expect(b.usuario.rol).to.eql(\"ADMINISTRADOR\");",
+                  "  pm.expect(b.usuario.id).to.be.a(\"number\");",
+                  "});",
+                  "pm.collectionVariables.set(\"tokenRoAdmin\", b.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Config",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/config"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Yo",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/yo"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Caja de hoy",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/hoy"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"nunca muestra el esperado de una caja abierta\", () => { const c = pm.response.text() ? pm.response.json() : null; if (c && c.abierta) pm.expect(c.montoEsperado).to.eql(null); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Buscar productos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos?buscar="
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"máximo 20\", () => pm.expect(pm.response.json().length).to.be.at.most(20));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Más vendidos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos/mas-vendidos"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lotes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});",
+                  "pm.test(\"ningún lote trae costoUnitario (dato del dueño)\", () => {",
+                  "  const lotes = [].concat(pm.response.json().contenido ?? pm.response.json());",
+                  "  lotes.forEach((l) => pm.expect(l).to.not.have.property(\"costoUnitario\"));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ventas (ADMINISTRADOR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Mermas de hoy",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/mermas?fecha=hoy"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/dashboard/resumen"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const d = pm.response.json();",
+                  "pm.test(\"números crudos, sin montos esperados de caja\", () => {",
+                  "  pm.expect(d).to.include.keys(\"ventasHoy\", \"boletasHoy\", \"stockCritico\", \"stockAgotado\", \"cajaEstado\");",
+                  "  pm.expect(d).to.not.have.property(\"montoEsperado\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Alertas",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/alertas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notificaciones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/notificaciones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cajas abiertas (ADMINISTRADOR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/abiertas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"envoltura de paginación\", () => {",
+                  "  const b = pm.response.json();",
+                  "  pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\");",
+                  "  pm.expect(b.contenido).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cajas abiertas (TECNICO) → 403",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenRoTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/abiertas"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Sin token → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/lotes"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = NO_AUTENTICADO\", () => pm.expect(pm.response.json().error).to.eql(\"NO_AUTENTICADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "JWT en la query → 401",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/lotes?token={{tokenRoTecnico}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = NO_AUTENTICADO\", () => pm.expect(pm.response.json().error).to.eql(\"NO_AUTENTICADO\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
