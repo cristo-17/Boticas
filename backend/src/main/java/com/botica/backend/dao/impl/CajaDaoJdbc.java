@@ -13,7 +13,6 @@ import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,7 +46,8 @@ public class CajaDaoJdbc implements CajaDao {
 
     @Override
     public Optional<CajaDiaria> buscarAbiertaDelUsuario(Long boticaId, Long usuarioId) {
-        String sql = SELECT_CAJA + "WHERE c.botica_id = :boticaId AND c.usuario_id = :usuarioId AND c.estado = 'ABIERTA'";
+        String sql = SELECT_CAJA + "WHERE c.botica_id = :boticaId AND c.usuario_id = :usuarioId AND c.estado = 'ABIERTA' " +
+                "ORDER BY c.fecha ASC, c.hora_apertura ASC, c.id ASC LIMIT 1";
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", boticaId)
                 .addValue("usuarioId", usuarioId);
@@ -71,20 +71,6 @@ public class CajaDaoJdbc implements CajaDao {
         Long total = jdbc.queryForObject(sqlCount, params, Long.class);
 
         return PaginaResponse.de(contenido, paginaSegura, tamanoSeguro, total == null ? 0L : total);
-    }
-
-    @Override
-    public boolean existeCajaAbierta(Long boticaId, Long usuarioId, String turno, LocalDate fecha) {
-        String sql = "SELECT COUNT(*) FROM caja_diaria " +
-                "WHERE botica_id = :boticaId AND usuario_id = :usuarioId " +
-                "AND turno = :turno AND fecha = :fecha AND estado = 'ABIERTA'";
-        var params = new MapSqlParameterSource()
-                .addValue("boticaId", boticaId)
-                .addValue("usuarioId", usuarioId)
-                .addValue("turno", turno)
-                .addValue("fecha", fecha);
-        Integer total = jdbc.queryForObject(sql, params, Integer.class);
-        return total != null && total > 0;
     }
 
     @Override
@@ -145,7 +131,6 @@ public class CajaDaoJdbc implements CajaDao {
     @Override
     public ResumenCierreResponse calcularResumen(Long boticaId, Long cajaId) {
         String sqlVentas = "SELECT " +
-                "COALESCE(SUM(total) FILTER (WHERE metodo_pago = 'efectivo'), 0) AS total_efectivo, " +
                 "COALESCE(SUM(total) FILTER (WHERE metodo_pago IN ('yape', 'tarjeta')), 0) AS total_digital, " +
                 "COUNT(*) AS cantidad_ventas " +
                 "FROM ventas WHERE botica_id = :boticaId AND caja_id = :cajaId";
@@ -158,7 +143,6 @@ public class CajaDaoJdbc implements CajaDao {
         Long cantidadMovimientos = jdbc.queryForObject(sqlMovimientos, params, Long.class);
 
         return new ResumenCierreResponse(
-                (BigDecimal) fila.get("total_efectivo"),
                 (BigDecimal) fila.get("total_digital"),
                 ((Number) fila.get("cantidad_ventas")).longValue(),
                 cantidadMovimientos == null ? 0L : cantidadMovimientos

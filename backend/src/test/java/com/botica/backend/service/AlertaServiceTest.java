@@ -59,8 +59,8 @@ class AlertaServiceTest {
         when(alertaDao.contarVentas(BOTICA_ID, HOY)).thenReturn(64L);
         when(alertaDao.contarProductosPorVencer(BOTICA_ID, HOY, 90)).thenReturn(14L);
         when(alertaDao.contarProductosPorVencer(BOTICA_ID, HOY, 30)).thenReturn(5L);
-        when(alertaDao.contarProductosStockCritico(BOTICA_ID, 15)).thenReturn(6L);
-        when(alertaDao.contarProductosStockAgotado(BOTICA_ID)).thenReturn(2L);
+        when(alertaDao.contarProductosStockCritico(BOTICA_ID, 15, HOY)).thenReturn(6L);
+        when(alertaDao.contarProductosStockAgotado(BOTICA_ID, HOY)).thenReturn(2L);
         OffsetDateTime apertura = OffsetDateTime.parse("2026-09-09T08:02:00-05:00");
         when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID))
                 .thenReturn(Optional.of(CajaDiaria.builder().id(1001L).horaApertura(apertura).build()));
@@ -95,9 +95,9 @@ class AlertaServiceTest {
         var loteVencido = new AlertaDao.LoteAlerta(6L, "Omeprazol 20 mg", "L-2311D", "B-2", 7,
                 HOY.minusDays(15), new BigDecimal("11.50"), "VENCIDO");
         when(alertaDao.lotesVencidosOCriticos(BOTICA_ID, HOY, 30)).thenReturn(List.of(loteVencido));
-        when(alertaDao.contarProductosStockCritico(BOTICA_ID, 15)).thenReturn(6L);
-        when(alertaDao.contarProductosStockAgotado(BOTICA_ID)).thenReturn(0L);
-        when(alertaDao.nombresProductosStockBajo(BOTICA_ID, 15, 2)).thenReturn(List.of("Amoxicilina", "Clotrimazol"));
+        when(alertaDao.contarProductosStockCritico(BOTICA_ID, 15, HOY)).thenReturn(6L);
+        when(alertaDao.contarProductosStockAgotado(BOTICA_ID, HOY)).thenReturn(0L);
+        when(alertaDao.nombresProductosStockBajo(BOTICA_ID, 15, HOY, 2)).thenReturn(List.of("Amoxicilina", "Clotrimazol"));
         var cajaAbierta = new AlertaDao.CajaAbierta(1001L, "Mañana", "Rosa Quispe", OffsetDateTime.parse("2026-09-08T08:02:00-05:00"));
         when(alertaDao.cajasSinCerrar(BOTICA_ID, HOY)).thenReturn(List.of(cajaAbierta));
 
@@ -116,8 +116,8 @@ class AlertaServiceTest {
     @Test
     void listar_sinProductosEnStockBajo_noGeneraLaAlertaAgregada() {
         when(alertaDao.lotesVencidosOCriticos(BOTICA_ID, HOY, 30)).thenReturn(List.of());
-        when(alertaDao.contarProductosStockCritico(BOTICA_ID, 15)).thenReturn(0L);
-        when(alertaDao.contarProductosStockAgotado(BOTICA_ID)).thenReturn(0L);
+        when(alertaDao.contarProductosStockCritico(BOTICA_ID, 15, HOY)).thenReturn(0L);
+        when(alertaDao.contarProductosStockAgotado(BOTICA_ID, HOY)).thenReturn(0L);
         when(alertaDao.cajasSinCerrar(BOTICA_ID, HOY)).thenReturn(List.of());
 
         PaginaResponse<AlertaResponse> pagina = service.listar(0, 20);

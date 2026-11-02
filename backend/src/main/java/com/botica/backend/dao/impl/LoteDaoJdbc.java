@@ -157,6 +157,18 @@ public class LoteDaoJdbc implements LoteDao {
     }
 
     @Override
+    public int sumarStockVencido(Long boticaId, Long productoId, LocalDate hoy) {
+        String sql = "SELECT COALESCE(SUM(stock), 0) FROM lotes WHERE botica_id = :boticaId AND producto_id = :productoId " +
+                "AND fecha_vencimiento < :hoy";
+        var params = new MapSqlParameterSource()
+                .addValue("boticaId", boticaId)
+                .addValue("productoId", productoId)
+                .addValue("hoy", hoy);
+        Integer total = jdbc.queryForObject(sql, params, Integer.class);
+        return total == null ? 0 : total;
+    }
+
+    @Override
     public void descontarStock(Long loteId, int cantidad) {
         String sql = "UPDATE lotes SET stock = stock - :cantidad WHERE id = :id";
         var params = new MapSqlParameterSource()

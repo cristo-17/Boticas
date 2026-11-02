@@ -78,6 +78,19 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
     }
 
+    // DIF-12 (Tarea 0B): mismo criterio que al abrir caja.
+    @Test
+    void login_conTurnoFueraDeLaLista_devuelve400FormatoInvalido() throws Exception {
+        mockMvc.perform(post("/api/auth/login")
+                        .contentType("application/json")
+                        .content("""
+                                {"usuario": "rosa.quispe", "password": "tecnico123", "turno": "Madrugada"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"))
+                .andExpect(jsonPath("$.mensaje").value("turno: El turno debe ser Mañana, Tarde o Noche"));
+    }
+
     @Test
     void yo_sinUsuarioAutenticado_devuelve200ConCuerpoVacio() throws Exception {
         when(authService.yo()).thenReturn(null);

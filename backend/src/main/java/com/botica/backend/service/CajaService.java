@@ -20,11 +20,13 @@ import com.botica.backend.util.Dinero;
 import com.botica.backend.util.FechaNegocio;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Optional;
 
 /**
  * TODA la regla de negocio de caja vive aquí (Regla 2) — el Controller
@@ -67,8 +69,10 @@ public class CajaService {
         Long usuarioId = contexto.usuarioId();
         LocalDate hoy = fechaNegocio.hoy();
 
-        if (cajaDao.existeCajaAbierta(boticaId, usuarioId, request.turno(), hoy)) {
-            throw new CajaYaAbiertaException();
+        // DIF-12: una sola caja abierta por usuario, de cualquier día o turno.
+        Optional<CajaDiaria> abierta = cajaDao.buscarAbiertaDelUsuario(boticaId, usuarioId);
+        if (abierta.isPresent()) {
+            throw new CajaYaAbiertaException(abierta.get());
         }
 
         CajaDiaria nueva = CajaDiaria.builder()
@@ -81,8 +85,12 @@ public class CajaService {
                 .estado(CajaDiaria.ABIERTA)
                 .build();
 
-        CajaDiaria creada = cajaDao.insertar(nueva);
-        return CajaResponse.desde(creada);
+        try {
+            return CajaResponse.desde(cajaDao.insertar(nueva));
+        } catch (DuplicateKeyException e) {
+            // Dos aperturas simultáneas: idx_caja_abierta_por_usuario (V8) rechaza la segunda.
+            throw new CajaYaAbiertaException();
+        }
     }
 
     public ResumenCierreResponse obtenerResumenCierre(Long id) {

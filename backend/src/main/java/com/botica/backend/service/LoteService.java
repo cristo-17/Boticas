@@ -6,9 +6,11 @@ import com.botica.backend.dao.LoteDao;
 import com.botica.backend.dto.LoteResponse;
 import com.botica.backend.dto.NuevoLoteRequest;
 import com.botica.backend.dto.PaginaResponse;
+import com.botica.backend.exception.LoteDuplicadoException;
 import com.botica.backend.exception.ProductoNoEncontradoException;
 import com.botica.backend.model.Lote;
 import com.botica.backend.util.FechaNegocio;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,7 +54,13 @@ public class LoteService {
                 .costoUnitario(request.costoUnitario())
                 .creadoPor(contexto.usuarioId())
                 .build();
-        Lote creado = loteDao.insertar(lote);
+        Lote creado;
+        try {
+            creado = loteDao.insertar(lote);
+        } catch (DuplicateKeyException e) {
+            // UNIQUE (botica_id, producto_id, codigo): el mismo código de lote ya existe para este producto (DIF-09).
+            throw new LoteDuplicadoException(request.codigo());
+        }
         return loteDao.buscarResponsePorId(
                         boticaId, creado.getId(), fechaNegocio.hoy(),
                         config.getVencimientoCriticoDias(), config.getVencimientoAdvertenciaDias(), config.getUmbralStockBajo())

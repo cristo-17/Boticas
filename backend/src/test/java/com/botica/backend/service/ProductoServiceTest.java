@@ -60,7 +60,7 @@ class ProductoServiceTest {
     void buscar_conLoteCriticoConStock_calculaEstadoCritico() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
         when(productoDao.buscar(BOTICA_ID, "para", 20)).thenReturn(List.of(productoDePrueba()));
-        when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L)))
+        when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L), HOY))
                 .thenReturn(Map.of(1L, HOY.plusDays(10))); // dentro de los 30 días críticos
         when(productoDao.listarPresentacionesPorProductos(List.of(1L))).thenReturn(Map.of());
 
@@ -75,7 +75,7 @@ class ProductoServiceTest {
     void buscar_sinNingunLoteConStock_estadoYFechaQuedanNull() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
         when(productoDao.buscar(BOTICA_ID, "", 20)).thenReturn(List.of(productoDePrueba()));
-        when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L))).thenReturn(Map.of());
+        when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L), HOY)).thenReturn(Map.of());
         when(productoDao.listarPresentacionesPorProductos(List.of(1L))).thenReturn(Map.of());
 
         List<ProductoResponse> resultado = service.buscar("");
@@ -92,7 +92,7 @@ class ProductoServiceTest {
                 .id(1L).productoId(1L).etiqueta("Caja").factorConversion(100)
                 .precio(new java.math.BigDecimal("12.90")).build();
         when(productoDao.buscar(BOTICA_ID, "", 20)).thenReturn(List.of(producto));
-        when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L))).thenReturn(Map.of());
+        when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L), HOY)).thenReturn(Map.of());
         when(productoDao.listarPresentacionesPorProductos(List.of(1L))).thenReturn(Map.of(1L, List.of(presentacion)));
 
         List<ProductoResponse> resultado = service.buscar("");
@@ -112,10 +112,11 @@ class ProductoServiceTest {
     }
 
     @Test
-    void masVendidos_pideAlDaoElLimiteDeSeis() {
+    void masVendidos_pideAlDaoElLimiteDeSeis_yLosUltimos30DiasDeLima() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
-        when(productoDao.masVendidos(BOTICA_ID, 6)).thenReturn(List.of(productoDePrueba()));
-        when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L))).thenReturn(Map.of());
+        // DIF-06: 30 días con hoy incluido -> desde = hoy - 29.
+        when(productoDao.masVendidos(BOTICA_ID, 6, HOY.minusDays(29))).thenReturn(List.of(productoDePrueba()));
+        when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L), HOY)).thenReturn(Map.of());
         when(productoDao.listarPresentacionesPorProductos(List.of(1L))).thenReturn(Map.of());
 
         List<ProductoResponse> resultado = service.masVendidos();

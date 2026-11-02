@@ -49,28 +49,43 @@ public class AlertaDaoJdbc implements AlertaDao {
         return contar(sql, params);
     }
 
-    @Override
-    public long contarProductosStockCritico(Long boticaId, int umbralStockBajo) {
-        String sql = "SELECT COUNT(DISTINCT producto_id) FROM lotes " +
-                "WHERE botica_id = :boticaId AND stock > 0 AND stock <= :umbral";
-        var params = new MapSqlParameterSource().addValue("boticaId", boticaId).addValue("umbral", umbralStockBajo);
-        return contar(sql, params);
-    }
+    /**
+     * DIF-11 (Tarea 0B): stock vendible por producto = suma de sus lotes no
+     * vencidos (fecha_vencimiento >= hoy, la misma regla que FEFO). Solo
+     * productos con al menos un lote: uno recién creado que nunca tuvo stock
+     * no es "agotado". El estado por lote de Inventario no usa esto.
+     */
+    private static final String STOCK_VENDIBLE_POR_PRODUCTO =
+            "SELECT p.id, p.nombre, " +
+                    "COALESCE(SUM(l.stock) FILTER (WHERE l.fecha_vencimiento >= :hoy), 0) AS vendible " +
+                    "FROM productos p JOIN lotes l ON l.producto_id = p.id AND l.botica_id = :boticaId " +
+                    "WHERE p.botica_id = :boticaId GROUP BY p.id, p.nombre";
 
     @Override
-    public long contarProductosStockAgotado(Long boticaId) {
-        String sql = "SELECT COUNT(DISTINCT producto_id) FROM lotes WHERE botica_id = :boticaId AND stock = 0";
-        var params = new MapSqlParameterSource().addValue("boticaId", boticaId);
-        return contar(sql, params);
-    }
-
-    @Override
-    public List<String> nombresProductosStockBajo(Long boticaId, int umbralStockBajo, int limite) {
-        String sql = "SELECT DISTINCT p.nombre FROM lotes l JOIN productos p ON p.id = l.producto_id " +
-                "WHERE l.botica_id = :boticaId AND l.stock <= :umbral " +
-                "ORDER BY p.nombre ASC LIMIT :limite";
+    public long contarProductosStockCritico(Long boticaId, int umbralStockBajo, LocalDate hoy) {
+        String sql = "SELECT COUNT(*) FROM (" + STOCK_VENDIBLE_POR_PRODUCTO + ") v " +
+                "WHERE v.vendible > 0 AND v.vendible <= :umbral";
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", boticaId)
+                .addValue("hoy", hoy)
+                .addValue("umbral", umbralStockBajo);
+        return contar(sql, params);
+    }
+
+    @Override
+    public long contarProductosStockAgotado(Long boticaId, LocalDate hoy) {
+        String sql = "SELECT COUNT(*) FROM (" + STOCK_VENDIBLE_POR_PRODUCTO + ") v WHERE v.vendible = 0";
+        var params = new MapSqlParameterSource().addValue("boticaId", boticaId).addValue("hoy", hoy);
+        return contar(sql, params);
+    }
+
+    @Override
+    public List<String> nombresProductosStockBajo(Long boticaId, int umbralStockBajo, LocalDate hoy, int limite) {
+        String sql = "SELECT v.nombre FROM (" + STOCK_VENDIBLE_POR_PRODUCTO + ") v " +
+                "WHERE v.vendible <= :umbral ORDER BY v.nombre ASC LIMIT :limite";
+        var params = new MapSqlParameterSource()
+                .addValue("boticaId", boticaId)
+                .addValue("hoy", hoy)
                 .addValue("umbral", umbralStockBajo)
                 .addValue("limite", limite);
         return jdbc.queryForList(sql, params, String.class);

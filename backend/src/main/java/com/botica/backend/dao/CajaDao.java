@@ -6,7 +6,6 @@ import com.botica.backend.model.CajaDiaria;
 import com.botica.backend.model.MovimientoCaja;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.Optional;
 
 /**
@@ -17,9 +16,12 @@ import java.util.Optional;
  */
 public interface CajaDao {
 
+    /**
+     * La caja ABIERTA del usuario. Desde V8 hay como mucho una (índice
+     * único parcial por usuario); si por datos viejos hubiera más, devuelve
+     * la más antigua, que es la que hay que cerrar primero (DIF-12).
+     */
     Optional<CajaDiaria> buscarAbiertaDelUsuario(Long boticaId, Long usuarioId);
-
-    boolean existeCajaAbierta(Long boticaId, Long usuarioId, String turno, LocalDate fecha);
 
     CajaDiaria insertar(CajaDiaria caja);
 

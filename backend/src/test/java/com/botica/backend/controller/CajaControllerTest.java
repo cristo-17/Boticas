@@ -85,6 +85,19 @@ class CajaControllerTest {
                 .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
     }
 
+    // DIF-12 (Tarea 0B): un turno fuera de la lista llegaba al CHECK de caja_diaria y salía como 500.
+    @Test
+    void abrir_conTurnoFueraDeLaLista_devuelve400FormatoInvalido_noUn500() throws Exception {
+        mockMvc.perform(post("/api/caja/abrir")
+                        .contentType("application/json")
+                        .content("""
+                                {"montoInicial": 100.00, "turno": "Madrugada"}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"))
+                .andExpect(jsonPath("$.mensaje").value("turno: El turno debe ser Mañana, Tarde o Noche"));
+    }
+
     @Test
     void cerrar_sinCajaAbierta_devuelve409CajaNoAbierta() throws Exception {
         when(cajaService.cerrar(any())).thenThrow(new CajaNoAbiertaException());
@@ -100,13 +113,13 @@ class CajaControllerTest {
 
     @Test
     void resumenCierre_nuncaIncluyeMontoEsperadoNiDiferenciaNiSemaforo_conteoCiego() throws Exception {
-        ResumenCierreResponse resumen = new ResumenCierreResponse(
-                new BigDecimal("1284.50"), new BigDecimal("340.00"), 52L, 4L);
+        ResumenCierreResponse resumen = new ResumenCierreResponse(new BigDecimal("340.00"), 52L, 4L);
         when(cajaService.obtenerResumenCierre(1L)).thenReturn(resumen);
 
         mockMvc.perform(get("/api/caja/1/resumen-cierre"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalVentasEfectivo").value(1284.50))
+                // DIF-10 (Tarea 0B): el efectivo vendido + la apertura es casi el esperado; no viaja antes del conteo.
+                .andExpect(jsonPath("$.totalVentasEfectivo").doesNotExist())
                 .andExpect(jsonPath("$.totalVentasDigital").value(340.00))
                 .andExpect(jsonPath("$.cantidadVentas").value(52))
                 .andExpect(jsonPath("$.montoEsperado").doesNotExist())

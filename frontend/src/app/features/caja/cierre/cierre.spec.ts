@@ -45,7 +45,7 @@ describe('CierreComponent — conteo ciego del TECNICO (revisión 2026-10-14)', 
     http.expectOne(`${BASE_URL}/hoy`).flush(CAJA_ABIERTA);
     await render();
     http.expectOne(`${BASE_URL}/3/resumen-cierre`)
-      .flush({ totalVentasEfectivo: 8.88, totalVentasDigital: 4.44, cantidadVentas: 2, cantidadMovimientos: 3 });
+      .flush({ totalVentasDigital: 4.44, cantidadVentas: 2, cantidadMovimientos: 3 });
     http.expectOne((r) => r.url === `${BASE_URL}/3/movimientos`)
       .flush({ contenido: [movimiento(5, 8.88, true), movimiento(6, 4.44, false)], pagina: 0, tamano: 20, totalElementos: 2, totalPaginas: 1 });
     await render();

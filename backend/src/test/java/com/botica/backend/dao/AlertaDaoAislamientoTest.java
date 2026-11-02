@@ -49,15 +49,15 @@ class AlertaDaoAislamientoTest {
 
     @Test
     void contarProductosStockAgotado_unProductoAgotadoDeVidaSana_noSumaAlConteoDeSanLucas() {
-        long antesSanLucas = alertaDao.contarProductosStockAgotado(boticaSanLucasId);
-        long antesVidaSana = alertaDao.contarProductosStockAgotado(boticaVidaSanaId);
+        long antesSanLucas = alertaDao.contarProductosStockAgotado(boticaSanLucasId, HOY);
+        long antesVidaSana = alertaDao.contarProductosStockAgotado(boticaVidaSanaId, HOY);
 
         insertarProductoConLote(boticaVidaSanaId, HOY.plusYears(1), 0); // stock 0 = AGOTADO
 
-        assertThat(alertaDao.contarProductosStockAgotado(boticaSanLucasId))
+        assertThat(alertaDao.contarProductosStockAgotado(boticaSanLucasId, HOY))
                 .as("un producto agotado de Vida Sana no debe sumar al conteo de San Lucas")
                 .isEqualTo(antesSanLucas);
-        assertThat(alertaDao.contarProductosStockAgotado(boticaVidaSanaId)).isEqualTo(antesVidaSana + 1);
+        assertThat(alertaDao.contarProductosStockAgotado(boticaVidaSanaId, HOY)).isEqualTo(antesVidaSana + 1);
     }
 
     @Test

@@ -44,5 +44,8 @@ public interface LoteDao {
      */
     List<Lote> bloquearLotesFefo(Long boticaId, Long productoId, LocalDate hoy);
 
+    /** Unidades en lotes ya vencidos (fecha_vencimiento < hoy) — solo para explicar un rechazo de venta (DIF-13). */
+    int sumarStockVencido(Long boticaId, Long productoId, LocalDate hoy);
+
     void descontarStock(Long loteId, int cantidad);
 }

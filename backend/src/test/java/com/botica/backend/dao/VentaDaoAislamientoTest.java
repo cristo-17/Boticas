@@ -76,7 +76,7 @@ class VentaDaoAislamientoTest {
         assertThat(pagina.totalElementos()).isZero();
     }
 
-    /** CERRADA para no chocar con idx_caja_abierta_unica (una abierta por usuario/turno/día). */
+    /** CERRADA para no chocar con idx_caja_abierta_por_usuario (V8: una abierta por usuario). */
     private Long cajaCerrada(Long boticaId) {
         Long usuarioId = jdbcTemplate.queryForObject("SELECT id FROM usuarios WHERE botica_id = ? ORDER BY id LIMIT 1", Long.class, boticaId);
         return jdbcTemplate.queryForObject(

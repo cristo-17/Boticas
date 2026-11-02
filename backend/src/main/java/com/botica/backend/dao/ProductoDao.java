@@ -14,10 +14,15 @@ public interface ProductoDao {
 
     Optional<Producto> buscarPorCodigoBarras(Long boticaId, String codigoBarras);
 
-    List<Producto> masVendidos(Long boticaId, int limite);
+    /** Ranking por unidades vendidas desde `desde` (fecha de Lima, inclusive); sin ventas en el periodo, orden alfabético (DIF-06). */
+    List<Producto> masVendidos(Long boticaId, int limite, LocalDate desde);
 
-    /** Fecha de vencimiento más próxima ENTRE LOS LOTES CON STOCK > 0, por producto — vacío si el producto no tiene ningún lote con stock. */
-    Map<Long, LocalDate> fechaVencimientoMasProximaPorProductos(List<Long> productoIds);
+    /**
+     * Fecha de vencimiento del primer lote VENDIBLE (stock > 0 y no vencido,
+     * la misma regla que FEFO), por producto — vacío si el producto no tiene
+     * ninguno (DIF-13, Tarea 0B; revisa D6).
+     */
+    Map<Long, LocalDate> fechaVencimientoMasProximaPorProductos(List<Long> productoIds, LocalDate hoy);
 
     Map<Long, List<PresentacionProducto>> listarPresentacionesPorProductos(List<Long> productoIds);
 

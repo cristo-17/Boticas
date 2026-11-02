@@ -2,6 +2,8 @@ package com.botica.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,8 +19,9 @@ public record NuevoLoteRequest(
         @NotNull(message = "productoId es obligatorio") Long productoId,
         @NotBlank(message = "codigo es obligatorio") String codigo,
         @NotNull(message = "fechaVencimiento es obligatoria") LocalDate fechaVencimiento,
-        @NotNull(message = "stock es obligatorio") Integer stock,
+        @NotNull(message = "stock es obligatorio") @Positive(message = "stock debe ser mayor a 0") Integer stock,
         String ubicacion,
-        @NotNull(message = "costoUnitario es obligatorio") BigDecimal costoUnitario
+        @NotNull(message = "costoUnitario es obligatorio")
+        @PositiveOrZero(message = "costoUnitario no puede ser negativo") BigDecimal costoUnitario
 ) {
 }

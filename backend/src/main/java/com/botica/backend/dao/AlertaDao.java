@@ -20,13 +20,13 @@ public interface AlertaDao {
     long contarProductosPorVencer(Long boticaId, LocalDate hoy, int diasMax);
 
     /** Productos con al menos un lote con 0 < stock <= umbral. */
-    long contarProductosStockCritico(Long boticaId, int umbralStockBajo);
+    long contarProductosStockCritico(Long boticaId, int umbralStockBajo, LocalDate hoy);
 
     /** Productos con al menos un lote con stock = 0. */
-    long contarProductosStockAgotado(Long boticaId);
+    long contarProductosStockAgotado(Long boticaId, LocalDate hoy);
 
     /** Nombres de producto con stock <= umbral (crítico o agotado), para el cuerpo de la alerta agregada. */
-    List<String> nombresProductosStockBajo(Long boticaId, int umbralStockBajo, int limite);
+    List<String> nombresProductosStockBajo(Long boticaId, int umbralStockBajo, LocalDate hoy, int limite);
 
     /**
      * Lotes VENCIDO o CRITICO con stock > 0, uno por fila.

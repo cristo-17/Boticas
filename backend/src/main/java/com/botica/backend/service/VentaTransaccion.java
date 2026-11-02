@@ -13,6 +13,7 @@ import com.botica.backend.dto.VentaResponse;
 import com.botica.backend.exception.PresentacionInvalidaException;
 import com.botica.backend.exception.SinCajaAbiertaException;
 import com.botica.backend.exception.StockInsuficienteException;
+import com.botica.backend.exception.StockSoloVencidoException;
 import com.botica.backend.model.CajaDiaria;
 import com.botica.backend.model.Lote;
 import com.botica.backend.model.MovimientoCaja;
@@ -31,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -118,8 +120,13 @@ class VentaTransaccion {
                     presentacion.getPrecio().divide(BigDecimal.valueOf(factorConversion), ESCALA_INTERMEDIA, RoundingMode.HALF_UP));
 
             // Paso 5: lock FEFO, sin lotes vencidos. Paso 4: consumir en ese orden, repartiendo si hace falta.
-            List<Lote> lotesBloqueados = loteDao.bloquearLotesFefo(boticaId, item.productoId(), fechaNegocio.hoy());
+            LocalDate hoy = fechaNegocio.hoy();
+            List<Lote> lotesBloqueados = loteDao.bloquearLotesFefo(boticaId, item.productoId(), hoy);
             int disponibleTotal = lotesBloqueados.stream().mapToInt(Lote::getStock).sum();
+            if (disponibleTotal == 0 && loteDao.sumarStockVencido(boticaId, item.productoId(), hoy) > 0) {
+                // DIF-13: "disponible 0" confunde al cajero que ve el producto en el estante.
+                throw new StockSoloVencidoException(producto.getNombre());
+            }
             if (disponibleTotal < cantidadBaseTotal) {
                 // Paso 6: rollback completo -- lanzar acá basta, @Transactional revierte todo lo ya insertado en este método.
                 throw new StockInsuficienteException(producto.getNombre(), disponibleTotal, cantidadBaseTotal);

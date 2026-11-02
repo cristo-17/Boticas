@@ -100,6 +100,23 @@ class NotificacionEventosIntegracionTest {
         assertThat(notificacionesDe(holgado)).isZero();
     }
 
+    // DIF-11 (Tarea 0B): el aviso cuenta el stock vendible del producto. Las 100 vencidas no
+    // cuentan, así que quedan 10 vendibles y debe avisar. Pasa desde la corrección FEFO de la
+    // Tarea 0 (la venta ya suma solo lotes no vencidos): queda como guardia, no nació en rojo.
+    @Test
+    void ventaQueDejaPocoStockVendible_notifica_aunqueHayaMuchoStockVencido() {
+        ProductoQa critico = productoConStock(20);
+        jdbcTemplate.update(
+                "INSERT INTO lotes (botica_id, producto_id, codigo, fecha_vencimiento, stock, costo_unitario) VALUES (?, ?, ?, ?, 100, 1.00)",
+                boticaId, critico.productoId, "QA-EV-V-" + System.nanoTime(), fechaNegocio.hoy().minusDays(1));
+
+        ventaService.registrar(new NuevaVentaRequest(UUID.randomUUID(), List.of(
+                new ItemVentaRequest(critico.productoId, critico.presentacionId, 10, "BUSQUEDA")
+        ), "efectivo"));
+
+        assertThat(notificacionesDe(critico)).as("20 - 10 = 10 vendibles <= 15; las 100 vencidas no cuentan").isEqualTo(1);
+    }
+
     private long notificacionesDe(ProductoQa p) {
         return jdbcTemplate.queryForObject(
                 "SELECT COUNT(*) FROM notificaciones WHERE botica_id = ? AND tipo = 'STOCK_CRITICO' AND titulo = ?",

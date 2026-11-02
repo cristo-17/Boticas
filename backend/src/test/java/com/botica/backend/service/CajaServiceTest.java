@@ -31,7 +31,6 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -67,12 +66,31 @@ class CajaServiceTest {
     void abrir_conCajaYaAbierta_lanzaCajaYaAbiertaException() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);
-        when(cajaDao.existeCajaAbierta(BOTICA_ID, USUARIO_ID, "Tarde", HOY)).thenReturn(true);
+        when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.of(CajaDiaria.builder()
+                .id(5L).boticaId(BOTICA_ID).usuarioId(USUARIO_ID).fecha(HOY).turno("Tarde")
+                .montoApertura(new BigDecimal("100.00")).estado("ABIERTA").build()));
 
         AbrirCajaRequest request = new AbrirCajaRequest(new BigDecimal("100.00"), "Tarde");
 
         assertThatThrownBy(() -> service.abrir(request))
                 .isInstanceOf(CajaYaAbiertaException.class);
+        verify(cajaDao, never()).insertar(any());
+    }
+
+    // DIF-12 (Tarea 0B): una sola caja abierta por usuario, de cualquier día o turno
+    // (DECISIONES 2026-09-08). Antes solo se miraba el mismo turno y día.
+    @Test
+    void abrir_conCajaAbiertaDeAyerEnOtroTurno_lanzaCajaYaAbierta_yElMensajeDiceCualCerrar() {
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(contexto.usuarioId()).thenReturn(USUARIO_ID);
+        CajaDiaria deAyer = CajaDiaria.builder()
+                .id(7L).boticaId(BOTICA_ID).usuarioId(USUARIO_ID).fecha(HOY.minusDays(1)).turno("Mañana")
+                .montoApertura(new BigDecimal("100.00")).estado("ABIERTA").build();
+        when(cajaDao.buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID)).thenReturn(Optional.of(deAyer));
+
+        assertThatThrownBy(() -> service.abrir(new AbrirCajaRequest(new BigDecimal("100.00"), "Tarde")))
+                .isInstanceOf(CajaYaAbiertaException.class)
+                .hasMessage("Tienes abierta la caja del 07/09/2026, turno Mañana. Ciérrala antes de abrir otra.");
         verify(cajaDao, never()).insertar(any());
     }
 
@@ -82,14 +100,13 @@ class CajaServiceTest {
 
         assertThatThrownBy(() -> service.abrir(request))
                 .isInstanceOf(MontoInvalidoException.class);
-        verify(cajaDao, never()).existeCajaAbierta(any(), any(), anyString(), any());
+        verify(cajaDao, never()).buscarAbiertaDelUsuario(any(), any());
     }
 
     @Test
     void abrir_exito_creaCajaConLosDatosDeContexto() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);
-        when(cajaDao.existeCajaAbierta(BOTICA_ID, USUARIO_ID, "Tarde", HOY)).thenReturn(false);
         when(cajaDao.insertar(any())).thenAnswer(inv -> {
             CajaDiaria c = inv.getArgument(0);
             c.setId(99L);
@@ -196,13 +213,11 @@ class CajaServiceTest {
         CajaDiaria abierta = cajaAbierta();
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
         when(cajaDao.buscarPorId(BOTICA_ID, abierta.getId())).thenReturn(Optional.of(abierta));
-        ResumenCierreResponse esperado = new ResumenCierreResponse(
-                new BigDecimal("50.00"), new BigDecimal("20.00"), 3L, 4L);
+        ResumenCierreResponse esperado = new ResumenCierreResponse(new BigDecimal("20.00"), 3L, 4L);
         when(cajaDao.calcularResumen(BOTICA_ID, abierta.getId())).thenReturn(esperado);
 
         ResumenCierreResponse response = service.obtenerResumenCierre(abierta.getId());
 
-        assertThat(response.totalVentasEfectivo()).isEqualByComparingTo("50.00");
         assertThat(response.totalVentasDigital()).isEqualByComparingTo("20.00");
         assertThat(response.cantidadVentas()).isEqualTo(3L);
         assertThat(response.cantidadMovimientos()).isEqualTo(4L);
@@ -216,7 +231,6 @@ class CajaServiceTest {
         CajaService servicioTardio = new CajaService(cajaDao, contexto, fechaNegocio, config);
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);
-        when(cajaDao.existeCajaAbierta(BOTICA_ID, USUARIO_ID, "Noche", hoyLima)).thenReturn(false);
         when(cajaDao.insertar(any())).thenAnswer(inv -> {
             CajaDiaria c = inv.getArgument(0);
             c.setId(1L);
@@ -225,7 +239,7 @@ class CajaServiceTest {
 
         servicioTardio.abrir(new AbrirCajaRequest(new BigDecimal("50.00"), "Noche"));
 
-        verify(cajaDao).existeCajaAbierta(BOTICA_ID, USUARIO_ID, "Noche", hoyLima);
+        verify(cajaDao).buscarAbiertaDelUsuario(BOTICA_ID, USUARIO_ID);
         verify(cajaDao).insertar(argThat(c -> c.getFecha().equals(hoyLima)));
     }
 

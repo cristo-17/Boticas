@@ -36,7 +36,6 @@ export interface MovimientoCaja {
 
 /** GET /api/caja/{id}/resumen-cierre — se pide ANTES de contar. Deliberadamente sin montoEsperado (conteo ciego). */
 export interface ResumenCierre {
-  totalVentasEfectivo: number;
   totalVentasDigital: number;
   cantidadVentas: number;
   cantidadMovimientos: number;

@@ -20,8 +20,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Tarea 13, sección C: el índice único parcial
- * (`idx_caja_abierta_unica`, V1__esquema.sql) es la última línea de
- * defensa contra dos cajas abiertas del mismo usuario/turno/día -- el
+ * (`idx_caja_abierta_por_usuario`, V8; antes `idx_caja_abierta_unica` de
+ * V1) es la última línea de defensa contra dos cajas abiertas del mismo
+ * usuario, de cualquier día o turno -- el
  * Service ya lo valida (CajaServiceTest), esto prueba que la base
  * también lo hace, a nivel SQL, aunque alguien se salte el Service.
  * @Transactional: rollback automático, no deja filas en botica_test.
@@ -41,8 +42,14 @@ class CajaDaoReglasTest {
     @BeforeEach
     void cargarUsuarioDelSeed() {
         boticaId = jdbcTemplate.queryForObject("SELECT id FROM boticas WHERE nombre = 'Botica San Lucas'", Long.class);
-        usuarioId = jdbcTemplate.queryForObject(
-                "SELECT id FROM usuarios WHERE botica_id = ? LIMIT 1", Long.class, boticaId);
+        // Usuario propio (se revierte con la transacción): desde V8 hay una sola caja abierta por
+        // usuario, y los tests de integración de ventas dejan abierta la del usuario del contexto.
+        String usuario = "qa.caja." + System.nanoTime();
+        jdbcTemplate.update(
+                "INSERT INTO usuarios (botica_id, rol_id, nombre, usuario, password_hash, turno) " +
+                        "VALUES (?, (SELECT id FROM roles WHERE nombre = 'TECNICO'), 'QA Caja', ?, 'x', 'Tarde')",
+                boticaId, usuario);
+        usuarioId = jdbcTemplate.queryForObject("SELECT id FROM usuarios WHERE usuario = ?", Long.class, usuario);
     }
 
     @Test
@@ -60,9 +67,27 @@ class CajaDaoReglasTest {
                 .build();
 
         // Este es el INSERT crudo que la base rechaza -- no pasa por CajaService (que ya lo
-        // bloquea antes con existeCajaAbierta): esto prueba la RED DE SEGURIDAD del índice
+        // bloquea antes con buscarAbiertaDelUsuario): esto prueba la RED DE SEGURIDAD del índice
         // en sí, no la validación de la capa de arriba.
         assertThatThrownBy(() -> cajaDao.insertar(segunda))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
+    @Test
+    void indiceUnicoDeCajaAbierta_rechazaUnaSegundaAbiertaDelMismoUsuario_enOtroDiaYOtroTurno() {
+        // DIF-12 (Tarea 0B, V8): la regla es "una sola caja abierta por usuario", no "una por
+        // usuario/turno/día". Una caja de ayer olvidada abierta también bloquea.
+        cajaDao.insertar(CajaDiaria.builder()
+                .boticaId(boticaId).usuarioId(usuarioId).fecha(LocalDate.of(2026, 6, 14)).turno("Noche")
+                .montoApertura(new BigDecimal("100.00")).horaApertura(OffsetDateTime.now(FechaNegocio.ZONA_LIMA))
+                .build());
+
+        CajaDiaria hoyOtroTurno = CajaDiaria.builder()
+                .boticaId(boticaId).usuarioId(usuarioId).fecha(LocalDate.of(2026, 6, 15)).turno("Mañana")
+                .montoApertura(new BigDecimal("50.00")).horaApertura(OffsetDateTime.now(FechaNegocio.ZONA_LIMA))
+                .build();
+
+        assertThatThrownBy(() -> cajaDao.insertar(hoyOtroTurno))
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 

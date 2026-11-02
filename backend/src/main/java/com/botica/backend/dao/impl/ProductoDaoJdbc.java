@@ -53,27 +53,30 @@ public class ProductoDaoJdbc implements ProductoDao {
     }
 
     @Override
-    public List<Producto> masVendidos(Long boticaId, int limite) {
+    public List<Producto> masVendidos(Long boticaId, int limite, LocalDate desde) {
+        // fecha::date es el día de Lima: la conexión fija la zona (Regla 5), igual que AlertaDaoJdbc.
         String sql = "SELECT p.* FROM productos p " +
-                "LEFT JOIN venta_detalle vd ON vd.producto_id = p.id AND vd.botica_id = :boticaId " +
+                "LEFT JOIN (venta_detalle vd JOIN ventas v ON v.id = vd.venta_id AND v.fecha::date >= :desde) " +
+                "ON vd.producto_id = p.id AND vd.botica_id = :boticaId " +
                 "WHERE p.botica_id = :boticaId " +
                 "GROUP BY p.id " +
                 "ORDER BY COALESCE(SUM(vd.cantidad), 0) DESC, p.nombre ASC " +
                 "LIMIT :limite";
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", boticaId)
-                .addValue("limite", limite);
+                .addValue("limite", limite)
+                .addValue("desde", desde);
         return jdbc.query(sql, params, productoRowMapper);
     }
 
     @Override
-    public Map<Long, LocalDate> fechaVencimientoMasProximaPorProductos(List<Long> productoIds) {
+    public Map<Long, LocalDate> fechaVencimientoMasProximaPorProductos(List<Long> productoIds, LocalDate hoy) {
         if (productoIds.isEmpty()) {
             return Map.of();
         }
         String sql = "SELECT producto_id, MIN(fecha_vencimiento) AS fecha_vencimiento " +
-                "FROM lotes WHERE producto_id IN (:ids) AND stock > 0 GROUP BY producto_id";
-        var params = new MapSqlParameterSource().addValue("ids", productoIds);
+                "FROM lotes WHERE producto_id IN (:ids) AND stock > 0 AND fecha_vencimiento >= :hoy GROUP BY producto_id";
+        var params = new MapSqlParameterSource().addValue("ids", productoIds).addValue("hoy", hoy);
         Map<Long, LocalDate> resultado = new HashMap<>();
         jdbc.query(sql, params, rs -> {
             resultado.put(rs.getLong("producto_id"), rs.getObject("fecha_vencimiento", LocalDate.class));

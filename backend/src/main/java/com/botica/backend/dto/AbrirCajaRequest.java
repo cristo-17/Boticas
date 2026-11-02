@@ -2,6 +2,7 @@ package com.botica.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 
 import java.math.BigDecimal;
 
@@ -13,6 +14,7 @@ import java.math.BigDecimal;
  */
 public record AbrirCajaRequest(
         @NotNull(message = "montoInicial es obligatorio") BigDecimal montoInicial,
-        @NotBlank(message = "turno es obligatorio") String turno
+        @NotBlank(message = "turno es obligatorio")
+        @Pattern(regexp = "Mañana|Tarde|Noche", message = "El turno debe ser Mañana, Tarde o Noche") String turno
 ) {
 }

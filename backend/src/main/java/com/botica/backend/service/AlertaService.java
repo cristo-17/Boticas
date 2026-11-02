@@ -59,8 +59,8 @@ public class AlertaService {
         long boletasHoy = alertaDao.contarVentas(boticaId, hoy);
         long productosPorVencer = alertaDao.contarProductosPorVencer(boticaId, hoy, config.getVencimientoAdvertenciaDias());
         long productosPorVencerCriticos = alertaDao.contarProductosPorVencer(boticaId, hoy, config.getVencimientoCriticoDias());
-        long stockCritico = alertaDao.contarProductosStockCritico(boticaId, config.getUmbralStockBajo());
-        long stockAgotado = alertaDao.contarProductosStockAgotado(boticaId);
+        long stockCritico = alertaDao.contarProductosStockCritico(boticaId, config.getUmbralStockBajo(), hoy);
+        long stockAgotado = alertaDao.contarProductosStockAgotado(boticaId, hoy);
 
         Optional<CajaDiaria> cajaPropia = cajaDao.buscarAbiertaDelUsuario(boticaId, contexto.usuarioId());
         String cajaEstado = cajaPropia.isPresent() ? CajaDiaria.ABIERTA : CajaDiaria.CERRADA;
@@ -79,8 +79,8 @@ public class AlertaService {
             todas.add(ordenableDeLote(lote, hoy));
         }
 
-        long stockCritico = alertaDao.contarProductosStockCritico(boticaId, config.getUmbralStockBajo());
-        long stockAgotado = alertaDao.contarProductosStockAgotado(boticaId);
+        long stockCritico = alertaDao.contarProductosStockCritico(boticaId, config.getUmbralStockBajo(), hoy);
+        long stockAgotado = alertaDao.contarProductosStockAgotado(boticaId, hoy);
         long stockBajoTotal = stockCritico + stockAgotado;
         if (stockBajoTotal > 0) {
             todas.add(ordenableDeStockBajo(boticaId, stockBajoTotal));
@@ -122,7 +122,7 @@ public class AlertaService {
     }
 
     private Ordenable ordenableDeStockBajo(Long boticaId, long total) {
-        List<String> nombres = alertaDao.nombresProductosStockBajo(boticaId, config.getUmbralStockBajo(), 2);
+        List<String> nombres = alertaDao.nombresProductosStockBajo(boticaId, config.getUmbralStockBajo(), fechaNegocio.hoy(), 2);
         long masCount = total - nombres.size();
         String listado = String.join(", ", nombres);
         String cuerpo = (listado.isEmpty() ? "" : listado + (masCount > 0 ? " y " + masCount + " más " : " "))

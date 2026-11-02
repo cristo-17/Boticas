@@ -22,6 +22,8 @@ public class ProductoService {
 
     private static final int LIMITE_BUSQUEDA = 20;
     private static final int LIMITE_MAS_VENDIDOS = 6;
+    /** DIF-06: ventana de "más vendidos", hoy incluido. */
+    private static final int DIAS_MAS_VENDIDOS = 30;
 
     private final ProductoDao productoDao;
     private final ContextoOperacion contexto;
@@ -47,15 +49,15 @@ public class ProductoService {
     }
 
     public List<ProductoResponse> masVendidos() {
-        List<Producto> productos = productoDao.masVendidos(contexto.boticaId(), LIMITE_MAS_VENDIDOS);
+        List<Producto> productos = productoDao.masVendidos(contexto.boticaId(), LIMITE_MAS_VENDIDOS, fechaNegocio.hoy().minusDays(DIAS_MAS_VENDIDOS - 1));
         return construirRespuestas(productos);
     }
 
     private List<ProductoResponse> construirRespuestas(List<Producto> productos) {
         List<Long> ids = productos.stream().map(Producto::getId).toList();
-        Map<Long, LocalDate> fechasProximas = productoDao.fechaVencimientoMasProximaPorProductos(ids);
-        Map<Long, List<PresentacionProducto>> presentacionesPorProducto = productoDao.listarPresentacionesPorProductos(ids);
         LocalDate hoy = fechaNegocio.hoy();
+        Map<Long, LocalDate> fechasProximas = productoDao.fechaVencimientoMasProximaPorProductos(ids, hoy);
+        Map<Long, List<PresentacionProducto>> presentacionesPorProducto = productoDao.listarPresentacionesPorProductos(ids);
 
         return productos.stream().map(producto -> {
             LocalDate fechaVencimiento = fechasProximas.get(producto.getId());

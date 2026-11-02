@@ -5,6 +5,7 @@ import com.botica.backend.dao.CajaDao;
 import com.botica.backend.dto.ItemVentaRequest;
 import com.botica.backend.dto.NuevaVentaRequest;
 import com.botica.backend.exception.StockInsuficienteException;
+import com.botica.backend.exception.StockSoloVencidoException;
 import com.botica.backend.model.CajaDiaria;
 import com.botica.backend.util.FechaNegocio;
 import org.junit.jupiter.api.BeforeEach;
@@ -79,13 +80,28 @@ class VentaLoteVencidoIntegracionTest {
     }
 
     @Test
-    void venta_conSoloStockVencido_esStockInsuficiente_yNoDescuentaNada() {
+    void venta_conSoloStockVencido_esStockSoloVencido_yNoDescuentaNada() {
         long[] producto = productoConPresentacionUnidad();
         long loteVencido = lote(producto[0], fechaNegocio.hoy().minusDays(1), 50);
 
+        // DIF-13 (Tarea 0B): el error dice que es vencido, no "disponible 0".
         assertThatThrownBy(() -> ventaService.registrar(pedido(producto, 5)))
-                .isInstanceOf(StockInsuficienteException.class);
+                .isInstanceOf(StockSoloVencidoException.class)
+                .hasMessageContaining("Retíralo con una merma");
         assertThat(stockDelLote(loteVencido)).isEqualTo(50);
+    }
+
+    @Test
+    void venta_conPocoStockVigenteYMuchoVencido_sigueSiendoStockInsuficiente() {
+        LocalDate hoy = fechaNegocio.hoy();
+        long[] producto = productoConPresentacionUnidad();
+        lote(producto[0], hoy.minusDays(1), 50);
+        long loteVigente = lote(producto[0], hoy.plusYears(1), 3);
+
+        assertThatThrownBy(() -> ventaService.registrar(pedido(producto, 5)))
+                .isInstanceOf(StockInsuficienteException.class)
+                .hasMessageContaining("disponible 3");
+        assertThat(stockDelLote(loteVigente)).isEqualTo(3);
     }
 
     @Test
