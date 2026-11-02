@@ -7,6 +7,7 @@ import com.botica.backend.dto.LoteResponse;
 import com.botica.backend.dto.NuevoLoteRequest;
 import com.botica.backend.dto.PaginaResponse;
 import com.botica.backend.exception.LoteDuplicadoException;
+import com.botica.backend.exception.ProductoInactivoException;
 import com.botica.backend.exception.ProductoNoEncontradoException;
 import com.botica.backend.model.Lote;
 import com.botica.backend.util.FechaNegocio;
@@ -41,8 +42,11 @@ public class LoteService {
     @Transactional
     public LoteResponse registrar(NuevoLoteRequest request) {
         Long boticaId = contexto.boticaId();
-        if (!loteDao.existeProducto(boticaId, request.productoId())) {
-            throw new ProductoNoEncontradoException();
+        boolean activo = loteDao.productoActivo(boticaId, request.productoId())
+                .orElseThrow(ProductoNoEncontradoException::new);
+        if (!activo) {
+            // Tarea 17: desactivado no recibe stock nuevo; el que ya tiene se retira por merma.
+            throw new ProductoInactivoException();
         }
         Lote lote = Lote.builder()
                 .boticaId(boticaId)

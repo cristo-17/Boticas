@@ -46,8 +46,8 @@ class CajaDaoReglasTest {
         // usuario, y los tests de integración de ventas dejan abierta la del usuario del contexto.
         String usuario = "qa.caja." + System.nanoTime();
         jdbcTemplate.update(
-                "INSERT INTO usuarios (botica_id, rol_id, nombre, usuario, password_hash, turno) " +
-                        "VALUES (?, (SELECT id FROM roles WHERE nombre = 'TECNICO'), 'QA Caja', ?, 'x', 'Tarde')",
+                "INSERT INTO usuarios (botica_id, rol_id, nombre, usuario, password_hash) " +
+                        "VALUES (?, (SELECT id FROM roles WHERE nombre = 'TECNICO'), 'QA Caja', ?, 'x')",
                 boticaId, usuario);
         usuarioId = jdbcTemplate.queryForObject("SELECT id FROM usuarios WHERE usuario = ?", Long.class, usuario);
     }

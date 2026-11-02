@@ -5,6 +5,7 @@ import com.botica.backend.config.ContextoOperacion;
 import com.botica.backend.dao.ProductoDao;
 import com.botica.backend.dto.PresentacionResponse;
 import com.botica.backend.dto.ProductoResponse;
+import com.botica.backend.exception.ProductoInactivoException;
 import com.botica.backend.exception.ProductoNoEncontradoException;
 import com.botica.backend.model.PresentacionProducto;
 import com.botica.backend.model.Producto;
@@ -37,14 +38,19 @@ public class ProductoService {
         this.config = config;
     }
 
-    public List<ProductoResponse> buscar(String query) {
-        List<Producto> productos = productoDao.buscar(contexto.boticaId(), query, LIMITE_BUSQUEDA);
+    /** incluirInactivos: solo Merma lo pide (Tarea 17); Punto de Venta y el alta de lote ven únicamente activos. */
+    public List<ProductoResponse> buscar(String query, boolean incluirInactivos) {
+        List<Producto> productos = productoDao.buscar(contexto.boticaId(), query, incluirInactivos, LIMITE_BUSQUEDA);
         return construirRespuestas(productos);
     }
 
     public ProductoResponse buscarPorCodigoBarras(String codigoBarras) {
         Producto producto = productoDao.buscarPorCodigoBarras(contexto.boticaId(), codigoBarras)
                 .orElseThrow(ProductoNoEncontradoException::new);
+        if (!Boolean.TRUE.equals(producto.getActivo())) {
+            // El escáner es de Punto de Venta: un desactivado no se vende (Tarea 17).
+            throw new ProductoInactivoException(producto.getNombre());
+        }
         return construirRespuestas(List.of(producto)).get(0);
     }
 
@@ -66,6 +72,8 @@ public class ProductoService {
             List<PresentacionResponse> presentaciones = presentacionesPorProducto
                     .getOrDefault(producto.getId(), List.of())
                     .stream()
+                    // Solo las vendibles: una presentación quitada al editar no se ofrece en ninguna lista.
+                    .filter(p -> Boolean.TRUE.equals(p.getActivo()))
                     .map(p -> PresentacionResponse.desde(p, producto.getUnidadNombre()))
                     .toList();
             return ProductoResponse.desde(producto, estadoVencimiento, fechaVencimiento, presentaciones);

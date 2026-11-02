@@ -3,6 +3,7 @@ package com.botica.backend.service;
 import com.botica.backend.config.ConfigNegocioProperties;
 import com.botica.backend.dto.ConfigResponse;
 import com.botica.backend.dto.VencimientoConfig;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -16,9 +17,11 @@ public class ConfigService {
             List.of("Robo o pérdida", "Otro");
 
     private final ConfigNegocioProperties propiedades;
+    private final String version;
 
-    public ConfigService(ConfigNegocioProperties propiedades) {
+    public ConfigService(ConfigNegocioProperties propiedades, @Value("${app.version}") String version) {
         this.propiedades = propiedades;
+        this.version = version;
     }
 
     public ConfigResponse obtener() {
@@ -28,7 +31,8 @@ public class ConfigService {
                 propiedades.getDescuadreLeve(),
                 MOTIVOS_MERMA,
                 MOTIVOS_QUE_REQUIEREN_OBSERVACION,
-                new VencimientoConfig(propiedades.getVencimientoCriticoDias(), propiedades.getVencimientoAdvertenciaDias())
+                new VencimientoConfig(propiedades.getVencimientoCriticoDias(), propiedades.getVencimientoAdvertenciaDias()),
+                version
         );
     }
 }

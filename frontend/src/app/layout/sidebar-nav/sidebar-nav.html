@@ -7,7 +7,7 @@
 </div>
 
 <div class="sidebar-nav__items">
-  @for (item of navItems; track item.path) {
+  @for (item of navItems(); track item.path) {
     <a
       [routerLink]="item.path"
       routerLinkActive="sidebar-nav__item--active"

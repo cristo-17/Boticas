@@ -55,7 +55,7 @@ class LoteServiceTest {
     @Test
     void registrar_conProductoInexistente_lanzaProductoNoEncontrado_yNoInserta() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
-        when(loteDao.existeProducto(BOTICA_ID, 999L)).thenReturn(false);
+        when(loteDao.productoActivo(BOTICA_ID, 999L)).thenReturn(Optional.empty());
         NuevoLoteRequest request = new NuevoLoteRequest(999L, "L-1", LocalDate.of(2027, 1, 1), 10, "A-1", new BigDecimal("3.00"));
 
         assertThatThrownBy(() -> service.registrar(request)).isInstanceOf(ProductoNoEncontradoException.class);
@@ -63,10 +63,22 @@ class LoteServiceTest {
     }
 
     @Test
+    void registrar_conProductoDesactivado_lanzaProductoInactivo_yNoInserta() {
+        // Tarea 17: un producto desactivado no recibe stock nuevo.
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(loteDao.productoActivo(BOTICA_ID, 1L)).thenReturn(Optional.of(false));
+        NuevoLoteRequest request = new NuevoLoteRequest(1L, "L-1", LocalDate.of(2027, 1, 1), 10, "A-1", new BigDecimal("3.00"));
+
+        assertThatThrownBy(() -> service.registrar(request))
+                .isInstanceOf(com.botica.backend.exception.ProductoInactivoException.class);
+        verify(loteDao, never()).insertar(any());
+    }
+
+    @Test
     void registrar_conProductoExistente_insertaYReleeComoLoteResponse() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
         when(contexto.usuarioId()).thenReturn(USUARIO_ID);
-        when(loteDao.existeProducto(BOTICA_ID, 1L)).thenReturn(true);
+        when(loteDao.productoActivo(BOTICA_ID, 1L)).thenReturn(Optional.of(true));
         Lote insertado = Lote.builder().id(10L).boticaId(BOTICA_ID).productoId(1L).build();
         when(loteDao.insertar(any())).thenReturn(insertado);
         LoteResponse esperado = new LoteResponse(10L, 1L, "Paracetamol 500 mg", "Analgésicos", "L-1",

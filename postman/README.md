@@ -20,9 +20,14 @@ sincroniza) o con `--env-var` en Newman.
 
 Las carpetas se corren en orden: Auth guarda los tokens que usan las demás.
 El flujo de caja empieza cerrando la caja que el TECNICO haya dejado abierta, y
-cada lote que crea lleva un código nuevo. Por eso dos corridas seguidas dan el
-mismo resultado. Los dos lotes de la prueba FEFO vencen hoy y quedan en 0 al
-venderse, así que no dejan stock vencido.
+cada lote que crea lleva un código nuevo. La venta en efectivo crea antes su
+propio lote de 2 unidades, así que no gasta el stock del seed (`[QA-001]`). Los
+dos lotes de la prueba FEFO vencen hoy y quedan en 0 al venderse, así que no
+dejan stock vencido. Por eso las corridas se pueden repetir sin límite.
+
+**Catálogo (ADMINISTRADOR)** crea un producto nuevo en cada corrida (código
+`PC` + timestamp), lo edita, lo desactiva y lo reactiva. Cada ruta nueva tiene
+su 403 para el TECNICO.
 
 **Solo lectura** no escribe nada y hace su propio login. Es la única carpeta
 que se corre contra producción, y solo con usuarios demo (R23).

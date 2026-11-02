@@ -32,7 +32,12 @@ public interface LoteDao {
     Optional<com.botica.backend.dto.LoteResponse> buscarResponsePorId(
             Long boticaId, Long id, LocalDate hoy, int criticoDias, int advertenciaDias, int umbralStockBajo);
 
-    boolean existeProducto(Long boticaId, Long productoId);
+    /**
+     * Estado del producto en ESA botica: vacío si no existe (o es de otra
+     * botica), si no su columna activo (V9). El alta de lote rechaza un
+     * producto desactivado (Tarea 17).
+     */
+    Optional<Boolean> productoActivo(Long boticaId, Long productoId);
 
     /**
      * Lotes de un producto con stock > 0 y no vencidos (fecha_vencimiento

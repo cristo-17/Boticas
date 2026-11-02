@@ -178,13 +178,12 @@ public class LoteDaoJdbc implements LoteDao {
     }
 
     @Override
-    public boolean existeProducto(Long boticaId, Long productoId) {
-        String sql = "SELECT COUNT(*) FROM productos WHERE botica_id = :boticaId AND id = :productoId";
+    public Optional<Boolean> productoActivo(Long boticaId, Long productoId) {
+        String sql = "SELECT activo FROM productos WHERE botica_id = :boticaId AND id = :productoId";
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", boticaId)
                 .addValue("productoId", productoId);
-        Integer total = jdbc.queryForObject(sql, params, Integer.class);
-        return total != null && total > 0;
+        return jdbc.queryForList(sql, params, Boolean.class).stream().findFirst();
     }
 
     @Override

@@ -37,9 +37,12 @@ class ProductoControllerTest {
     @MockitoBean
     private ProductoService productoService;
 
+    @MockitoBean
+    private com.botica.backend.service.CatalogoProductoService catalogoService;
+
     @Test
     void buscar_devuelveLaListaDelService() throws Exception {
-        when(productoService.buscar(anyString())).thenReturn(List.of(productoDePrueba()));
+        when(productoService.buscar(anyString(), org.mockito.ArgumentMatchers.anyBoolean())).thenReturn(List.of(productoDePrueba()));
 
         mockMvc.perform(get("/api/productos?buscar=para"))
                 .andExpect(status().isOk())
@@ -57,6 +60,51 @@ class ProductoControllerTest {
     }
 
     @Test
+    void buscar_conIncluirInactivos_loPasaAlService() throws Exception {
+        when(productoService.buscar("para", true)).thenReturn(List.of(productoDePrueba()));
+
+        mockMvc.perform(get("/api/productos?buscar=para&incluirInactivos=true"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].activo").value(true));
+    }
+
+    @Test
+    void crear_sinUnidadNombre_devuelve400FormatoInvalido() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/productos")
+                        .contentType("application/json")
+                        .content("""
+                                {"nombre": "X", "categoria": "Otros", "codigoBarras": "775",
+                                 "presentaciones": [{"etiqueta": "Unidad", "factorConversion": 1, "precio": 0.20}]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
+        org.mockito.Mockito.verifyNoInteractions(catalogoService);
+    }
+
+    @Test
+    void crear_conPrecioCero_devuelve400FormatoInvalido() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/productos")
+                        .contentType("application/json")
+                        .content("""
+                                {"nombre": "X", "categoria": "Otros", "codigoBarras": "775", "unidadNombre": "tableta",
+                                 "presentaciones": [{"etiqueta": "Unidad", "factorConversion": 1, "precio": 0}]}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
+    }
+
+    @Test
+    void crear_sinPresentaciones_devuelve400FormatoInvalido() throws Exception {
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/api/productos")
+                        .contentType("application/json")
+                        .content("""
+                                {"nombre": "X", "categoria": "Otros", "codigoBarras": "775", "unidadNombre": "tableta", "presentaciones": []}
+                                """))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
+    }
+
+    @Test
     void masVendidos_devuelveLaListaDelService() throws Exception {
         when(productoService.masVendidos()).thenReturn(List.of(productoDePrueba()));
 
@@ -69,7 +117,8 @@ class ProductoControllerTest {
         return new ProductoResponse(
                 1L, "Paracetamol 500 mg", "Genfar", "Analgésicos", "777",
                 null, null,
-                List.of(new com.botica.backend.dto.PresentacionResponse(1L, "Caja", 100, "tableta", new java.math.BigDecimal("12.90")))
+                List.of(new com.botica.backend.dto.PresentacionResponse(1L, "Caja", 100, "tableta", new java.math.BigDecimal("12.90"))),
+                true
         );
     }
 }

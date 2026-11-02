@@ -29,7 +29,7 @@
               <button type="button" class="merma__resultado" (click)="elegirProducto(p)">
                 <span class="merma__resultado-info">
                   <span class="merma__resultado-nombre">{{ p.nombre }}</span>
-                  <span class="merma__resultado-sub">{{ p.laboratorio }} · {{ p.categoria }}</span>
+                  <span class="merma__resultado-sub">{{ p.laboratorio }} · {{ p.categoria }}@if (!p.activo) { · desactivado }</span>
                 </span>
               </button>
             }

@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { Shell } from './layout/shell/shell';
 import { authGuard } from './core/guards/auth.guard';
+import { rolGuard } from './core/guards/rol.guard';
 
 export const routes: Routes = [
   {
@@ -44,6 +45,11 @@ export const routes: Routes = [
       {
         path: 'caja',
         loadComponent: () => import('./features/caja/caja').then((m) => m.CajaScreen),
+      },
+      {
+        path: 'catalogo',
+        canActivate: [rolGuard('ADMINISTRADOR')],
+        loadComponent: () => import('./features/catalogo/catalogo').then((m) => m.CatalogoScreen),
       },
     ],
   },

@@ -64,9 +64,9 @@ class LoteDaoAislamientoTest {
     }
 
     @Test
-    void existeProducto_conProductoDeOtraBotica_devuelveFalse() {
-        boolean existe = loteDao.existeProducto(boticaSanLucasId, productoDeVidaSanaId);
+    void productoActivo_conProductoDeOtraBotica_devuelveVacio() {
+        var estado = loteDao.productoActivo(boticaSanLucasId, productoDeVidaSanaId);
 
-        assertThat(existe).as("un producto de Vida Sana no debe 'existir' al validar como San Lucas").isFalse();
+        assertThat(estado).as("un producto de Vida Sana no debe 'existir' al validar como San Lucas").isEmpty();
     }
 }

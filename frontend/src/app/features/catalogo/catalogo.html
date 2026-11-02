@@ -1,0 +1,258 @@
+<div class="catalogo">
+  <div class="catalogo__head">
+    <div>
+      <h1>Catálogo de productos</h1>
+      <p class="field-hint">
+        Productos, presentaciones y precios ·
+        <span class="num">{{ pagina()?.totalElementos ?? 0 }} productos</span>
+      </p>
+    </div>
+    <app-button variant="primary" (clicked)="abrirNuevo()">Nuevo producto</app-button>
+  </div>
+
+  <!-- Error del listado, o de activar/desactivar (con el formulario cerrado, su error no tiene otro lugar) -->
+  <app-error-banner [mensaje]="error() ?? (formularioAbierto() ? null : errorGuardado())"></app-error-banner>
+
+  <app-card>
+    <div class="catalogo__busqueda">
+      <i class="bi bi-search catalogo__busqueda-icono"></i>
+      <input
+        type="text"
+        class="bs-field-compact catalogo__busqueda-input"
+        placeholder="Buscar por nombre, laboratorio o código de barras..."
+        aria-label="Buscar en el catálogo"
+        [value]="busqueda()"
+        (input)="onBusquedaInput($event)"
+      />
+    </div>
+  </app-card>
+
+  @if (cargando()) {
+    <app-card>
+      <app-skeleton [count]="6"></app-skeleton>
+    </app-card>
+  } @else if (vacio()) {
+    <app-empty-state
+      title="Ningún producto coincide"
+      text="Prueba con otro nombre o código, o crea el producto."
+      actionLabel="Nuevo producto"
+      (actionClick)="abrirNuevo()"
+    ></app-empty-state>
+  } @else {
+    <app-table>
+      <thead>
+        <tr>
+          <th>Producto</th>
+          <th>Código de barras</th>
+          <th>Presentaciones</th>
+          <th>Estado</th>
+          <th class="align-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (p of productos(); track p.id) {
+          <tr [class.catalogo__fila--inactiva]="!p.activo">
+            <td>
+              <span class="catalogo__nombre">{{ p.nombre }}</span>
+              <span class="catalogo__meta">{{ p.laboratorio ?? 'Sin laboratorio' }} · {{ p.categoria }}</span>
+            </td>
+            <td class="num catalogo__code">{{ p.codigoBarras }}</td>
+            <td>
+              <div class="catalogo__presentaciones">
+                @for (x of presentacionesActivas(p); track x.id) {
+                  <span class="catalogo__presentacion">
+                    {{ textoPresentacion(x, p.unidadNombre) }}
+                    <span class="num">{{ formatearMoneda(x.precio) }}</span>
+                  </span>
+                }
+              </div>
+            </td>
+            <td>
+              <app-badge [variant]="p.activo ? 'ok' : 'neutral'">{{ p.activo ? 'Activo' : 'Desactivado' }}</app-badge>
+            </td>
+            <td class="align-end">
+              <div class="catalogo__acciones">
+                <app-button variant="secondary" (clicked)="abrirEdicion(p)">Editar</app-button>
+                <app-button
+                  [variant]="p.activo ? 'ghost' : 'secondary'"
+                  [loading]="productoEnCambio() === p.id"
+                  (clicked)="alternarEstado(p)"
+                  >{{ p.activo ? 'Desactivar' : 'Activar' }}</app-button
+                >
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+      <div cards>
+        @for (p of productos(); track p.id) {
+          <app-card [flat]="true" class="catalogo__card" [class.catalogo__fila--inactiva]="!p.activo">
+            <div class="catalogo__card-top">
+              <div>
+                <div class="catalogo__nombre">{{ p.nombre }}</div>
+                <div class="catalogo__meta">
+                  {{ p.laboratorio ?? 'Sin laboratorio' }} · {{ p.categoria }} · <span class="num">{{ p.codigoBarras }}</span>
+                </div>
+              </div>
+              <app-badge [variant]="p.activo ? 'ok' : 'neutral'">{{ p.activo ? 'Activo' : 'Desactivado' }}</app-badge>
+            </div>
+            <div class="catalogo__presentaciones">
+              @for (x of presentacionesActivas(p); track x.id) {
+                <span class="catalogo__presentacion">
+                  {{ textoPresentacion(x, p.unidadNombre) }}
+                  <span class="num">{{ formatearMoneda(x.precio) }}</span>
+                </span>
+              }
+            </div>
+            <div class="catalogo__acciones">
+              <app-button variant="secondary" (clicked)="abrirEdicion(p)">Editar</app-button>
+              <app-button
+                [variant]="p.activo ? 'ghost' : 'secondary'"
+                [loading]="productoEnCambio() === p.id"
+                (clicked)="alternarEstado(p)"
+                >{{ p.activo ? 'Desactivar' : 'Activar' }}</app-button
+              >
+            </div>
+          </app-card>
+        }
+      </div>
+    </app-table>
+
+    @if (pagina(); as pg) {
+      <app-paginacion
+        [pagina]="pg.pagina"
+        [totalPaginas]="pg.totalPaginas"
+        [totalElementos]="pg.totalElementos"
+        (anterior)="irAPagina(pg.pagina - 1)"
+        (siguiente)="irAPagina(pg.pagina + 1)"
+      ></app-paginacion>
+    }
+
+    <p class="field-hint">
+      Un producto desactivado no aparece en Punto de Venta ni en el alta de lote. Sigue en Inventario, Alertas y
+      Merma, porque su stock existe y hay que poder retirarlo.
+    </p>
+  }
+</div>
+
+@if (formularioAbierto()) {
+  <div class="modal-backdrop-bs" (click)="cerrarFormulario()">
+    <div class="modal-bs catalogo__form-modal" (click)="$event.stopPropagation()">
+      <div class="modal-bs__body">
+        <div class="modal-bs__title">{{ editandoId() === null ? 'Nuevo producto' : 'Editar producto' }}</div>
+
+        <app-error-banner [mensaje]="errorGuardado()"></app-error-banner>
+
+        <div class="catalogo__form-campos">
+          <div class="bs-field">
+            <label for="cat-nombre" class="bs-field__label">Nombre</label>
+            <div class="bs-field__control">
+              <input id="cat-nombre" class="bs-field__input" type="text" maxlength="200" placeholder="Paracetamol 500 mg"
+                [value]="nombre()" (input)="nombre.set($any($event.target).value)" />
+            </div>
+          </div>
+
+          <div class="catalogo__form-fila">
+            <div class="bs-field">
+              <label for="cat-laboratorio" class="bs-field__label">Laboratorio (opcional)</label>
+              <div class="bs-field__control">
+                <input id="cat-laboratorio" class="bs-field__input" type="text" maxlength="120"
+                  [value]="laboratorio()" (input)="laboratorio.set($any($event.target).value)" />
+              </div>
+            </div>
+            <div class="bs-field">
+              <label for="cat-categoria" class="bs-field__label">Categoría</label>
+              <div class="bs-field__control">
+                <input id="cat-categoria" class="bs-field__input" type="text" maxlength="80" placeholder="Analgésicos"
+                  [value]="categoria()" (input)="categoria.set($any($event.target).value)" />
+              </div>
+            </div>
+          </div>
+
+          <div class="catalogo__form-fila">
+            <div class="bs-field">
+              <label for="cat-codigo" class="bs-field__label">Código de barras</label>
+              <div class="bs-field__control">
+                <input id="cat-codigo" class="bs-field__input num" type="text" maxlength="20" inputmode="numeric"
+                  placeholder="Escanéalo o escríbelo" [value]="codigoBarras()" (input)="codigoBarras.set($any($event.target).value)" />
+              </div>
+            </div>
+            <div class="bs-field">
+              <label for="cat-unidad" class="bs-field__label">Unidad base</label>
+              <div class="bs-field__control">
+                <input id="cat-unidad" class="bs-field__input" type="text" maxlength="30" placeholder="tableta, cápsula, frasco…"
+                  [value]="unidadNombre()" (input)="unidadNombre.set($any($event.target).value)" />
+              </div>
+            </div>
+          </div>
+
+          <div class="catalogo__pres-head">
+            <span class="eyebrow">Presentaciones</span>
+            <app-button variant="ghost" (clicked)="agregarFila()">+ Agregar presentación</app-button>
+          </div>
+
+          <div class="catalogo__pres-lista">
+            @for (f of filas(); track f.clave) {
+              <div class="catalogo__pres-fila">
+                <input class="bs-field-compact" type="text" maxlength="30" placeholder="Caja, Blíster…"
+                  [attr.aria-label]="'Nombre de la presentación ' + ($index + 1)"
+                  [value]="f.etiqueta" (input)="onEtiqueta(f, $event)" />
+                <input class="bs-field-compact num catalogo__pres-factor" type="number" min="2" step="1"
+                  [attr.aria-label]="'Unidades de ' + (f.etiqueta || 'la presentación')"
+                  [disabled]="f.esUnidad || f.id !== undefined"
+                  [value]="f.factor" (input)="onNumero(f, 'factor', $event)" />
+                <span class="catalogo__pres-unidad">{{ unidadNombre() || 'unid.' }}</span>
+                <input class="bs-field-compact num catalogo__pres-precio" type="number" min="0.01" step="0.01" placeholder="S/"
+                  [attr.aria-label]="'Precio de ' + (f.etiqueta || 'la presentación')"
+                  [value]="f.precio" (input)="onNumero(f, 'precio', $event)" />
+                @if (f.esUnidad) {
+                  <span class="catalogo__pres-fija" title="Toda presentación se cuenta en esta unidad">Base</span>
+                } @else {
+                  <app-button variant="ghost" [icon]="true" [ariaLabel]="'Quitar ' + (f.etiqueta || 'presentación')"
+                    (clicked)="quitarFila(f)"><i class="bi bi-x-lg"></i></app-button>
+                }
+              </div>
+            }
+          </div>
+
+          @if (quitadas().length > 0) {
+            <div class="field-hint catalogo__aviso">
+              Al guardar se desactivan: {{ quitadas().join(', ') }}. Dejan de venderse; las ventas pasadas no cambian.
+            </div>
+          }
+
+          @if (desactivadas().length > 0) {
+            <div class="catalogo__desactivadas">
+              <span class="eyebrow">Desactivadas</span>
+              @for (d of desactivadas(); track d.id) {
+                <span class="catalogo__presentacion">
+                  {{ textoPresentacion(d, unidadNombre()) }} <span class="num">{{ formatearMoneda(d.precio) }}</span>
+                  <app-button variant="ghost" (clicked)="reactivar(d)">Reactivar</app-button>
+                </span>
+              }
+            </div>
+          }
+
+          <div class="field-hint">
+            El factor de una presentación que ya existe no se cambia. Si cambias un precio, solo afecta las ventas que
+            vengan: las pasadas conservan el suyo.
+          </div>
+
+          @if (intentoGuardar() && erroresFormulario().length > 0) {
+            <ul class="catalogo__errores">
+              @for (e of erroresFormulario(); track e) {
+                <li>{{ e }}</li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+      <div class="modal-bs__actions">
+        <app-button variant="secondary" [disabled]="guardando()" (clicked)="cerrarFormulario()">Cancelar</app-button>
+        <app-button variant="primary" [loading]="guardando()" (clicked)="guardar()"
+          >Guardar producto</app-button
+        >
+      </div>
+    </div>
+  </div>
+}

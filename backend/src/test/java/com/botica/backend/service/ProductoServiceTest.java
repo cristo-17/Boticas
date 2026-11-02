@@ -59,12 +59,12 @@ class ProductoServiceTest {
     @Test
     void buscar_conLoteCriticoConStock_calculaEstadoCritico() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
-        when(productoDao.buscar(BOTICA_ID, "para", 20)).thenReturn(List.of(productoDePrueba()));
+        when(productoDao.buscar(BOTICA_ID, "para", false, 20)).thenReturn(List.of(productoDePrueba()));
         when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L), HOY))
                 .thenReturn(Map.of(1L, HOY.plusDays(10))); // dentro de los 30 días críticos
         when(productoDao.listarPresentacionesPorProductos(List.of(1L))).thenReturn(Map.of());
 
-        List<ProductoResponse> resultado = service.buscar("para");
+        List<ProductoResponse> resultado = service.buscar("para", false);
 
         assertThat(resultado).hasSize(1);
         assertThat(resultado.get(0).estadoVencimiento()).isEqualTo("CRITICO");
@@ -74,11 +74,11 @@ class ProductoServiceTest {
     @Test
     void buscar_sinNingunLoteConStock_estadoYFechaQuedanNull() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
-        when(productoDao.buscar(BOTICA_ID, "", 20)).thenReturn(List.of(productoDePrueba()));
+        when(productoDao.buscar(BOTICA_ID, "", false, 20)).thenReturn(List.of(productoDePrueba()));
         when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L), HOY)).thenReturn(Map.of());
         when(productoDao.listarPresentacionesPorProductos(List.of(1L))).thenReturn(Map.of());
 
-        List<ProductoResponse> resultado = service.buscar("");
+        List<ProductoResponse> resultado = service.buscar("", false);
 
         assertThat(resultado.get(0).estadoVencimiento()).isNull();
         assertThat(resultado.get(0).fechaVencimiento()).isNull();
@@ -91,11 +91,11 @@ class ProductoServiceTest {
         PresentacionProducto presentacion = PresentacionProducto.builder()
                 .id(1L).productoId(1L).etiqueta("Caja").factorConversion(100)
                 .precio(new java.math.BigDecimal("12.90")).build();
-        when(productoDao.buscar(BOTICA_ID, "", 20)).thenReturn(List.of(producto));
+        when(productoDao.buscar(BOTICA_ID, "", false, 20)).thenReturn(List.of(producto));
         when(productoDao.fechaVencimientoMasProximaPorProductos(List.of(1L), HOY)).thenReturn(Map.of());
         when(productoDao.listarPresentacionesPorProductos(List.of(1L))).thenReturn(Map.of(1L, List.of(presentacion)));
 
-        List<ProductoResponse> resultado = service.buscar("");
+        List<ProductoResponse> resultado = service.buscar("", false);
 
         assertThat(resultado.get(0).presentaciones()).hasSize(1);
         assertThat(resultado.get(0).presentaciones().get(0).unidadNombre()).isEqualTo("tableta");

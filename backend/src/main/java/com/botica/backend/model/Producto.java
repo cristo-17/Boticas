@@ -27,6 +27,9 @@ public class Producto {
     private String categoria;
     private String codigoBarras;
     private String unidadNombre;
+    /** V9: false = desactivado por el administrador (no se vende ni recibe lotes). */
+    @Builder.Default
+    private Boolean activo = true;
     private OffsetDateTime creadoEn;
     private Long creadoPor;
 }

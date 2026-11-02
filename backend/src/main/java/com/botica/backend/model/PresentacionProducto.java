@@ -27,5 +27,8 @@ public class PresentacionProducto {
     private String etiqueta;
     private Integer factorConversion;
     private BigDecimal precio;
+    /** V9: false = quitada al editar el producto; no se vende, nunca se borra (venta_detalle la referencia). */
+    @Builder.Default
+    private Boolean activo = true;
     private OffsetDateTime creadoEn;
 }

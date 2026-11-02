@@ -18,6 +18,7 @@ public class PresentacionProductoRowMapper implements RowMapper<PresentacionProd
                 .etiqueta(rs.getString("etiqueta"))
                 .factorConversion(rs.getInt("factor_conversion"))
                 .precio(rs.getBigDecimal("precio"))
+                .activo(rs.getBoolean("activo"))
                 .creadoEn(rs.getObject("creado_en", OffsetDateTime.class))
                 .build();
     }

@@ -11,4 +11,6 @@ export interface ConfigNegocio {
   motivosMerma: string[];
   motivosQueRequierenObservacion: string[];
   vencimiento: VencimientoConfig;
+  /** R25: commit que sirve el backend ("local" fuera de Render). Solo para verificar el deploy; la UI no lo usa. */
+  version: string;
 }

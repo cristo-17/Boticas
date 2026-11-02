@@ -66,7 +66,7 @@ export class MermaScreen implements OnInit {
       .pipe(
         debounceTime(300),
         distinctUntilChanged(),
-        switchMap((query) => this.productoService.buscarProductos(query)),
+        switchMap((query) => this.productoService.buscarProductos(query, true)), // con desactivados: tienen stock que retirar
         takeUntilDestroyed(),
       )
       .subscribe({ error: () => {} });

@@ -1,6 +1,31 @@
-@for (item of navItems; track item.path) {
-  <a [routerLink]="item.path" routerLinkActive="bottom-nav__item--active" class="bottom-nav__item">
+@for (item of barra(); track item.path) {
+  <a [routerLink]="item.path" routerLinkActive="bottom-nav__item--active" class="bottom-nav__item" (click)="cerrarMas()">
     <i class="bi" [class]="item.icon + ' bottom-nav__icon'"></i>
     <span class="bottom-nav__label">{{ item.shortLabel }}</span>
   </a>
+}
+@if (mas().length > 0) {
+  <button
+    type="button"
+    class="bottom-nav__item"
+    [class.bottom-nav__item--active]="masActivo() || masAbierto()"
+    [attr.aria-expanded]="masAbierto()"
+    aria-controls="bottom-nav-mas"
+    (click)="alternarMas()"
+  >
+    <i class="bi bi-three-dots bottom-nav__icon"></i>
+    <span class="bottom-nav__label">Más</span>
+  </button>
+}
+
+@if (masAbierto()) {
+  <div class="bottom-nav__fondo" (click)="cerrarMas()"></div>
+  <nav id="bottom-nav-mas" class="bottom-nav__mas" aria-label="Más secciones">
+    @for (item of mas(); track item.path) {
+      <a [routerLink]="item.path" routerLinkActive="bottom-nav__mas-item--active" class="bottom-nav__mas-item" (click)="cerrarMas()">
+        <i class="bi" [class]="item.icon"></i>
+        <span>{{ item.label }}</span>
+      </a>
+    }
+  </nav>
 }

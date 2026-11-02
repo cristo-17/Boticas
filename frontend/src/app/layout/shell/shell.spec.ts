@@ -18,6 +18,7 @@ const CONFIG: ConfigNegocio = {
   igv: 0.18, umbralStockBajo: 15, descuadreLeve: 10,
   motivosMerma: [], motivosQueRequierenObservacion: [],
   vencimiento: { criticoDias: 30, advertenciaDias: 90 },
+  version: 'local',
 };
 
 /** DIF-03 (Tarea 0B-B): si /api/config no cargó al iniciar, se avisa y se vuelve a pedir después del login. */

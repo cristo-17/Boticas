@@ -17,6 +17,7 @@ function productoDePrueba(id: number): Producto {
     estadoVencimiento: 'OK',
     fechaVencimiento: '2027-01-01',
     presentaciones: [],
+    activo: true,
   };
 }
 

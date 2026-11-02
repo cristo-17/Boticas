@@ -21,7 +21,9 @@ public record ProductoResponse(
         String codigoBarras,
         String estadoVencimiento,
         LocalDate fechaVencimiento,
-        List<PresentacionResponse> presentaciones
+        List<PresentacionResponse> presentaciones,
+        /** Tarea 17: Merma busca también los desactivados (tienen stock que retirar) y los marca. */
+        boolean activo
 ) {
     public static ProductoResponse desde(
             Producto producto,
@@ -37,7 +39,8 @@ public record ProductoResponse(
                 producto.getCodigoBarras(),
                 estadoVencimiento,
                 fechaVencimiento,
-                presentaciones
+                presentaciones,
+                Boolean.TRUE.equals(producto.getActivo())
         );
     }
 }

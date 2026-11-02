@@ -31,4 +31,6 @@ export interface Producto {
   estadoVencimiento: EstadoVencimiento | null;
   fechaVencimiento: string | null; // ISO 8601 (yyyy-MM-dd)
   presentaciones: PresentacionProducto[];
+  /** Tarea 17: solo Merma recibe desactivados (incluirInactivos); Punto de Venta nunca los ve. */
+  activo: boolean;
 }

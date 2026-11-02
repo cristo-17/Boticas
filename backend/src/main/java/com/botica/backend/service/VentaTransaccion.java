@@ -11,6 +11,7 @@ import com.botica.backend.dto.ItemVentaResponse;
 import com.botica.backend.dto.NuevaVentaRequest;
 import com.botica.backend.dto.VentaResponse;
 import com.botica.backend.exception.PresentacionInvalidaException;
+import com.botica.backend.exception.ProductoInactivoException;
 import com.botica.backend.exception.SinCajaAbiertaException;
 import com.botica.backend.exception.StockInsuficienteException;
 import com.botica.backend.exception.StockSoloVencidoException;
@@ -106,7 +107,12 @@ class VentaTransaccion {
         for (ItemVentaRequest item : request.items()) {
             Producto producto = productoDao.obtenerPorId(boticaId, item.productoId())
                     .orElseThrow(PresentacionInvalidaException::new);
+            if (!Boolean.TRUE.equals(producto.getActivo())) {
+                // Tarea 17: desactivado no se vende, aunque un carrito viejo todavía lo tenga.
+                throw new ProductoInactivoException(producto.getNombre());
+            }
             PresentacionProducto presentacion = productoDao.obtenerPresentacion(boticaId, item.productoId(), item.presentacionId())
+                    .filter(p -> Boolean.TRUE.equals(p.getActivo())) // una presentación quitada no se vende
                     .orElseThrow(PresentacionInvalidaException::new);
 
             int cantidadPresentacion = item.cantidad();

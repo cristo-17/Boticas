@@ -5,7 +5,7 @@ import { AlertaService } from '../../core/services/alerta.service';
 import { AuthService } from '../../core/services/auth.service';
 import { CajaService } from '../../core/services/caja.service';
 import { ConexionService } from '../../core/services/conexion.service';
-import { NAV_ITEMS } from '../nav-items';
+import { navItemsDe } from '../nav-items';
 
 const ETIQUETAS_CONEXION = {
   online: 'En línea',
@@ -26,8 +26,8 @@ export class SidebarNavComponent {
   private readonly alertaService = inject(AlertaService);
   private readonly router = inject(Router);
 
-  readonly navItems = NAV_ITEMS;
   readonly usuario = this.auth.usuarioActual;
+  readonly navItems = computed(() => navItemsDe(this.usuario()?.rol));
   readonly cajaActual = this.caja.cajaActual;
   readonly estadoConexion = this.conexion.estado;
   readonly etiquetaConexion = computed(() => ETIQUETAS_CONEXION[this.estadoConexion()]);

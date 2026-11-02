@@ -71,6 +71,49 @@ class ProductoDaoReglasTest {
         assertThat(ids).as("vendido un día antes de la ventana: no cuenta, aunque sea el que más unidades tiene").doesNotContain(viejo);
     }
 
+    @Test
+    void desactivado_noSaleEnElMostradorNiEnMasVendidos_peroSiConIncluirInactivosYEnElCatalogo() {
+        // Tarea 17: el filtro va en SQL, antes del LIMIT; si se filtrara después, la página saldría corta.
+        long id = insertarProductoConVenta("QA desactivado", 2_000_000, HOY);
+        String codigo = jdbcTemplate.queryForObject("SELECT codigo_barras FROM productos WHERE id = ?", String.class, id);
+        productoDao.cambiarEstado(boticaId, id, false);
+
+        assertThat(productoDao.buscar(boticaId, codigo, false, 20)).isEmpty();
+        assertThat(productoDao.buscar(boticaId, codigo, true, 20)).extracting(Producto::getId).containsExactly(id);
+        assertThat(productoDao.masVendidos(boticaId, 6, DESDE)).extracting(Producto::getId).doesNotContain(id);
+        var catalogo = productoDao.listarCatalogo(boticaId, codigo, 0, 20, null);
+        assertThat(catalogo.contenido()).singleElement().satisfies(p -> assertThat(p.getActivo()).isFalse());
+        assertThat(catalogo.totalElementos()).isEqualTo(1);
+    }
+
+    @Test
+    void listarCatalogo_paginaYOrdenaContraLaListaBlanca() {
+        String prefijo = "QAcat" + (System.nanoTime() % 1_000_000L);
+        insertarProducto(prefijo + " B", prefijo + "2");
+        insertarProducto(prefijo + " A", prefijo + "1");
+        insertarProducto(prefijo + " C", prefijo + "3");
+
+        var pagina = productoDao.listarCatalogo(boticaId, prefijo, 1, 2, "nombre,desc");
+        assertThat(pagina.totalElementos()).isEqualTo(3);
+        assertThat(pagina.totalPaginas()).isEqualTo(2);
+        assertThat(pagina.contenido()).extracting(Producto::getNombre).containsExactly(prefijo + " A");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> productoDao.listarCatalogo(boticaId, "", 0, 20, "costo,asc"))
+                .isInstanceOf(com.botica.backend.exception.OrdenInvalidoException.class);
+    }
+
+    @Test
+    void segundaPresentacionDeFactor1_porSql_laRechazaElIndiceUnico() {
+        // V9, idx_presentaciones_unidad_unica: el Service ya lo impide; el índice lo garantiza aunque se inserte a mano.
+        long id = insertarProductoConVenta("QA factor 1 unico", 1, HOY);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> jdbcTemplate.update(
+                        "INSERT INTO presentaciones (botica_id, producto_id, etiqueta, factor_conversion, precio, activo) " +
+                                "VALUES (?, ?, 'Tableta', 1, 0.30, false)", boticaId, id))
+                .as("ni siquiera inactiva: los JOIN por factor 1 no filtran por activo")
+                .isInstanceOf(org.springframework.dao.DuplicateKeyException.class);
+    }
+
     private long insertarProducto(String nombre, String codigoBarras) {
         jdbcTemplate.update(
                 "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre) VALUES (?, ?, ?, ?, ?)",

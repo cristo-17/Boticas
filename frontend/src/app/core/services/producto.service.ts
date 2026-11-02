@@ -35,11 +35,15 @@ export class ProductoService {
   private readonly _seleccionado = signal<Producto | null>(null);
   readonly seleccionado = this._seleccionado.asReadonly();
 
-  // GET /api/productos?buscar={query}
-  buscarProductos(query: string): Observable<Producto[]> {
+  // GET /api/productos?buscar={query}&incluirInactivos= — sin incluirInactivos (Punto de Venta, alta de lote) solo
+  // devuelve activos. Merma pasa true: un producto desactivado todavía tiene stock físico que retirar (Tarea 17).
+  buscarProductos(query: string, incluirInactivos = false): Observable<Producto[]> {
     this._cargando.set(true);
     this._error.set(null);
-    const params = new HttpParams().set('buscar', query);
+    let params = new HttpParams().set('buscar', query);
+    if (incluirInactivos) {
+      params = params.set('incluirInactivos', true);
+    }
     return this.http.get<Producto[]>(BASE_URL, { params }).pipe(
       tap((data) => this._resultados.set(data)),
       catchError((err) => this.manejarError(err, 'No se pudo buscar productos.')),
@@ -47,7 +51,7 @@ export class ProductoService {
     );
   }
 
-  // GET /api/productos/codigo/{codigoBarras} — usado por el escáner. 404 PRODUCTO_NO_ENCONTRADO es un resultado esperado (código silencioso en error.interceptor.ts), no un fallo.
+  // GET /api/productos/codigo/{codigoBarras} — usado por el escáner. 404 PRODUCTO_NO_ENCONTRADO es un resultado esperado (código silencioso en error.interceptor.ts), no un fallo. 409 PRODUCTO_INACTIVO si está desactivado (Tarea 17).
   buscarPorCodigoBarras(codigoBarras: string): Observable<Producto> {
     this._error.set(null);
     return this.http.get<Producto>(`${BASE_URL}/codigo/${codigoBarras}`).pipe(
@@ -56,7 +60,7 @@ export class ProductoService {
     );
   }
 
-  // GET /api/productos/mas-vendidos
+  // GET /api/productos/mas-vendidos — solo activos
   obtenerMasVendidos(): Observable<Producto[]> {
     this._error.set(null);
     return this.http.get<Producto[]>(`${BASE_URL}/mas-vendidos`).pipe(

@@ -14,6 +14,8 @@ public record ConfigResponse(
         BigDecimal descuadreLeve,
         List<String> motivosMerma,
         List<String> motivosQueRequierenObservacion,
-        VencimientoConfig vencimiento
+        VencimientoConfig vencimiento,
+        /** R25: commit que está sirviendo el backend (RENDER_GIT_COMMIT en Render; "local" fuera de Render). */
+        String version
 ) {
 }
