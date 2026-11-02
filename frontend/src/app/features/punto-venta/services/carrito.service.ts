@@ -3,6 +3,7 @@ import { PresentacionProducto, Producto } from '../../../core/models/producto.mo
 import { OrigenCaptura } from '../../../core/models/venta.model';
 import { ConfigService } from '../../../core/services/config.service';
 import { textoAlertaVencimiento } from '../../../core/utils/fecha.util';
+import { resumirDinero } from '../../../core/utils/dinero.util';
 
 export interface LineaCarrito {
   key: string; // productoId + '|' + presentacionId
@@ -30,14 +31,16 @@ export class CarritoService {
   readonly vacio = computed(() => this._lineas().length === 0);
   readonly cantidadLineas = computed(() => this._lineas().length);
   readonly unidades = computed(() => this._lineas().reduce((acc, l) => acc + l.cantidad, 0));
-  readonly subtotal = computed(() =>
-    this._lineas().reduce((acc, l) => acc + l.precioUnitario * l.cantidad, 0),
+  /** Op. gravada / IGV / Total con la regla del servidor (DIF-07): ver dinero.util.ts. */
+  private readonly resumen = computed(() =>
+    resumirDinero(
+      this._lineas().map((l) => ({ precio: l.precioUnitario, cantidad: l.cantidad })),
+      this.config.config()?.igv ?? TASA_IGV_DEFECTO,
+    ),
   );
-  readonly igv = computed(() => {
-    const tasa = this.config.config()?.igv ?? TASA_IGV_DEFECTO;
-    return this.subtotal() - this.subtotal() / (1 + tasa);
-  });
-  readonly total = computed(() => this.subtotal());
+  readonly opGravada = computed(() => this.resumen().opGravada);
+  readonly igv = computed(() => this.resumen().igv);
+  readonly total = computed(() => this.resumen().total);
 
   agregar(producto: Producto, presentacion: PresentacionProducto, origen: OrigenCaptura): void {
     const key = `${producto.id}|${presentacion.id}`;

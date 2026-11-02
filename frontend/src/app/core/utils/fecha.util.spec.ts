@@ -27,6 +27,12 @@ describe('textoAlertaVencimiento', () => {
     expect(textoAlertaVencimiento('OK', '2026-01-20')).toBeNull();
   });
 
+  it('sin estado ni fecha (ningún lote vendible, DIF-13) avisa "Sin stock vendible"', () => {
+    // Desde la Tarea 0B-A el servidor manda null en los dos cuando no queda ningún lote con
+    // stock y sin vencer: el cajero tiene que verlo ANTES de cobrar, no como un 422 al final.
+    expect(textoAlertaVencimiento(null, null)).toBe('Sin stock vendible');
+  });
+
   it('da null si no hay fecha, aunque el estado sea CRITICO', () => {
     expect(textoAlertaVencimiento('CRITICO', null)).toBeNull();
   });

@@ -60,7 +60,7 @@
           </button>
         </div>
         <span class="num carrito-panel__linea-total">{{
-          formatearMoneda(l.precioUnitario * l.cantidad)
+          formatearMoneda(totalLinea(l.precioUnitario, l.cantidad))
         }}</span>
       </div>
     </div>
@@ -68,8 +68,13 @@
 </div>
 
 <div class="carrito-panel__footer">
+  @if (!vacio) {
+    <button type="button" class="carrito-panel__vaciar" (click)="confirmandoVaciar.set(true)">
+      <i class="bi bi-trash3"></i> Vaciar carrito
+    </button>
+  }
   <div class="carrito-panel__linea-costo">
-    <span>Subtotal</span><span class="num">{{ formatearMoneda(subtotal) }}</span>
+    <span>Op. gravada</span><span class="num">{{ formatearMoneda(opGravada) }}</span>
   </div>
   @if (mostrarIgv) {
     <div class="carrito-panel__linea-costo">
@@ -131,4 +136,14 @@
   confirmVariant="danger"
   (cancelled)="lineaPendiente.set(null)"
   (confirmed)="confirmarQuitar()"
+></app-modal>
+
+<app-modal
+  [open]="confirmandoVaciar()"
+  title="¿Vaciar el carrito?"
+  message="Se quitan todas las líneas de la venta actual. No afecta el stock."
+  confirmLabel="Vaciar"
+  confirmVariant="danger"
+  (cancelled)="confirmandoVaciar.set(false)"
+  (confirmed)="confirmarVaciar()"
 ></app-modal>

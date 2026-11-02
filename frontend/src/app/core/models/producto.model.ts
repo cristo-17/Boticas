@@ -21,12 +21,12 @@ export interface Producto {
   categoria: string;
   codigoBarras: string;
   /**
-   * Del lote con fecha_vencimiento más próxima ENTRE LOS QUE TIENEN
-   * stock > 0 (un lote agotado no tiñe el producto). null si el
-   * producto no tiene ningún lote con stock. El servidor manda el
-   * estado (regla de negocio) y la fecha (dato); el texto de días
-   * ("Vence en 18 días") se arma en el cliente con diasHasta(), igual
-   * que Lote — nunca al revés.
+   * Del PRIMER LOTE VENDIBLE (stock > 0 y sin vencer, fecha de Lima): el
+   * mismo que va a consumir FEFO, así que nunca llega "VENCIDO" (revisa
+   * D6, Tarea 0B). null en ambos si no queda ningún lote vendible: Punto
+   * de Venta lo muestra como "Sin stock vendible". El servidor manda el
+   * estado (regla de negocio) y la fecha (dato); el texto de días ("Vence
+   * en 18 días") se arma en el cliente con diasHasta(), igual que Lote.
    */
   estadoVencimiento: EstadoVencimiento | null;
   fechaVencimiento: string | null; // ISO 8601 (yyyy-MM-dd)

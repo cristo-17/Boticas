@@ -19,6 +19,8 @@ import com.botica.backend.util.FechaNegocio;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import tools.jackson.databind.JsonNode;
+import tools.jackson.databind.ObjectMapper;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -120,6 +122,31 @@ class VentaDineroTest {
         // de visualización aceptado (VentaTransaccion, Tarea 11 Bloque B), no un descuadre real --
         // total_linea es el número autoritativo, nunca se recalcula desde precio_unitario.
         assertThat(resultado.detalles.get(0).getPrecioUnitario()).isEqualByComparingTo("0.83");
+    }
+
+    @Test
+    void vectoresCompartidos_testVectoresDineroJson_elServidorDaLoMismoQueElCarrito() throws Exception {
+        // DECISIONES 2026-10-14 (R19) y Tarea 0B-B (DIF-07): el carrito muestra una vista previa
+        // solo si pasa estos mismos casos (dinero.util.spec.ts los lee del mismo archivo).
+        JsonNode vectores = new ObjectMapper().readTree(java.nio.file.Path.of("../test-vectores/dinero.json").toFile());
+        assertThat(new BigDecimal(vectores.get("igvTasa").asString()))
+                .as("la tasa de los vectores tiene que ser la del servidor")
+                .isEqualByComparingTo(new ConfigNegocioProperties().getIgv());
+        assertThat(vectores.get("casos").size()).isGreaterThan(0);
+
+        for (JsonNode caso : vectores.get("casos")) {
+            List<Escenario.Item> items = new ArrayList<>();
+            for (JsonNode item : caso.get("items")) {
+                items.add(new Escenario.Item(item.get("cantidad").asInt(),
+                        new BigDecimal(item.get("precioPresentacion").asString()), item.get("factorConversion").asInt()));
+            }
+            VentaResponse respuesta = ejecutar(items).respuesta;
+            JsonNode esperado = caso.get("esperado");
+            String nombre = caso.get("nombre").asString();
+            assertThat(respuesta.total()).as("%s: total", nombre).isEqualByComparingTo(esperado.get("total").asString());
+            assertThat(respuesta.subtotal()).as("%s: op. gravada", nombre).isEqualByComparingTo(esperado.get("opGravada").asString());
+            assertThat(respuesta.igv()).as("%s: igv", nombre).isEqualByComparingTo(esperado.get("igv").asString());
+        }
     }
 
     @RepeatedTest(5)

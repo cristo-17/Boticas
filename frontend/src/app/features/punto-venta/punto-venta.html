@@ -77,7 +77,7 @@
   <app-carrito-panel
     class="pos__carrito"
     [lineas]="carrito.lineas()"
-    [subtotal]="carrito.subtotal()"
+    [opGravada]="carrito.opGravada()"
     [igv]="carrito.igv()"
     [total]="carrito.total()"
     [unidades]="carrito.unidades()"
@@ -86,6 +86,7 @@
     (incrementar)="carrito.incrementar($event)"
     (decrementar)="carrito.decrementar($event)"
     (lineaQuitada)="carrito.quitar($event)"
+    (vaciar)="carrito.vaciar()"
     (cobrar)="cobrar($event)"
   ></app-carrito-panel>
 </div>

@@ -35,6 +35,7 @@ const MENSAJES_POR_CODIGO: Record<string, string> = {
   CREDENCIALES_INVALIDAS: 'Usuario o contraseña incorrectos.',
   NO_AUTENTICADO: 'Tu sesión ha expirado o no estás autenticado.',
   // CAJA_YA_ABIERTA no se traduce: el mensaje del servidor dice qué caja cerrar (DIF-12).
+  // Tampoco STOCK_SOLO_VENCIDO ni LOTE_DUPLICADO: el servidor nombra el producto o el lote (0B-B).
   CAJA_NO_ABIERTA: 'No hay una caja abierta para esta operación.',
   CAJA_NO_ENCONTRADA: 'La caja indicada no existe.',
   MONTO_INVALIDO: 'El monto no puede ser negativo.',

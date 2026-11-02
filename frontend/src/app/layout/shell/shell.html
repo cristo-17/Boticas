@@ -6,6 +6,8 @@
   [message]="mensajeBanner()"
 ></app-conn-status>
 
+<app-error-banner [mensaje]="errorConfig()" class="shell-aviso-config"></app-error-banner>
+
 <div class="shell-body">
   <app-sidebar-nav></app-sidebar-nav>
   <main class="shell-content">

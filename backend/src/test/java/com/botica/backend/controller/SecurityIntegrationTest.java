@@ -11,7 +11,10 @@ import com.botica.backend.util.JwtUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Import;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -20,8 +23,10 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.util.Map;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -38,12 +43,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(CajaController.class)
 @Import({SecurityConfig.class, GlobalExceptionHandler.class, JwtAuthenticationEntryPoint.class, JwtAccessDeniedHandler.class, JwtUtil.class,
         com.botica.backend.service.SseTicketService.class, com.botica.backend.util.FechaNegocio.class})
+// Clave conocida para el usuario en memoria de Spring ("user"), si volviera a existir:
+// así el test de Basic auth prueba con la clave correcta, no con una inventada.
+@TestPropertySource(properties = "spring.security.user.password=clave-del-usuario-en-memoria")
 class SecurityIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
     @Autowired
     private JwtUtil jwtUtil;
+    @Autowired
+    private ApplicationContext contexto;
     @MockitoBean
     private CajaService cajaService;
 
@@ -118,6 +128,20 @@ class SecurityIntegrationTest {
                                 {"montoContado": 100.00}
                                 """))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void noExisteElUsuarioEnMemoriaDeSpring_laUnicaIdentidadEsElJwt() {
+        // Tarea 0B-B: sin esto, Spring arranca con "Using generated security password" y un
+        // usuario "user" que la API no usa. Que exista ya es superficie de ataque.
+        assertThat(contexto.getBeanNamesForType(UserDetailsService.class)).isEmpty();
+    }
+
+    @Test
+    void basicAuth_conElUsuarioEnMemoriaDeSpring_devuelve401NoAutenticado() throws Exception {
+        mockMvc.perform(get("/api/caja/hoy").with(httpBasic("user", "clave-del-usuario-en-memoria")))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.error").value("NO_AUTENTICADO"));
     }
 
     private String tokenDe(String rol) {

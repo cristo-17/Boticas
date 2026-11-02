@@ -1,0 +1,58 @@
+{
+  "descripcion": "Casos de dinero compartidos por el servidor (JUnit, VentaDineroTest) y la vista previa del carrito (Vitest, dinero.util.spec.ts). Los dos tienen que dar exactamente esto. Montos en texto para que ningun lector los pase por double. cantidad = presentaciones vendidas; el total de linea es cantidad x precioPresentacion redondeado a 2 decimales (HALF_UP); opGravada = total / (1 + igvTasa) redondeado igual; igv = total - opGravada (se extrae, no se suma). DECISIONES 2026-10-14 (R19).",
+  "igvTasa": "0.18",
+  "casos": [
+    {
+      "nombre": "Caja de 30 unidades a S/ 25.00: se redondea el total de linea, no el unitario",
+      "items": [{ "cantidad": 1, "precioPresentacion": "25.00", "factorConversion": 30 }],
+      "esperado": { "total": "25.00", "opGravada": "21.19", "igv": "3.81" }
+    },
+    {
+      "nombre": "0.10 + 0.20 da 0.30 exacto (en double seria 0.30000000000000004)",
+      "items": [
+        { "cantidad": 1, "precioPresentacion": "0.10", "factorConversion": 1 },
+        { "cantidad": 1, "precioPresentacion": "0.20", "factorConversion": 1 }
+      ],
+      "esperado": { "total": "0.30", "opGravada": "0.25", "igv": "0.05" }
+    },
+    {
+      "nombre": "10 unidades a S/ 0.33 da 3.30, sin arrastre de redondeo",
+      "items": [{ "cantidad": 10, "precioPresentacion": "0.33", "factorConversion": 1 }],
+      "esperado": { "total": "3.30", "opGravada": "2.80", "igv": "0.50" }
+    },
+    {
+      "nombre": "3 x 1.10 da 3.30 (en double, 3.3000000000000003)",
+      "items": [{ "cantidad": 3, "precioPresentacion": "1.10", "factorConversion": 1 }],
+      "esperado": { "total": "3.30", "opGravada": "2.80", "igv": "0.50" }
+    },
+    {
+      "nombre": "100 x 0.07 da 7.00 (en double, 7.000000000000001)",
+      "items": [{ "cantidad": 100, "precioPresentacion": "0.07", "factorConversion": 1 }],
+      "esperado": { "total": "7.00", "opGravada": "5.93", "igv": "1.07" }
+    },
+    {
+      "nombre": "IGV extraido, no sumado: 118.00 = 100.00 + 18.00",
+      "items": [{ "cantidad": 1, "precioPresentacion": "118.00", "factorConversion": 1 }],
+      "esperado": { "total": "118.00", "opGravada": "100.00", "igv": "18.00" }
+    },
+    {
+      "nombre": "Varias lineas y presentaciones",
+      "items": [
+        { "cantidad": 3, "precioPresentacion": "12.50", "factorConversion": 1 },
+        { "cantidad": 2, "precioPresentacion": "7.90", "factorConversion": 10 },
+        { "cantidad": 5, "precioPresentacion": "0.35", "factorConversion": 1 }
+      ],
+      "esperado": { "total": "55.05", "opGravada": "46.65", "igv": "8.40" }
+    },
+    {
+      "nombre": "Un centimo: la base redondea a 0.01 y el IGV queda en 0.00",
+      "items": [{ "cantidad": 1, "precioPresentacion": "0.01", "factorConversion": 1 }],
+      "esperado": { "total": "0.01", "opGravada": "0.01", "igv": "0.00" }
+    },
+    {
+      "nombre": "Monto grande",
+      "items": [{ "cantidad": 200, "precioPresentacion": "499.99", "factorConversion": 100 }],
+      "esperado": { "total": "99998.00", "opGravada": "84744.07", "igv": "15253.93" }
+    }
+  ]
+}

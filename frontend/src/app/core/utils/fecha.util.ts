@@ -20,12 +20,17 @@ import type { EstadoVencimiento } from '../models/estados.model';
  * amerita aviso (CRITICO/VENCIDO). El servidor manda el estado (regla
  * de negocio) y la fecha (dato); el conteo de días se hace acá, nunca
  * al revés (docs/API-CONTRATO.md) — evita mandar un texto que caduca.
+ * Estado y fecha en null (no undefined: eso es "sin producto") = ningún
+ * lote vendible: se avisa antes de cobrar (DIF-13, Tarea 0B-B).
  */
 export function textoAlertaVencimiento(
   estado: EstadoVencimiento | null | undefined,
   fechaVencimiento: string | null | undefined,
   desde?: Date,
 ): string | null {
+  if (estado === null && fechaVencimiento === null) {
+    return 'Sin stock vendible';
+  }
   if (!fechaVencimiento || (estado !== 'CRITICO' && estado !== 'VENCIDO')) {
     return null;
   }

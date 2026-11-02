@@ -210,6 +210,26 @@ $pos-breakpoint: 1180.98px;
   background: var(--surface);
 }
 
+.carrito-panel__vaciar {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: var(--tap);
+  margin-bottom: var(--s-2);
+  padding: 0 var(--s-3);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--rojo-500);
+  font-size: 14px;
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+}
+.carrito-panel__vaciar:hover {
+  background: var(--rojo-50);
+  border-color: var(--rojo-100);
+}
+
 .carrito-panel__linea-costo {
   display: flex;
   justify-content: space-between;

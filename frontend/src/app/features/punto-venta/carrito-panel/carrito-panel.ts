@@ -4,6 +4,7 @@ import { BadgeComponent } from '../../../shared/components/badge/badge';
 import { ModalComponent } from '../../../shared/components/modal/modal';
 import { MetodoPago } from '../../../core/models/venta.model';
 import { formatearMoneda } from '../../../core/utils/moneda.util';
+import { totalLinea } from '../../../core/utils/dinero.util';
 import { LineaCarrito } from '../services/carrito.service';
 
 /**
@@ -20,7 +21,7 @@ import { LineaCarrito } from '../services/carrito.service';
 })
 export class CarritoPanelComponent {
   @Input() lineas: LineaCarrito[] = [];
-  @Input() subtotal = 0;
+  @Input() opGravada = 0;
   @Input() igv = 0;
   @Input() total = 0;
   @Input() unidades = 0;
@@ -32,12 +33,15 @@ export class CarritoPanelComponent {
   @Output() decrementar = new EventEmitter<string>();
   @Output() lineaQuitada = new EventEmitter<string>();
   @Output() cobrar = new EventEmitter<MetodoPago>();
+  @Output() vaciar = new EventEmitter<void>();
 
   readonly expandido = signal(true);
   readonly lineaPendiente = signal<LineaCarrito | null>(null);
+  readonly confirmandoVaciar = signal(false);
   readonly metodoSeleccionado = signal<MetodoPago>('efectivo');
 
   readonly formatearMoneda = formatearMoneda;
+  readonly totalLinea = totalLinea;
 
   get vacio(): boolean {
     return this.lineas.length === 0;
@@ -59,5 +63,10 @@ export class CarritoPanelComponent {
       this.lineaQuitada.emit(linea.key);
     }
     this.lineaPendiente.set(null);
+  }
+
+  confirmarVaciar(): void {
+    this.confirmandoVaciar.set(false);
+    this.vaciar.emit();
   }
 }
