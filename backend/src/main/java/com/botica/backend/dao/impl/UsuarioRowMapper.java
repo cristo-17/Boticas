@@ -5,6 +5,7 @@ import org.springframework.jdbc.core.RowMapper;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.OffsetDateTime;
 
 public class UsuarioRowMapper implements RowMapper<Usuario> {
 
@@ -19,6 +20,12 @@ public class UsuarioRowMapper implements RowMapper<Usuario> {
                 .usuario(rs.getString("usuario"))
                 .passwordHash(rs.getString("password_hash"))
                 .rol(rs.getString("rol"))
+                .activo(rs.getBoolean("activo"))
+                .intentosFallidos(rs.getInt("intentos_fallidos"))
+                .bloqueadoHasta(rs.getObject("bloqueado_hasta", OffsetDateTime.class))
+                .creadoEn(rs.getObject("creado_en", OffsetDateTime.class))
+                .creadoPor(rs.getObject("creado_por", Long.class))
+                .tieneCajaAbierta(rs.getBoolean("tiene_caja_abierta"))
                 .build();
     }
 }

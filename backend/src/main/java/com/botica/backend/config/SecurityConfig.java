@@ -73,11 +73,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/config").permitAll()
                         // D-E2-1 (2026-10-14): cada uno cierra su caja (CajaService decide la ajena); solo ADMINISTRADOR ve todas las abiertas
                         .requestMatchers(HttpMethod.GET, "/api/caja/abiertas").hasRole("ADMINISTRADOR")
-                        // Tarea 17 (R17): el catálogo lo administra solo el ADMINISTRADOR; las búsquedas de mostrador siguen para ambos
+                        // Tarea 17 (R17): el catálogo y los usuarios los administra solo el ADMINISTRADOR; las búsquedas de mostrador siguen para ambos
                         .requestMatchers(HttpMethod.GET, "/api/productos/catalogo").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.POST, "/api/productos").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PUT, "/api/productos/*").hasRole("ADMINISTRADOR")
                         .requestMatchers(HttpMethod.PATCH, "/api/productos/*/estado").hasRole("ADMINISTRADOR")
+                        .requestMatchers("/api/usuarios", "/api/usuarios/**").hasRole("ADMINISTRADOR")
                         .anyRequest().authenticated())
                 .exceptionHandling(eh -> eh
                         .authenticationEntryPoint(authenticationEntryPoint)

@@ -16,12 +16,15 @@
       </div>
 
       <form class="login__form" [formGroup]="form" (ngSubmit)="ingresar()">
-        @if (credencialesInvalidas()) {
-          <div class="login__error-banner">
-            <div class="login__error-titulo">Usuario o contraseña incorrectos</div>
+        @if (errorLogin(); as mensaje) {
+          <div class="login__error-banner" role="alert">
+            <div class="login__error-titulo">{{ mensaje }}</div>
             <div class="login__error-texto">
-              Te quedan <span class="num">{{ intentosRestantes() }}</span> intentos antes de
-              bloquear el acceso.
+              @if (cuentaBloqueada()) {
+                Pide a un administrador que desbloquee tu cuenta o espera a la hora indicada.
+              } @else {
+                Después de 5 intentos fallidos seguidos, el acceso se bloquea durante 15 minutos.
+              }
             </div>
           </div>
         }

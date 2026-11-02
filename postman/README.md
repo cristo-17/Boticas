@@ -29,6 +29,14 @@ dejan stock vencido. Por eso las corridas se pueden repetir sin límite.
 `PC` + timestamp), lo edita, lo desactiva y lo reactiva. Cada ruta nueva tiene
 su 403 para el TECNICO.
 
+**Usuarios y bloqueo de login (ADMINISTRADOR)** crea un usuario único en cada
+corrida (`pu.` + timestamp), verifica que `password_hash` no salga en el JSON,
+degrada su rol para comprobar que el token viejo queda invalidado (`401`),
+verifica que un administrador no pueda desactivarse ni quitarse el rol, prueba
+el bloqueo por 5 intentos fallidos (`423 CUENTA_BLOQUEADA`), el desbloqueo, el
+restablecimiento de clave y la baja lógica (que invalida el token activo). Cada
+ruta tiene su 403 para el TECNICO.
+
 **Solo lectura** no escribe nada y hace su propio login. Es la única carpeta
 que se corre contra producción, y solo con usuarios demo (R23).
 

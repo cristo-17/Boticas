@@ -1,0 +1,349 @@
+<div class="usuarios">
+  <div class="usuarios__head">
+    <div>
+      <h1>Usuarios de la botica</h1>
+      <p class="field-hint">
+        Personal, roles y acceso ·
+        <span class="num">{{ pagina()?.totalElementos ?? 0 }} usuarios</span>
+      </p>
+    </div>
+    <app-button variant="primary" (clicked)="abrirNuevo()">Nuevo usuario</app-button>
+  </div>
+
+  <app-error-banner
+    [mensaje]="error() ?? (formularioAbierto() || usuarioClave() !== null ? null : errorGuardado())"
+  ></app-error-banner>
+
+  <app-card>
+    <div class="usuarios__busqueda">
+      <i class="bi bi-search usuarios__busqueda-icono"></i>
+      <input
+        type="text"
+        class="bs-field-compact usuarios__busqueda-input"
+        placeholder="Buscar por nombre o usuario..."
+        aria-label="Buscar usuarios"
+        [value]="busqueda()"
+        (input)="onBusquedaInput($event)"
+      />
+    </div>
+  </app-card>
+
+  @if (cargando()) {
+    <app-card>
+      <app-skeleton [count]="4"></app-skeleton>
+    </app-card>
+  } @else if (vacio()) {
+    <app-empty-state
+      title="Ningún usuario coincide"
+      text="Prueba con otro nombre o crea un usuario nuevo."
+      actionLabel="Nuevo usuario"
+      (actionClick)="abrirNuevo()"
+    ></app-empty-state>
+  } @else {
+    <app-table>
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Usuario</th>
+          <th>Rol</th>
+          <th>Estado</th>
+          <th class="align-end">Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (u of usuarios(); track u.id) {
+          <tr [class.usuarios__fila--inactiva]="!u.activo">
+            <td>
+              <span class="usuarios__nombre">
+                {{ u.nombre }}
+                @if (esMiUsuario(u)) {
+                  <span class="usuarios__tu">(tú)</span>
+                }
+              </span>
+              @if (u.tieneCajaAbierta) {
+                <span class="usuarios__meta">Con caja abierta</span>
+              }
+            </td>
+            <td class="num usuarios__login">{{ u.usuario }}</td>
+            <td>
+              <app-badge [variant]="u.rol === 'ADMINISTRADOR' ? 'info' : 'neutral'">
+                {{ etiquetaRol(u.rol) }}
+              </app-badge>
+            </td>
+            <td>
+              <div class="usuarios__estados">
+                <app-badge [variant]="u.activo ? 'ok' : 'neutral'">
+                  {{ u.activo ? 'Activo' : 'Desactivado' }}
+                </app-badge>
+                @if (u.bloqueado) {
+                  <app-badge variant="danger">Bloqueado hasta las {{ horaBloqueo(u.bloqueadoHasta) }}</app-badge>
+                }
+              </div>
+            </td>
+            <td class="align-end">
+              <div class="usuarios__acciones">
+                @if (u.bloqueado) {
+                  <app-button
+                    variant="secondary"
+                    [loading]="usuarioEnAccion() === u.id"
+                    (clicked)="desbloquear(u)"
+                  >
+                    Desbloquear
+                  </app-button>
+                }
+                <app-button variant="secondary" (clicked)="abrirEdicion(u)">Editar</app-button>
+                <app-button variant="ghost" (clicked)="abrirRestablecerClave(u)">Cambiar clave</app-button>
+                @if (!esMiUsuario(u)) {
+                  <app-button
+                    [variant]="u.activo ? 'ghost' : 'secondary'"
+                    [loading]="usuarioEnAccion() === u.id"
+                    (clicked)="solicitarCambioEstado(u)"
+                  >
+                    {{ u.activo ? 'Desactivar' : 'Activar' }}
+                  </app-button>
+                }
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+      <div cards>
+        @for (u of usuarios(); track u.id) {
+          <app-card [flat]="true" class="usuarios__card" [class.usuarios__fila--inactiva]="!u.activo">
+            <div class="usuarios__card-top">
+              <div>
+                <div class="usuarios__nombre">
+                  {{ u.nombre }}
+                  @if (esMiUsuario(u)) {
+                    <span class="usuarios__tu">(tú)</span>
+                  }
+                </div>
+                <div class="usuarios__meta">
+                  <span class="num">{{ u.usuario }}</span> · {{ etiquetaRol(u.rol) }}
+                  @if (u.tieneCajaAbierta) {
+                    · Con caja abierta
+                  }
+                </div>
+              </div>
+              <div class="usuarios__estados">
+                <app-badge [variant]="u.activo ? 'ok' : 'neutral'">
+                  {{ u.activo ? 'Activo' : 'Desactivado' }}
+                </app-badge>
+                @if (u.bloqueado) {
+                  <app-badge variant="danger">Bloqueado hasta las {{ horaBloqueo(u.bloqueadoHasta) }}</app-badge>
+                }
+              </div>
+            </div>
+            <div class="usuarios__acciones">
+              @if (u.bloqueado) {
+                <app-button variant="secondary" [loading]="usuarioEnAccion() === u.id" (clicked)="desbloquear(u)">
+                  Desbloquear
+                </app-button>
+              }
+              <app-button variant="secondary" (clicked)="abrirEdicion(u)">Editar</app-button>
+              <app-button variant="ghost" (clicked)="abrirRestablecerClave(u)">Cambiar clave</app-button>
+              @if (!esMiUsuario(u)) {
+                <app-button
+                  [variant]="u.activo ? 'ghost' : 'secondary'"
+                  [loading]="usuarioEnAccion() === u.id"
+                  (clicked)="solicitarCambioEstado(u)"
+                >
+                  {{ u.activo ? 'Desactivar' : 'Activar' }}
+                </app-button>
+              }
+            </div>
+          </app-card>
+        }
+      </div>
+    </app-table>
+
+    @if (pagina(); as pg) {
+      <app-paginacion
+        [pagina]="pg.pagina"
+        [totalPaginas]="pg.totalPaginas"
+        [totalElementos]="pg.totalElementos"
+        (anterior)="irAPagina(pg.pagina - 1)"
+        (siguiente)="irAPagina(pg.pagina + 1)"
+      ></app-paginacion>
+    }
+
+    <p class="field-hint">
+      Un usuario desactivado no puede iniciar sesión y su sesión abierta se cierra en la siguiente operación. Si tiene
+      una caja abierta, el administrador la cierra desde Caja.
+    </p>
+  }
+</div>
+
+@if (formularioAbierto()) {
+  <div class="modal-backdrop-bs" (click)="cerrarFormulario()">
+    <div class="modal-bs usuarios__modal" (click)="$event.stopPropagation()">
+      <div class="modal-bs__body">
+        <div class="modal-bs__title">
+          {{ editandoUsuario() === null ? 'Nuevo usuario' : 'Editar usuario' }}
+        </div>
+
+        <app-error-banner [mensaje]="errorGuardado()"></app-error-banner>
+
+        <div class="usuarios__form-campos">
+          <div class="bs-field">
+            <label for="usu-nombre" class="bs-field__label">Nombre completo</label>
+            <div class="bs-field__control">
+              <input
+                id="usu-nombre"
+                class="bs-field__input"
+                type="text"
+                maxlength="150"
+                placeholder="Lucía Gómez"
+                [value]="nombre()"
+                (input)="nombre.set($any($event.target).value)"
+              />
+            </div>
+          </div>
+
+          <div class="usuarios__form-fila">
+            <div class="bs-field">
+              <label for="usu-login" class="bs-field__label">Usuario de acceso</label>
+              <div class="bs-field__control">
+                <input
+                  id="usu-login"
+                  class="bs-field__input num"
+                  type="text"
+                  maxlength="50"
+                  placeholder="lucia.gomez"
+                  [disabled]="editandoUsuario() !== null"
+                  [value]="usuarioLogin()"
+                  (input)="usuarioLogin.set($any($event.target).value)"
+                />
+              </div>
+            </div>
+
+            <div class="bs-field">
+              <label for="usu-rol" class="bs-field__label">Rol</label>
+              <div class="bs-field__control">
+                <select
+                  id="usu-rol"
+                  class="bs-field__input"
+                  [disabled]="editandoUsuario() !== null && esMiUsuario(editandoUsuario()!)"
+                  [value]="rol()"
+                  (change)="onRolChange($event)"
+                >
+                  <option value="TECNICO">Técnico</option>
+                  <option value="ADMINISTRADOR">Administrador</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          @if (editandoUsuario() === null) {
+            <div class="bs-field">
+              <label for="usu-password" class="bs-field__label">Contraseña inicial (mínimo 8 caracteres)</label>
+              <div class="bs-field__control">
+                <input
+                  id="usu-password"
+                  class="bs-field__input"
+                  type="password"
+                  maxlength="100"
+                  autocomplete="new-password"
+                  [value]="password()"
+                  (input)="password.set($any($event.target).value)"
+                />
+              </div>
+            </div>
+          } @else if (!esMiUsuario(editandoUsuario()!)) {
+            <label class="usuarios__check">
+              <input
+                type="checkbox"
+                [checked]="activo()"
+                (change)="activo.set($any($event.target).checked)"
+              />
+              <span>Usuario activo (puede iniciar sesión)</span>
+            </label>
+          }
+
+          @if (avisoCajaEnEdicion()) {
+            <div class="usuarios__aviso-caja" role="status">
+              <strong>Este usuario tiene una caja abierta.</strong> Si lo desactivas, su sesión terminará de inmediato y
+              un administrador deberá cerrar esa caja desde la pantalla de Caja.
+            </div>
+          }
+
+          @if (intentoGuardar() && erroresFormulario().length > 0) {
+            <ul class="usuarios__errores">
+              @for (e of erroresFormulario(); track e) {
+                <li>{{ e }}</li>
+              }
+            </ul>
+          }
+        </div>
+      </div>
+      <div class="modal-bs__actions">
+        <app-button variant="secondary" [disabled]="guardando()" (clicked)="cerrarFormulario()">Cancelar</app-button>
+        <app-button variant="primary" [loading]="guardando()" (clicked)="guardar()">Guardar usuario</app-button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (usuarioClave(); as uClave) {
+  <div class="modal-backdrop-bs" (click)="cerrarRestablecerClave()">
+    <div class="modal-bs usuarios__modal" (click)="$event.stopPropagation()">
+      <div class="modal-bs__body">
+        <div class="modal-bs__title">Restablecer contraseña · {{ uClave.nombre }}</div>
+        <p class="field-hint">
+          Si la cuenta estaba bloqueada por intentos fallidos, al guardar también quedará desbloqueada.
+        </p>
+
+        <app-error-banner [mensaje]="errorGuardado()"></app-error-banner>
+
+        <div class="usuarios__form-campos">
+          <div class="bs-field">
+            <label for="usu-nueva-clave" class="bs-field__label">Nueva contraseña (mínimo 8 caracteres)</label>
+            <div class="bs-field__control">
+              <input
+                id="usu-nueva-clave"
+                class="bs-field__input"
+                type="password"
+                maxlength="100"
+                autocomplete="new-password"
+                [value]="nuevaClave()"
+                (input)="nuevaClave.set($any($event.target).value)"
+              />
+            </div>
+          </div>
+
+          @if (intentoClave() && errorClaveLocal(); as err) {
+            <div class="usuarios__errores">{{ err }}</div>
+          }
+        </div>
+      </div>
+      <div class="modal-bs__actions">
+        <app-button variant="secondary" [disabled]="guardando()" (clicked)="cerrarRestablecerClave()">
+          Cancelar
+        </app-button>
+        <app-button variant="primary" [loading]="guardando()" (clicked)="guardarNuevaClave()">
+          Guardar contraseña
+        </app-button>
+      </div>
+    </div>
+  </div>
+}
+
+@if (confirmarDesactivar(); as uCaja) {
+  <div class="modal-backdrop-bs" (click)="cancelarDesactivacion()">
+    <div class="modal-bs usuarios__modal" (click)="$event.stopPropagation()">
+      <div class="modal-bs__body">
+        <div class="modal-bs__title">Desactivar a {{ uCaja.nombre }}</div>
+        <div class="usuarios__aviso-caja" role="alert">
+          <strong>{{ uCaja.nombre }} tiene una caja abierta.</strong> Si lo desactivas ahora, su sesión dejará de
+          funcionar y un administrador tendrá que cerrar esa caja desde la pantalla de Caja.
+        </div>
+      </div>
+      <div class="modal-bs__actions">
+        <app-button variant="secondary" (clicked)="cancelarDesactivacion()">Cancelar</app-button>
+        <app-button variant="danger" (clicked)="confirmarDesactivacionConCaja()">
+          Sí, desactivar usuario
+        </app-button>
+      </div>
+    </div>
+  </div>
+}

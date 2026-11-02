@@ -1,9 +1,11 @@
+import { HttpErrorResponse } from '@angular/common/http';
 import { Component, inject, signal } from '@angular/core';
 import { FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ButtonComponent } from '../../shared/components/button/button';
 import { FieldComponent } from '../../shared/components/field/field';
 import { ConnStatusComponent } from '../../shared/components/conn-status/conn-status';
+import { ErrorTraducido } from '../../core/interceptors/error.interceptor';
 import { Turno } from '../../core/models/usuario.model';
 import { AuthService } from '../../core/services/auth.service';
 import { ConexionService } from '../../core/services/conexion.service';
@@ -52,8 +54,8 @@ export class LoginScreen {
   });
 
   readonly iniciando = signal(false);
-  readonly credencialesInvalidas = signal(false);
-  readonly intentosRestantes = signal(3);
+  readonly errorLogin = signal<string | null>(null);
+  readonly cuentaBloqueada = signal(false);
 
   seleccionarTurno(turno: Turno): void {
     this.form.controls.turno.setValue(turno);
@@ -63,7 +65,8 @@ export class LoginScreen {
     this.form.markAllAsTouched();
     if (this.form.invalid) return;
 
-    this.credencialesInvalidas.set(false);
+    this.errorLogin.set(null);
+    this.cuentaBloqueada.set(false);
     this.iniciando.set(true);
     const { usuario, password, turno } = this.form.getRawValue();
     this.auth.iniciarSesion({ usuario, password, turno }).subscribe({
@@ -71,10 +74,11 @@ export class LoginScreen {
         this.iniciando.set(false);
         this.router.navigateByUrl('/alertas');
       },
-      error: () => {
+      error: (err: HttpErrorResponse & { traducido?: ErrorTraducido }) => {
         this.iniciando.set(false);
-        this.credencialesInvalidas.set(true);
-        this.intentosRestantes.update((n) => Math.max(0, n - 1));
+        const codigo = err.traducido?.codigo ?? null;
+        this.cuentaBloqueada.set(codigo === 'CUENTA_BLOQUEADA');
+        this.errorLogin.set(err.traducido?.mensaje ?? 'Usuario o contraseña incorrectos.');
       },
     });
   }

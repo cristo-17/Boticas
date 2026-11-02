@@ -18,6 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/merma', label: 'Registrar merma', shortLabel: 'Merma', icon: 'bi-trash3' },
   { path: '/caja', label: 'Caja', shortLabel: 'Caja', icon: 'bi-cash-stack' },
   { path: '/catalogo', label: 'Catálogo', shortLabel: 'Catálogo', icon: 'bi-journal-medical', roles: ['ADMINISTRADOR'] },
+  { path: '/usuarios', label: 'Usuarios', shortLabel: 'Usuarios', icon: 'bi-people', roles: ['ADMINISTRADOR'] },
 ];
 
 /** Items que ve ese rol (sin sesión, solo los de todos). */

@@ -31,3 +31,34 @@ export interface LoginResponse {
   token: string;
   usuario: Usuario;
 }
+
+/**
+ * Usuario tal como lo ve y edita el administrador en /api/usuarios (Tarea 17, Bloque B).
+ * Nunca incluye passwordHash.
+ */
+export interface UsuarioAdmin {
+  id: number;
+  nombre: string;
+  usuario: string;
+  rol: Rol;
+  activo: boolean;
+  intentosFallidos: number;
+  bloqueadoHasta: string | null;
+  bloqueado: boolean;
+  tieneCajaAbierta: boolean;
+  creadoEn: string;
+}
+
+export interface CrearUsuarioRequest {
+  nombre: string;
+  usuario: string;
+  password: string;
+  rol: Rol;
+}
+
+export interface ActualizarUsuarioRequest {
+  nombre: string;
+  rol: Rol;
+  activo: boolean;
+}
+

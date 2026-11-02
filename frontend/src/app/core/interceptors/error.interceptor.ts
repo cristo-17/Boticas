@@ -28,11 +28,12 @@ export interface ErrorTraducido {
  * de Venta) aunque ese módulo recién se conecta en la Tarea 11 — la lista
  * queda preparada desde ahora.
  */
-const CODIGOS_SILENCIOSOS = new Set<string>(['PRODUCTO_NO_ENCONTRADO', 'CREDENCIALES_INVALIDAS']);
+const CODIGOS_SILENCIOSOS = new Set<string>(['PRODUCTO_NO_ENCONTRADO', 'CREDENCIALES_INVALIDAS', 'CUENTA_BLOQUEADA']);
 
 /** Traduce el código "error" del backend al mensaje que cada pantalla muestra. Un solo lugar, no ifs desperdigados. */
 const MENSAJES_POR_CODIGO: Record<string, string> = {
   CREDENCIALES_INVALIDAS: 'Usuario o contraseña incorrectos.',
+  // CUENTA_BLOQUEADA no se traduce: el mensaje del servidor ya dice "Cuenta bloqueada hasta las HH:MM" (DIF-01).
   NO_AUTENTICADO: 'Tu sesión ha expirado o no estás autenticado.',
   // CAJA_YA_ABIERTA no se traduce: el mensaje del servidor dice qué caja cerrar (DIF-12).
   // Tampoco STOCK_SOLO_VENCIDO ni LOTE_DUPLICADO: el servidor nombra el producto o el lote (0B-B).

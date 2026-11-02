@@ -3260,6 +3260,898 @@
       ]
     },
     {
+      "name": "Usuarios y bloqueo de login (ADMINISTRADOR)",
+      "description": "Tarea 17, Bloque B. Crea un usuario único en cada corrida, verifica que password_hash no salga en el JSON, prueba degradación de rol (token viejo rechazado con 401), protección de auto-desactivación/degradación de admin, bloqueo en el 5.º intento fallido (423 CUENTA_BLOQUEADA), desbloqueo, restablecimiento de clave y desactivación con invalidación de token. Cada ruta de /api/usuarios tiene su 403 para TECNICO (R17, R21).",
+      "item": [
+        {
+          "name": "Listar usuarios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios?buscar={{usuarioAdmin}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"envoltura de paginación\", () => pm.expect(b).to.include.keys(\"contenido\", \"pagina\", \"tamano\", \"totalElementos\", \"totalPaginas\"));",
+                  "pm.test(\"nunca expone password_hash ni password en el JSON\", () => {",
+                  "  pm.expect(pm.response.text()).to.not.match(/password/i);",
+                  "  b.contenido.forEach((u) => {",
+                  "    pm.expect(u).to.not.have.property(\"password\");",
+                  "    pm.expect(u).to.not.have.property(\"passwordHash\");",
+                  "    pm.expect(u).to.not.have.property(\"password_hash\");",
+                  "  });",
+                  "});",
+                  "const admin = b.contenido.find((u) => u.usuario === pm.variables.get(\"usuarioAdmin\"));",
+                  "pm.test(\"encuentra al administrador actual\", () => pm.expect(admin).to.be.an(\"object\"));",
+                  "if (admin) pm.collectionVariables.set(\"usuAdminId\", admin.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Listar usuarios: orden fuera de la lista blanca",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios?orden=password_hash,asc"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = ORDEN_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"ORDEN_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO lista usuarios",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear usuario temporal con rol ADMINISTRADOR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"nombre\": \"Usuario Postman {{usuLogin}}\",\n  \"password\": \"{{usuClaveInicial}}\",\n  \"rol\": \"ADMINISTRADOR\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const ts = Date.now();",
+                  "pm.collectionVariables.set(\"usuLogin\", \"pu.\" + ts);",
+                  "pm.collectionVariables.set(\"usuClaveInicial\", \"ClaveInit_\" + ts);",
+                  "pm.collectionVariables.set(\"usuClaveNueva\", \"ClaveRst_\" + ts);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"activo, rol ADMINISTRADOR y sin password_hash\", () => {",
+                  "  pm.expect(b.activo).to.eql(true);",
+                  "  pm.expect(b.rol).to.eql(\"ADMINISTRADOR\");",
+                  "  pm.expect(b.intentosFallidos).to.eql(0);",
+                  "  pm.expect(b.bloqueado).to.eql(false);",
+                  "  pm.expect(pm.response.text()).to.not.match(/password/i);",
+                  "});",
+                  "pm.collectionVariables.set(\"usuCreadoId\", b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear con nombre de usuario duplicado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"nombre\": \"Duplicado\",\n  \"password\": \"{{usuClaveInicial}}\",\n  \"rol\": \"TECNICO\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error = USUARIO_DUPLICADO\", () => pm.expect(pm.response.json().error).to.eql(\"USUARIO_DUPLICADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear con contraseña menor a 8 caracteres",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"corto.{{$timestamp}}\",\n  \"nombre\": \"Clave Corta\",\n  \"password\": \"1234567\",\n  \"rol\": \"TECNICO\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FORMATO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FORMATO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO crea un usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"no.autorizado\",\n  \"nombre\": \"No Autorizado\",\n  \"password\": \"{{usuClaveInicial}}\",\n  \"rol\": \"TECNICO\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login del usuario nuevo como ADMINISTRADOR",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"password\": \"{{usuClaveInicial}}\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"token con rol ADMINISTRADOR\", () => pm.expect(b.usuario.rol).to.eql(\"ADMINISTRADOR\"));",
+                  "pm.collectionVariables.set(\"tokenUsuAdminViejo\", b.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Degradar usuario de ADMINISTRADOR a TECNICO",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuCreadoId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Usuario Postman Editado\",\n  \"rol\": \"TECNICO\",\n  \"activo\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"rol pasa a TECNICO y nombre actualizado\", () => {",
+                  "  pm.expect(b.rol).to.eql(\"TECNICO\");",
+                  "  pm.expect(b.nombre).to.eql(\"Usuario Postman Editado\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Token viejo de ADMINISTRADOR tras degradación → 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenUsuAdminViejo}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = NO_AUTENTICADO\", () => pm.expect(pm.response.json().error).to.eql(\"NO_AUTENTICADO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Administrador intenta desactivarse a sí mismo",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuAdminId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Admin\",\n  \"rol\": \"ADMINISTRADOR\",\n  \"activo\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error = AUTO_MODIFICACION_ADMIN\", () => pm.expect(pm.response.json().error).to.eql(\"AUTO_MODIFICACION_ADMIN\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Administrador intenta quitarse el rol",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuAdminId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Admin\",\n  \"rol\": \"TECNICO\",\n  \"activo\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error = AUTO_MODIFICACION_ADMIN\", () => pm.expect(pm.response.json().error).to.eql(\"AUTO_MODIFICACION_ADMIN\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO edita un usuario",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuCreadoId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Intento Tecnico\",\n  \"rol\": \"ADMINISTRADOR\",\n  \"activo\": true\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fallo de login 1 de 5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"password\": \"clave-erronea\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = CREDENCIALES_INVALIDAS\", () => pm.expect(pm.response.json().error).to.eql(\"CREDENCIALES_INVALIDAS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fallo de login 2 de 5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"password\": \"clave-erronea\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = CREDENCIALES_INVALIDAS\", () => pm.expect(pm.response.json().error).to.eql(\"CREDENCIALES_INVALIDAS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fallo de login 3 de 5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"password\": \"clave-erronea\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = CREDENCIALES_INVALIDAS\", () => pm.expect(pm.response.json().error).to.eql(\"CREDENCIALES_INVALIDAS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Fallo de login 4 de 5",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"password\": \"clave-erronea\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = CREDENCIALES_INVALIDAS\", () => pm.expect(pm.response.json().error).to.eql(\"CREDENCIALES_INVALIDAS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5.º fallo de login bloquea la cuenta → 423",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"password\": \"clave-erronea\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 423\", () => pm.response.to.have.status(423));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"error = CUENTA_BLOQUEADA con hora HH:MM\", () => {",
+                  "  pm.expect(b.error).to.eql(\"CUENTA_BLOQUEADA\");",
+                  "  pm.expect(b.mensaje).to.match(/^Cuenta bloqueada hasta las \\d{2}:\\d{2}$/);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Contraseña correcta durante el bloqueo sigue dando 423",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"password\": \"{{usuClaveInicial}}\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 423\", () => pm.response.to.have.status(423));",
+                  "pm.test(\"error = CUENTA_BLOQUEADA\", () => pm.expect(pm.response.json().error).to.eql(\"CUENTA_BLOQUEADA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO desbloquea un usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuCreadoId}}/desbloquear"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desbloquear usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuCreadoId}}/desbloquear"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"queda desbloqueado y con 0 intentos\", () => {",
+                  "  pm.expect(b.bloqueado).to.eql(false);",
+                  "  pm.expect(b.intentosFallidos).to.eql(0);",
+                  "  pm.expect(b.bloqueadoHasta).to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restablecer contraseña con menos de 8 caracteres",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuCreadoId}}/restablecer-clave",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"corta77\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FORMATO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FORMATO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO restablece contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuCreadoId}}/restablecer-clave",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"{{usuClaveNueva}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Restablecer contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuCreadoId}}/restablecer-clave",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"password\": \"{{usuClaveNueva}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"desbloqueado y sin exponer password\", () => {",
+                  "  pm.expect(b.bloqueado).to.eql(false);",
+                  "  pm.expect(b.intentosFallidos).to.eql(0);",
+                  "  pm.expect(pm.response.text()).to.not.match(/password/i);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login con la nueva contraseña",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"password\": \"{{usuClaveNueva}}\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.test(\"devuelve token TECNICO\", () => pm.expect(b.usuario.rol).to.eql(\"TECNICO\"));",
+                  "pm.collectionVariables.set(\"tokenUsuTecnico\", b.token);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Desactivar usuario",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/usuarios/{{usuCreadoId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Usuario Postman Editado\",\n  \"rol\": \"TECNICO\",\n  \"activo\": false\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"activo = false\", () => pm.expect(pm.response.json().activo).to.eql(false));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Usuario desactivado no puede iniciar sesión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"usuario\": \"{{usuLogin}}\",\n  \"password\": \"{{usuClaveNueva}}\",\n  \"turno\": \"Tarde\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = CREDENCIALES_INVALIDAS\", () => pm.expect(pm.response.json().error).to.eql(\"CREDENCIALES_INVALIDAS\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Token de usuario desactivado deja de servir → 401",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenUsuTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/hoy"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));",
+                  "pm.test(\"error = NO_AUTENTICADO\", () => pm.expect(pm.response.json().error).to.eql(\"NO_AUTENTICADO\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Solo lectura",
       "description": "No escribe nada (login no modifica datos). Es la ÚNICA carpeta que se corre contra producción, y solo con usuarios demo (R23): newman run ... --folder \"Solo lectura\".",
       "item": [

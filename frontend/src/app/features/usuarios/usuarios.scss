@@ -1,0 +1,143 @@
+// Solo layout local de la pantalla (CLAUDE.md: lo reutilizable vive en styles/).
+.usuarios {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.usuarios__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s-4);
+  flex-wrap: wrap;
+}
+
+.usuarios__busqueda {
+  position: relative;
+}
+
+.usuarios__busqueda-icono {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.usuarios__busqueda-input {
+  width: 100%;
+  padding-left: 36px;
+}
+
+.usuarios__nombre {
+  display: block;
+  font-weight: var(--fw-bold);
+  font-size: 16px;
+  line-height: 1.25;
+}
+
+.usuarios__tu {
+  font-size: 12px;
+  font-weight: var(--fw-bold);
+  color: var(--muted);
+  margin-left: 4px;
+}
+
+.usuarios__meta {
+  display: block;
+  font-size: 12px;
+  font-weight: var(--fw-medium);
+  color: var(--muted);
+}
+
+.usuarios__login {
+  font-weight: var(--fw-bold);
+  font-size: 15px;
+  color: var(--ink-2);
+}
+
+.usuarios__fila--inactiva .usuarios__nombre {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.usuarios__estados {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.usuarios__acciones {
+  display: inline-flex;
+  gap: var(--s-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.usuarios__card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--s-3);
+  margin-bottom: var(--s-3);
+}
+
+.usuarios__card .usuarios__acciones {
+  margin-top: var(--s-3);
+  justify-content: flex-start;
+}
+
+.usuarios__modal {
+  width: 100%;
+  max-width: 520px;
+  max-height: 92vh;
+  overflow-y: auto;
+}
+
+.usuarios__form-campos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+  margin-top: var(--s-4);
+}
+
+.usuarios__form-fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+}
+
+.usuarios__check {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.usuarios__aviso-caja {
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--ambar-500, #d97706);
+  background: var(--ambar-50, #fffbeb);
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.usuarios__errores {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--rojo-600);
+}
+
+@media (max-width: 575.98px) {
+  .usuarios__form-fila {
+    grid-template-columns: 1fr;
+  }
+}
