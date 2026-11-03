@@ -119,6 +119,6 @@ class ProductoControllerTest {
                 null, null,
                 List.of(new com.botica.backend.dto.PresentacionResponse(1L, "Caja", 100, "tableta", new java.math.BigDecimal("12.90"))),
                 true
-        );
+        , false);
     }
 }

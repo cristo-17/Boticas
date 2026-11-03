@@ -22,6 +22,24 @@ const FORMATO_LIMA = new Intl.DateTimeFormat('en-CA', {
   day: '2-digit',
 });
 
+const FORMATO_FECHA_HORA_LIMA = new Intl.DateTimeFormat('es-PE', {
+  timeZone: 'America/Lima',
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+/** Instante ISO (con offset) → "dd/MM/yyyy HH:mm" en hora de Lima. Solo presentación. */
+export function fechaHoraLima(iso: string): string {
+  const partes = Object.fromEntries(
+    FORMATO_FECHA_HORA_LIMA.formatToParts(new Date(iso)).map((p) => [p.type, p.value]),
+  );
+  return `${partes['day']}/${partes['month']}/${partes['year']} ${partes['hour']}:${partes['minute']}`;
+}
+
 /** Fecha `YYYY-MM-DD` del calendario de Lima para un instante dado. */
 export function fechaLimaIso(instante: Date = new Date()): string {
   const partes = FORMATO_LIMA.formatToParts(instante);

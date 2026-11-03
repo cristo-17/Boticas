@@ -97,7 +97,7 @@ class AlertaDaoStockVendibleTest {
         // VARCHAR(20): "QA-" + hasta 12 dígitos (BE-010).
         String codigoBarras = "QA-" + (System.nanoTime() % 1_000_000_000_000L);
         jdbcTemplate.update(
-                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre, requiere_receta) VALUES (?, ?, ?, ?, ?, false)",
                 boticaId, nombre, "Otros", codigoBarras, "unidad");
         return jdbcTemplate.queryForObject(
                 "SELECT id FROM productos WHERE botica_id = ? AND codigo_barras = ?", Long.class, boticaId, codigoBarras);

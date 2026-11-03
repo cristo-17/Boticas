@@ -59,21 +59,22 @@ class VentaConcurrenciaTest {
         Long boticaId = contexto.boticaId();
         Long usuarioId = contexto.usuarioId();
 
-        // Cualquier producto con una presentación "Unidad" (factor_conversion = 1) sirve.
+        // Producto propio con un único lote de exactamente 10 unidades. Antes se tomaba un
+        // producto del seed y se le pisaba el stock con UPDATE: eso deja el Kardex del seed
+        // sin cuadrar para los tests que corren después (Tarea 20, KardexIntegracionTest).
+        String sufijo = Long.toString(System.nanoTime() % 1_000_000_000L, 36);
+        jdbcTemplate.update("INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre, requiere_receta) " +
+                "VALUES (?, 'Producto concurrencia QA', 'Otros', ?, 'unidad', false)", boticaId, "QA-CC-" + sufijo);
         productoId = jdbcTemplate.queryForObject(
-                "SELECT producto_id FROM presentaciones WHERE botica_id = ? AND factor_conversion = 1 LIMIT 1",
-                Long.class, boticaId);
+                "SELECT id FROM productos WHERE botica_id = ? AND codigo_barras = ?", Long.class, boticaId, "QA-CC-" + sufijo);
+        jdbcTemplate.update("INSERT INTO presentaciones (botica_id, producto_id, etiqueta, factor_conversion, precio) " +
+                "VALUES (?, ?, 'Unidad', 1, 1.00)", boticaId, productoId);
         presentacionId = jdbcTemplate.queryForObject(
-                "SELECT id FROM presentaciones WHERE botica_id = ? AND producto_id = ? AND factor_conversion = 1",
-                Long.class, boticaId, productoId);
+                "SELECT id FROM presentaciones WHERE producto_id = ?", Long.class, productoId);
+        jdbcTemplate.update("INSERT INTO lotes (botica_id, producto_id, codigo, fecha_vencimiento, stock, costo_unitario) " +
+                "VALUES (?, ?, ?, CURRENT_DATE + 365, 10, 0.50)", boticaId, productoId, "L-CC-" + sufijo);
         loteId = jdbcTemplate.queryForObject(
-                "SELECT id FROM lotes WHERE botica_id = ? AND producto_id = ? ORDER BY id LIMIT 1",
-                Long.class, boticaId, productoId);
-
-        // Stock controlado: exactamente 10 en el único lote que va a quedar con stock.
-        jdbcTemplate.update("UPDATE lotes SET stock = 0 WHERE botica_id = ? AND producto_id = ? AND id != ?",
-                boticaId, productoId, loteId);
-        jdbcTemplate.update("UPDATE lotes SET stock = 10 WHERE id = ?", loteId);
+                "SELECT id FROM lotes WHERE producto_id = ?", Long.class, productoId);
 
         if (cajaDao.buscarAbiertaDelUsuario(boticaId, usuarioId).isEmpty()) {
             cajaDao.insertar(CajaDiaria.builder()
@@ -90,9 +91,9 @@ class VentaConcurrenciaTest {
     @Test
     void dosVentasConcurrentesSobreElMismoLote_soloUnaTieneExito() throws Exception {
         NuevaVentaRequest pedido1 = new NuevaVentaRequest(UUID.randomUUID(),
-                List.of(new ItemVentaRequest(productoId, presentacionId, 8, "BUSQUEDA")), "efectivo");
+                List.of(new ItemVentaRequest(productoId, presentacionId, 8, "BUSQUEDA")), "efectivo", null);
         NuevaVentaRequest pedido2 = new NuevaVentaRequest(UUID.randomUUID(),
-                List.of(new ItemVentaRequest(productoId, presentacionId, 8, "BUSQUEDA")), "efectivo");
+                List.of(new ItemVentaRequest(productoId, presentacionId, 8, "BUSQUEDA")), "efectivo", null);
 
         CountDownLatch arrancar = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);

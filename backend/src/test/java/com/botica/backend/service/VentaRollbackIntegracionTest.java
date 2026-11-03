@@ -79,7 +79,7 @@ class VentaRollbackIntegracionTest {
         NuevaVentaRequest pedido = new NuevaVentaRequest(clave, List.of(
                 new ItemVentaRequest(linea1[0], linea1[1], 5, "BUSQUEDA"), // pedido normal, stock alcanza
                 new ItemVentaRequest(linea2[0], linea2[1], 10, "BUSQUEDA") // pide 10, solo hay 2 -- esta falla
-        ), "efectivo");
+        ), "efectivo", null);
 
         assertThatThrownBy(() -> ventaService.registrar(pedido)).isInstanceOf(StockInsuficienteException.class);
 
@@ -97,7 +97,7 @@ class VentaRollbackIntegracionTest {
     private long[] productoPresentacionYLoteConStock(int stock) {
         String codigoBarras = "QA-" + System.nanoTime();
         jdbcTemplate.update(
-                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre, requiere_receta) VALUES (?, ?, ?, ?, ?, false)",
                 boticaId, "Producto rollback QA", "Otros", codigoBarras, "unidad");
         Long productoId = jdbcTemplate.queryForObject(
                 "SELECT id FROM productos WHERE botica_id = ? AND codigo_barras = ?", Long.class, boticaId, codigoBarras);

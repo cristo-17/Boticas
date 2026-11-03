@@ -87,6 +87,21 @@ class ProductoCatalogoSeguridadTest {
                 .andExpect(status().isOk());
     }
 
+    /**
+     * Tarea 20: la base conserva DEFAULT false en productos.requiere_receta solo
+     * por R23 (código de V9). La API es la que obliga a declararlo: sin el campo,
+     * 400 y el Service no se entera. CUERPO no trae requiereReceta.
+     */
+    @Test
+    void administrador_creaSinDeclararRequiereReceta_400() throws Exception {
+        mockMvc.perform(post("/api/productos").header("Authorization", "Bearer " + tokenDe("ADMINISTRADOR"))
+                        .contentType("application/json").content(CUERPO))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"))
+                .andExpect(jsonPath("$.mensaje").value("requiereReceta: requiereReceta es obligatorio"));
+        verifyNoInteractions(catalogoService);
+    }
+
     private void esperar403(MockHttpServletRequestBuilder peticion) throws Exception {
         mockMvc.perform(peticion.header("Authorization", "Bearer " + tokenDe("TECNICO")))
                 .andExpect(status().isForbidden())

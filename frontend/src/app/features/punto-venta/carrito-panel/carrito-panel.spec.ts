@@ -4,7 +4,7 @@ import { LineaCarrito } from '../services/carrito.service';
 
 const LINEA: LineaCarrito = {
   key: '1|10', productoId: 1, presentacionId: 10, nombre: 'Paracetamol', presentacion: 'Caja',
-  precioUnitario: 25, cantidad: 1, alerta: null, origenCaptura: 'BUSQUEDA',
+  precioUnitario: 25, cantidad: 1, alerta: null, origenCaptura: 'BUSQUEDA', requiereReceta: false,
 };
 
 /** DIF-07 (Tarea 0B-B): vaciar con confirmación y desglose Op. gravada / IGV / Total. */

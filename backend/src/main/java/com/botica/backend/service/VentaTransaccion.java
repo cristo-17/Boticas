@@ -9,9 +9,13 @@ import com.botica.backend.dao.VentaDao;
 import com.botica.backend.dto.ItemVentaRequest;
 import com.botica.backend.dto.ItemVentaResponse;
 import com.botica.backend.dto.NuevaVentaRequest;
+import com.botica.backend.dto.RecetaRequest;
+import com.botica.backend.dto.RecetaResponse;
 import com.botica.backend.dto.VentaResponse;
 import com.botica.backend.exception.PresentacionInvalidaException;
 import com.botica.backend.exception.ProductoInactivoException;
+import com.botica.backend.exception.RecetaInvalidaException;
+import com.botica.backend.exception.RecetaRequeridaException;
 import com.botica.backend.exception.SinCajaAbiertaException;
 import com.botica.backend.exception.StockInsuficienteException;
 import com.botica.backend.exception.StockSoloVencidoException;
@@ -21,6 +25,7 @@ import com.botica.backend.model.MovimientoCaja;
 import com.botica.backend.model.MovimientoStock;
 import com.botica.backend.model.PresentacionProducto;
 import com.botica.backend.model.Producto;
+import com.botica.backend.model.Receta;
 import com.botica.backend.model.Venta;
 import com.botica.backend.model.VentaDetalle;
 import com.botica.backend.event.StockCriticoEvent;
@@ -103,6 +108,8 @@ class VentaTransaccion {
         BigDecimal totalVenta = BigDecimal.ZERO;
         List<ItemVentaResponse> itemsRespuesta = new ArrayList<>();
         List<VentaDetalle> detallesAInsertar = new ArrayList<>();
+        // Tarea 20 (D-E2-4): productos del carrito que solo se venden con receta.
+        List<String> conReceta = new ArrayList<>();
 
         for (ItemVentaRequest item : request.items()) {
             Producto producto = productoDao.obtenerPorId(boticaId, item.productoId())
@@ -110,6 +117,9 @@ class VentaTransaccion {
             if (!Boolean.TRUE.equals(producto.getActivo())) {
                 // Tarea 17: desactivado no se vende, aunque un carrito viejo todavía lo tenga.
                 throw new ProductoInactivoException(producto.getNombre());
+            }
+            if (producto.isRequiereReceta() && !conReceta.contains(producto.getNombre())) {
+                conReceta.add(producto.getNombre());
             }
             PresentacionProducto presentacion = productoDao.obtenerPresentacion(boticaId, item.productoId(), item.presentacionId())
                     .filter(p -> Boolean.TRUE.equals(p.getActivo())) // una presentación quitada no se vende
@@ -178,6 +188,8 @@ class VentaTransaccion {
                         .costoUnitario(lote.getCostoUnitario())
                         .totalLinea(totalFila)
                         .origenCaptura(item.origenCaptura())
+                        // Tarea 20: congelado como el precio y el costo; el Kardex clasifica con esto.
+                        .requiereReceta(producto.isRequiereReceta())
                         .build();
                 detallesAInsertar.add(detalle);
 
@@ -193,6 +205,10 @@ class VentaTransaccion {
             itemsRespuesta.add(new ItemVentaResponse(item.productoId(), item.presentacionId(), producto.getNombre(),
                     presentacion.getEtiqueta(), presentacion.getPrecio(), cantidadPresentacion, item.origenCaptura()));
         }
+
+        // Tarea 20: con al menos una línea que requiere receta, la receta es obligatoria.
+        // Se valida antes de insertar la cabecera; el stock ya descontado se revierte con la excepción.
+        Receta receta = validarReceta(request, conReceta);
 
         // Anexo C regla 7: el IGV se EXTRAE del total ya cobrado, nunca se suma encima.
         BigDecimal igvTasa = config.getIgv();
@@ -235,6 +251,13 @@ class VentaTransaccion {
             ventaDao.insertarMovimientoStock(movimientoStock);
         }
 
+        if (receta != null) {
+            receta.setBoticaId(boticaId);
+            receta.setVentaId(creada.getId());
+            receta.setCreadoPor(usuarioId);
+            ventaDao.insertarReceta(receta);
+        }
+
         // Un solo movimiento de caja para toda la venta -- afecta_efectivo=false en Yape/tarjeta (Tarea 8).
         MovimientoCaja movimientoCaja = MovimientoCaja.builder()
                 .boticaId(boticaId)
@@ -248,7 +271,33 @@ class VentaTransaccion {
         cajaDao.insertarMovimiento(movimientoCaja);
 
         return new VentaResponse(creada.getId(), creada.getFecha(), usuarioId, itemsRespuesta,
-                subtotal, igv, total, request.metodoPago(), true, request.claveIdempotencia());
+                subtotal, igv, total, request.metodoPago(), true, request.claveIdempotencia(),
+                receta == null ? null : RecetaResponse.desde(receta));
+    }
+
+    /**
+     * D-E2-4: número y CMP obligatorios (formato en el DTO), fecha de emisión no
+     * futura (fecha de Lima). Sin ninguna línea que la requiera, la receta que
+     * llegue se ignora: no se guarda una receta que nada respalda.
+     */
+    private Receta validarReceta(NuevaVentaRequest request, List<String> conReceta) {
+        if (conReceta.isEmpty()) {
+            return null;
+        }
+        RecetaRequest datos = request.receta();
+        if (datos == null) {
+            throw new RecetaRequeridaException(String.join(", ", conReceta));
+        }
+        if (datos.fechaEmision() != null && datos.fechaEmision().isAfter(fechaNegocio.hoy())) {
+            throw new RecetaInvalidaException("La fecha de emisión de la receta no puede ser futura");
+        }
+        String medico = datos.medicoNombre() == null || datos.medicoNombre().isBlank() ? null : datos.medicoNombre().trim();
+        return Receta.builder()
+                .numero(datos.numero().trim())
+                .cmp(datos.cmp().trim())
+                .medicoNombre(medico)
+                .fechaEmision(datos.fechaEmision())
+                .build();
     }
 
     /**
@@ -277,8 +326,10 @@ class VentaTransaccion {
             items.add(new ItemVentaResponse(primero.getProductoId(), primero.getPresentacionId(), primero.getNombreProducto(),
                     primero.getEtiquetaPresentacion(), presentacion.getPrecio(), cantidadPresentacion, primero.getOrigenCaptura()));
         }
+        RecetaResponse receta = ventaDao.buscarReceta(venta.getBoticaId(), venta.getId())
+                .map(RecetaResponse::desde).orElse(null);
         return new VentaResponse(venta.getId(), venta.getFecha(), venta.getUsuarioId(), items,
                 venta.getSubtotal(), venta.getIgv(), venta.getTotal(), venta.getMetodoPago(),
-                venta.isSincronizada(), venta.getClaveIdempotencia());
+                venta.isSincronizada(), venta.getClaveIdempotencia(), receta);
     }
 }

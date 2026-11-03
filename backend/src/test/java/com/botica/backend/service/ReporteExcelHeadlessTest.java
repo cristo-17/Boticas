@@ -1,7 +1,11 @@
 package com.botica.backend.service;
 
 import com.botica.backend.dto.EgresoPorMotivoResponse;
+import com.botica.backend.dto.FilaKardexResponse;
 import com.botica.backend.dto.FilaResultadoResponse;
+import com.botica.backend.dto.KardexResponse;
+import com.botica.backend.dto.PaginaResponse;
+import com.botica.backend.dto.ResumenKardexResponse;
 import com.botica.backend.dto.ReporteResultadosResponse;
 import com.botica.backend.dto.TotalesResultadoResponse;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -47,6 +51,7 @@ class ReporteExcelHeadlessTest {
         Path tmp = Files.createTempDirectory("xlsx-headless");
         Path salida = tmp.resolve("reporte.xlsx");
         Path log = tmp.resolve("clases.log");
+        Path kardex = tmp.resolve("kardex.xlsx"); // Tarea 20: el .xlsx del Kardex corre la misma prueba
         String classpath = System.getProperty("surefire.test.class.path", System.getProperty("java.class.path"));
         String java = Paths.get(System.getProperty("java.home"), "bin", "java").toString();
 
@@ -54,7 +59,7 @@ class ReporteExcelHeadlessTest {
                 "-Djava.awt.headless=true",
                 "-Xlog:class+load=info:file=" + log.toAbsolutePath(),
                 "-cp", classpath,
-                Generador.class.getName(), salida.toAbsolutePath().toString())
+                Generador.class.getName(), salida.toAbsolutePath().toString(), kardex.toAbsolutePath().toString())
                 .redirectErrorStream(true)
                 .start();
         String consola = new String(p.getInputStream().readAllBytes(), StandardCharsets.UTF_8);
@@ -64,6 +69,7 @@ class ReporteExcelHeadlessTest {
 
         List<String> cargadas = Files.readAllLines(log);
         assertThat(cargadas).as("se registró la carga de clases").anyMatch(l -> l.contains("ReporteExcel "));
+        assertThat(cargadas).as("también generó el Kardex").anyMatch(l -> l.contains("KardexExcel "));
         for (String prohibida : CLASES_PROHIBIDAS) {
             assertThat(cargadas).as("no debe cargar %s", prohibida.trim())
                     .noneMatch(l -> l.contains(" " + prohibida));
@@ -80,6 +86,14 @@ class ReporteExcelHeadlessTest {
             assertThat(hoja.getColumnWidth(4)).isEqualTo(("Mermas a costo".length() + ReporteExcel.MARGEN_ANCHO) * 256);
             // Resultado neto: manda el monto negativo/positivo más largo, "S/ 1,232,567.89" (15).
             assertThat(hoja.getColumnWidth(7)).isEqualTo((15 + ReporteExcel.MARGEN_ANCHO) * 256);
+        }
+
+        try (XSSFWorkbook wb = new XSSFWorkbook(new ByteArrayInputStream(Files.readAllBytes(kardex)))) {
+            XSSFSheet hoja = wb.getSheet(KardexExcel.HOJA);
+            assertThat(hoja.getRow(KardexExcel.FILA_ENCABEZADO + 1).getCell(1).getStringCellValue())
+                    .isEqualTo("Entrada inicial (registrada por la migración)");
+            // Saldo: manda "12,345" (6) frente al encabezado "Saldo" (5).
+            assertThat(hoja.getColumnWidth(7)).isEqualTo((6 + KardexExcel.MARGEN_ANCHO) * 256);
         }
     }
 
@@ -115,6 +129,14 @@ class ReporteExcelHeadlessTest {
                     List.of(new EgresoPorMotivoResponse("Movilidad", 1, new BigDecimal("1000.00"))),
                     OffsetDateTime.of(2026, 11, 3, 2, 15, 0, 0, ZoneOffset.UTC));
             Files.write(Paths.get(args[0]), xlsx);
+
+            var filaKardex = new FilaKardexResponse(1L, OffsetDateTime.of(2026, 11, 3, 15, 0, 0, 0, ZoneOffset.UTC),
+                    "ENTRADA", true, 12345, 12345L, 1L, "L-1", null, null, null, null);
+            var k = new KardexResponse(1L, "Producto Headless", "tableta", false, true, null, null,
+                    new ResumenKardexResponse(0, 12345, 0, 12345, 12345, 1),
+                    PaginaResponse.de(List.of(filaKardex), 0, 1, 1));
+            Files.write(Paths.get(args[1]), KardexExcel.generar("Botica Headless", k,
+                    OffsetDateTime.of(2026, 11, 3, 2, 15, 0, 0, ZoneOffset.UTC)));
         }
     }
 }

@@ -1,0 +1,242 @@
+<div class="kardex">
+  <header class="kardex__header">
+    <div>
+      <span class="field-hint">Inventario · unidades base · fechas de Lima</span>
+      <h1 class="kardex__titulo">Kardex</h1>
+    </div>
+    <app-button
+      variant="secondary"
+      [disabled]="productoId() === null"
+      [loading]="descargandoExcel()"
+      (clicked)="descargarExcel()"
+    >
+      <i class="bi bi-file-earmark-excel"></i> Descargar Excel
+    </app-button>
+  </header>
+
+  <app-error-banner [mensaje]="error()"></app-error-banner>
+
+  <app-card>
+    <div class="kardex__filtros">
+      <div class="kardex__campo kardex__campo--producto">
+        <label class="field-label" for="kardex-producto">Producto</label>
+        <div class="kardex__buscador">
+          <input
+            id="kardex-producto"
+            type="text"
+            class="bs-field-compact kardex__input"
+            autocomplete="off"
+            placeholder="Buscar por nombre, laboratorio o código de barras"
+            [value]="busqueda()"
+            (input)="onBusqueda($event)"
+          />
+          @if (mostrarOpciones()) {
+            <div class="kardex__opciones" role="listbox" aria-label="Productos">
+              @if (buscandoProductos()) {
+                <app-skeleton [count]="3"></app-skeleton>
+              } @else {
+                @for (p of opciones(); track p.id) {
+                  <button type="button" role="option" class="kardex__opcion" (click)="elegir(p)">
+                    <span class="kardex__opcion-nombre">{{ p.nombre }}</span>
+                    <span class="field-hint">
+                      {{ p.laboratorio ?? 'Sin laboratorio' }} ·
+                      <span class="num">{{ p.codigoBarras }}</span>
+                      @if (!p.activo) {
+                        · desactivado
+                      }
+                    </span>
+                  </button>
+                } @empty {
+                  <div class="field-hint kardex__sin-opciones">Ningún producto coincide.</div>
+                }
+              }
+            </div>
+          }
+        </div>
+      </div>
+
+      <div class="kardex__campo">
+        <label class="field-label" for="kardex-desde">Desde (opcional)</label>
+        <input
+          id="kardex-desde"
+          type="date"
+          class="input num"
+          [max]="hoy"
+          [value]="desde()"
+          (input)="onFecha('desde', $event)"
+        />
+      </div>
+      <div class="kardex__campo">
+        <label class="field-label" for="kardex-hasta">Hasta (opcional)</label>
+        <input
+          id="kardex-hasta"
+          type="date"
+          class="input num"
+          [value]="hasta()"
+          (input)="onFecha('hasta', $event)"
+        />
+      </div>
+      <div class="kardex__campo kardex__campo--botones">
+        <app-button
+          variant="primary"
+          [disabled]="productoId() === null"
+          [loading]="cargando()"
+          (clicked)="consultar()"
+        >
+          <i class="bi bi-funnel"></i> Consultar
+        </app-button>
+        @if (desde() || hasta()) {
+          <app-button variant="ghost" (clicked)="limpiarFechas()">Toda la historia</app-button>
+        }
+      </div>
+    </div>
+  </app-card>
+
+  @if (productoId() === null) {
+    <app-empty-state
+      title="Elige un producto"
+      text="El Kardex muestra cada entrada de lote, venta y merma del producto, con el saldo después de cada movimiento."
+    ></app-empty-state>
+  } @else if (cargando() && !kardex()) {
+    <app-card><app-skeleton [count]="6"></app-skeleton></app-card>
+  } @else if (kardex(); as k) {
+    <div class="kardex__producto">
+      <h2 class="kardex__producto-nombre">{{ k.productoNombre }}</h2>
+      @if (k.requiereReceta) {
+        <app-badge variant="info">Con receta</app-badge>
+      }
+      @if (!k.activo) {
+        <app-badge variant="neutral">Desactivado</app-badge>
+      }
+      <span class="field-hint">
+        {{
+          k.desde || k.hasta
+            ? 'Del ' +
+              (k.desde ? fechaCorta(k.desde) : 'inicio') +
+              ' al ' +
+              (k.hasta ? fechaCorta(k.hasta) : 'hoy')
+            : 'Toda la historia'
+        }}
+        · en {{ k.unidadNombre }}
+      </span>
+    </div>
+
+    <section class="kardex__kpis" aria-label="Totales del rango">
+      <app-summary-card
+        label="Saldo inicial"
+        [value]="'' + k.resumen.saldoInicial"
+        note="Antes del rango"
+      ></app-summary-card>
+      <app-summary-card
+        label="Entradas"
+        [value]="'+' + k.resumen.entradas"
+        note="Lotes registrados"
+        variant="info"
+      ></app-summary-card>
+      <app-summary-card
+        label="Salidas"
+        [value]="'−' + k.resumen.salidas"
+        note="Ventas y mermas"
+        variant="warn"
+      ></app-summary-card>
+      <app-summary-card
+        label="Saldo final"
+        [value]="'' + k.resumen.saldoFinal"
+        [note]="'Stock de los lotes hoy: ' + k.resumen.stockActual"
+        [variant]="rangoHastaHoy() && !cuadra() ? 'danger' : 'default'"
+      ></app-summary-card>
+    </section>
+
+    @if (rangoHastaHoy()) {
+      <p class="kardex__invariante" [class.kardex__invariante--mal]="!cuadra()">
+        @if (cuadra()) {
+          <i class="bi bi-check-circle"></i> El saldo del Kardex coincide con el stock de los lotes.
+        } @else {
+          <i class="bi bi-exclamation-triangle"></i> El saldo del Kardex no coincide con el stock de
+          los lotes: hay un movimiento sin registrar.
+        }
+      </p>
+    }
+
+    @if (k.movimientos.contenido.length === 0) {
+      <app-empty-state
+        title="Sin movimientos en el rango"
+        text="Cambia las fechas o mira toda la historia."
+      ></app-empty-state>
+    } @else {
+      <app-table>
+        <thead>
+          <tr>
+            <th>Fecha y hora</th>
+            <th>Movimiento</th>
+            <th>Lote</th>
+            <th>Referencia</th>
+            <th>Usuario</th>
+            <th class="align-end">Entrada</th>
+            <th class="align-end">Salida</th>
+            <th class="align-end">Saldo</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of k.movimientos.contenido; track f.id ?? -1) {
+            <tr [class.kardex__fila--saldo]="f.tipo === 'SALDO_ANTERIOR'">
+              <td class="num">{{ fechaHora(f.fecha) }}</td>
+              <td>
+                <app-badge [variant]="variante(f)">{{ etiquetaTipo(f) }}</app-badge>
+              </td>
+              <td class="num">{{ f.loteCodigo ?? '' }}</td>
+              <td>{{ referencia(f) }}</td>
+              <td>{{ f.usuario ?? (f.entradaInicial ? 'Migración' : '') }}</td>
+              <td class="num align-end kardex__entrada">{{ entrada(f) ?? '' }}</td>
+              <td class="num align-end kardex__salida">{{ salida(f) ?? '' }}</td>
+              <td class="num align-end kardex__saldo">{{ f.saldo }}</td>
+            </tr>
+          }
+        </tbody>
+        <div cards>
+          @for (f of k.movimientos.contenido; track f.id ?? -1) {
+            <app-card [flat]="true" class="kardex__card">
+              <div class="kardex__card-top">
+                <app-badge [variant]="variante(f)">{{ etiquetaTipo(f) }}</app-badge>
+                <span class="num kardex__saldo">Saldo {{ f.saldo }}</span>
+              </div>
+              <div class="kardex__card-meta">
+                <span class="num">{{ fechaHora(f.fecha) }}</span>
+                @if (f.loteCodigo) {
+                  · Lote <span class="num">{{ f.loteCodigo }}</span>
+                }
+                @if (referencia(f)) {
+                  · {{ referencia(f) }}
+                }
+              </div>
+              @if (f.cantidad !== null) {
+                <div
+                  class="num"
+                  [class.kardex__entrada]="f.cantidad > 0"
+                  [class.kardex__salida]="f.cantidad < 0"
+                >
+                  {{ f.cantidad > 0 ? '+' + f.cantidad : '−' + -f.cantidad }} {{ k.unidadNombre }}
+                </div>
+              }
+            </app-card>
+          }
+        </div>
+      </app-table>
+
+      <app-paginacion
+        [pagina]="k.movimientos.pagina"
+        [totalPaginas]="k.movimientos.totalPaginas"
+        [totalElementos]="k.movimientos.totalElementos"
+        (anterior)="irAPagina(k.movimientos.pagina - 1)"
+        (siguiente)="irAPagina(k.movimientos.pagina + 1)"
+      ></app-paginacion>
+    }
+  }
+</div>
+
+<app-toast
+  [visible]="toastVisible()"
+  [variant]="toastVariant()"
+  [message]="toastMensaje()"
+  (closed)="toastVisible.set(false)"
+></app-toast>

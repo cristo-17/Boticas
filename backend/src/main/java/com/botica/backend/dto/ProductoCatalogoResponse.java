@@ -18,11 +18,14 @@ public record ProductoCatalogoResponse(
         String codigoBarras,
         String unidadNombre,
         boolean activo,
+        /** Tarea 20: true = se vende solo con receta. */
+        boolean requiereReceta,
         List<PresentacionCatalogoResponse> presentaciones
 ) {
     public static ProductoCatalogoResponse desde(Producto producto, List<PresentacionCatalogoResponse> presentaciones) {
         return new ProductoCatalogoResponse(
                 producto.getId(), producto.getNombre(), producto.getLaboratorio(), producto.getCategoria(),
-                producto.getCodigoBarras(), producto.getUnidadNombre(), Boolean.TRUE.equals(producto.getActivo()), presentaciones);
+                producto.getCodigoBarras(), producto.getUnidadNombre(), Boolean.TRUE.equals(producto.getActivo()),
+                producto.isRequiereReceta(), presentaciones);
     }
 }

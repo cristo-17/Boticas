@@ -54,6 +54,7 @@ export class CatalogoService {
   }
 
   // POST /api/productos — solo ADMINISTRADOR. El producto y sus presentaciones en una transacción.
+  // Tarea 20: requiereReceta es obligatorio en POST y PUT (sin él: 400 FORMATO_INVALIDO).
   // 400 PRESENTACION_UNIDAD_REQUERIDA (no hay exactamente una de factor 1), 400 PRESENTACION_DUPLICADA,
   // 400 FORMATO_INVALIDO, 409 CODIGO_BARRAS_DUPLICADO.
   crear(request: ProductoRequest): Observable<ProductoCatalogo> {

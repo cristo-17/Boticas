@@ -144,7 +144,7 @@ class CatalogoProductoIntegracionTest {
 
     private ProductoCatalogoResponse productoConTresPresentaciones() {
         String codigo = "QA17-" + (System.nanoTime() % 1_000_000_000_000L);
-        return catalogoService.crear(new ProductoRequest("Producto catálogo QA", "Lab QA", "Otros", codigo, "tableta", List.of(
+        return catalogoService.crear(new ProductoRequest("Producto catálogo QA", "Lab QA", "Otros", codigo, "tableta", false, List.of(
                 new PresentacionRequest(null, "Caja", 100, new BigDecimal("15.00")),
                 new PresentacionRequest(null, "Blíster", 10, new BigDecimal("1.80")),
                 new PresentacionRequest(null, "Unidad", 1, new BigDecimal("0.20")))));
@@ -165,7 +165,7 @@ class CatalogoProductoIntegracionTest {
 
     private static ProductoRequest requestCon(ProductoCatalogoResponse producto, List<PresentacionRequest> presentaciones) {
         return new ProductoRequest(producto.nombre(), producto.laboratorio(), producto.categoria(),
-                producto.codigoBarras(), producto.unidadNombre(), presentaciones);
+                producto.codigoBarras(), producto.unidadNombre(), false, presentaciones);
     }
 
     private Long loteCon(Long productoId, int stock) {
@@ -175,7 +175,7 @@ class CatalogoProductoIntegracionTest {
 
     private VentaResponse vender(Long productoId, Long presentacionId, int cantidad) {
         return ventaService.registrar(new NuevaVentaRequest(UUID.randomUUID(),
-                List.of(new ItemVentaRequest(productoId, presentacionId, cantidad, "BUSQUEDA")), "efectivo"));
+                List.of(new ItemVentaRequest(productoId, presentacionId, cantidad, "BUSQUEDA")), "efectivo", null));
     }
 
     private BigDecimal precioDeLaVenta(Long ventaId) {

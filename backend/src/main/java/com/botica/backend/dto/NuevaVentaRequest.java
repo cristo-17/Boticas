@@ -17,6 +17,8 @@ import java.util.UUID;
 public record NuevaVentaRequest(
         @NotNull(message = "claveIdempotencia es obligatoria") UUID claveIdempotencia,
         @NotEmpty(message = "items no puede estar vacío") @Valid List<ItemVentaRequest> items,
-        @Pattern(regexp = "efectivo|yape|tarjeta", message = "metodoPago debe ser efectivo, yape o tarjeta") String metodoPago
+        @Pattern(regexp = "efectivo|yape|tarjeta", message = "metodoPago debe ser efectivo, yape o tarjeta") String metodoPago,
+        /** Tarea 20: obligatoria si alguna línea es de un producto con requiereReceta (400 RECETA_REQUERIDA); si ninguna lo es, se ignora. */
+        @Valid RecetaRequest receta
 ) {
 }

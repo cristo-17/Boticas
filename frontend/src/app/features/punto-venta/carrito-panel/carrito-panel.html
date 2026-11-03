@@ -26,6 +26,9 @@
           <div class="carrito-panel__linea-meta">
             {{ l.presentacion }} · <span class="num">{{ formatearMoneda(l.precioUnitario) }}</span>
           </div>
+          @if (l.requiereReceta) {
+            <app-badge variant="info" class="carrito-panel__linea-alerta">Con receta</app-badge>
+          }
           @if (l.alerta) {
             <app-badge variant="warn" class="carrito-panel__linea-alerta">{{ l.alerta }}</app-badge>
           }

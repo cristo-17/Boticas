@@ -70,7 +70,7 @@ class NotificacionEventosIntegracionTest {
         NuevaVentaRequest pedido = new NuevaVentaRequest(UUID.randomUUID(), List.of(
                 new ItemVentaRequest(critico.productoId, critico.presentacionId, 5, "BUSQUEDA"),
                 new ItemVentaRequest(sinStock.productoId, sinStock.presentacionId, 3, "BUSQUEDA")
-        ), "efectivo");
+        ), "efectivo", null);
 
         assertThatThrownBy(() -> ventaService.registrar(pedido)).isInstanceOf(StockInsuficienteException.class);
 
@@ -83,7 +83,7 @@ class NotificacionEventosIntegracionTest {
 
         ventaService.registrar(new NuevaVentaRequest(UUID.randomUUID(), List.of(
                 new ItemVentaRequest(critico.productoId, critico.presentacionId, 10, "BUSQUEDA")
-        ), "efectivo"));
+        ), "efectivo", null));
 
         assertThat(notificacionesDe(critico)).as("20 - 10 = 10 <= umbral 15: debe quedar UNA notificación guardada").isEqualTo(1);
     }
@@ -94,7 +94,7 @@ class NotificacionEventosIntegracionTest {
 
         VentaResponse venta = ventaService.registrar(new NuevaVentaRequest(UUID.randomUUID(), List.of(
                 new ItemVentaRequest(holgado.productoId, holgado.presentacionId, 1, "BUSQUEDA")
-        ), "efectivo"));
+        ), "efectivo", null));
 
         assertThat(venta.id()).isNotNull();
         assertThat(notificacionesDe(holgado)).isZero();
@@ -112,7 +112,7 @@ class NotificacionEventosIntegracionTest {
 
         ventaService.registrar(new NuevaVentaRequest(UUID.randomUUID(), List.of(
                 new ItemVentaRequest(critico.productoId, critico.presentacionId, 10, "BUSQUEDA")
-        ), "efectivo"));
+        ), "efectivo", null));
 
         assertThat(notificacionesDe(critico)).as("20 - 10 = 10 vendibles <= 15; las 100 vencidas no cuentan").isEqualTo(1);
     }
@@ -130,7 +130,7 @@ class NotificacionEventosIntegracionTest {
         String sufijo = String.valueOf(System.nanoTime() % 1_000_000_000_000L); // codigo_barras es VARCHAR(20)
         String nombre = "Producto evento QA " + sufijo;
         jdbcTemplate.update(
-                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre, requiere_receta) VALUES (?, ?, ?, ?, ?, false)",
                 boticaId, nombre, "Otros", "QA-EV-" + sufijo, "unidad");
         Long productoId = jdbcTemplate.queryForObject(
                 "SELECT id FROM productos WHERE botica_id = ? AND codigo_barras = ?", Long.class, boticaId, "QA-EV-" + sufijo);

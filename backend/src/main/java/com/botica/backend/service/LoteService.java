@@ -65,6 +65,9 @@ public class LoteService {
             // UNIQUE (botica_id, producto_id, codigo): el mismo código de lote ya existe para este producto (DIF-09).
             throw new LoteDuplicadoException(request.codigo());
         }
+        // Tarea 20: la ENTRADA del lote en el Kardex, en la misma transacción. Sin ella el
+        // saldo del Kardex no coincide con el stock (invariante: KardexInvarianteIntegracionTest).
+        loteDao.registrarIngreso(creado);
         return loteDao.buscarResponsePorId(
                         boticaId, creado.getId(), fechaNegocio.hoy(),
                         config.getVencimientoCriticoDias(), config.getVencimientoAdvertenciaDias(), config.getUmbralStockBajo())

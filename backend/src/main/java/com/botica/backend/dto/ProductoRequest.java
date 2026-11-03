@@ -3,6 +3,7 @@ package com.botica.backend.dto;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import java.util.List;
@@ -19,6 +20,8 @@ public record ProductoRequest(
         @NotBlank(message = "categoria es obligatoria") @Size(max = 80, message = "categoria admite hasta 80 caracteres") String categoria,
         @NotBlank(message = "codigoBarras es obligatorio") @Size(max = 20, message = "codigoBarras admite hasta 20 caracteres") String codigoBarras,
         @NotBlank(message = "unidadNombre es obligatorio") @Size(max = 30, message = "unidadNombre admite hasta 30 caracteres") String unidadNombre,
+        /** Tarea 20: obligatorio en la API (400 si falta). La base tiene DEFAULT false temporal solo para el código de V9 (R23). */
+        @NotNull(message = "requiereReceta es obligatorio") Boolean requiereReceta,
         @NotEmpty(message = "presentaciones no puede estar vacío") List<@Valid PresentacionRequest> presentaciones
 ) {
 }

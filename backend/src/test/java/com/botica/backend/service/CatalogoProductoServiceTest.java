@@ -243,6 +243,6 @@ class CatalogoProductoServiceTest {
     }
 
     private static ProductoRequest request(PresentacionRequest... presentaciones) {
-        return new ProductoRequest("  Paracetamol 500 mg ", "Genfar", "Analgésicos", "775000", "tableta", List.of(presentaciones));
+        return new ProductoRequest("  Paracetamol 500 mg ", "Genfar", "Analgésicos", "775000", "tableta", false, List.of(presentaciones));
     }
 }

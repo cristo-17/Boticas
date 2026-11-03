@@ -20,6 +20,8 @@ export interface ProductoCatalogo {
   codigoBarras: string;
   unidadNombre: string;
   activo: boolean;
+  /** Tarea 20: se vende solo con receta (número y CMP del médico al cobrar). */
+  requiereReceta: boolean;
   presentaciones: PresentacionCatalogo[];
 }
 
@@ -41,5 +43,7 @@ export interface ProductoRequest {
   categoria: string;
   codigoBarras: string;
   unidadNombre: string;
+  /** Tarea 20: obligatorio (la base no tiene valor por defecto). Solo afecta ventas futuras. */
+  requiereReceta: boolean;
   presentaciones: PresentacionRequest[];
 }

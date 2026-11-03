@@ -55,14 +55,20 @@ class VentaIdempotenciaConcurrenteTest {
         Long boticaId = contexto.boticaId();
         Long usuarioId = contexto.usuarioId();
 
+        // Producto propio con stock generoso -- este test no busca probar FEFO/insuficiencia, solo
+        // la idempotencia. Antes se pisaba con UPDATE el stock de un producto del seed, y el Kardex
+        // del seed dejaba de cuadrar para los tests que corren después (Tarea 20).
+        String sufijo = Long.toString(System.nanoTime() % 1_000_000_000L, 36);
+        jdbcTemplate.update("INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre, requiere_receta) " +
+                "VALUES (?, 'Producto idempotencia QA', 'Otros', ?, 'unidad', false)", boticaId, "QA-ID-" + sufijo);
         productoId = jdbcTemplate.queryForObject(
-                "SELECT producto_id FROM presentaciones WHERE botica_id = ? AND factor_conversion = 1 LIMIT 1",
-                Long.class, boticaId);
+                "SELECT id FROM productos WHERE botica_id = ? AND codigo_barras = ?", Long.class, boticaId, "QA-ID-" + sufijo);
+        jdbcTemplate.update("INSERT INTO presentaciones (botica_id, producto_id, etiqueta, factor_conversion, precio) " +
+                "VALUES (?, ?, 'Unidad', 1, 1.00)", boticaId, productoId);
         presentacionId = jdbcTemplate.queryForObject(
-                "SELECT id FROM presentaciones WHERE botica_id = ? AND producto_id = ? AND factor_conversion = 1",
-                Long.class, boticaId, productoId);
-        // Stock generoso -- este test no busca probar FEFO/insuficiencia, solo la idempotencia.
-        jdbcTemplate.update("UPDATE lotes SET stock = 1000 WHERE botica_id = ? AND producto_id = ?", boticaId, productoId);
+                "SELECT id FROM presentaciones WHERE producto_id = ?", Long.class, productoId);
+        jdbcTemplate.update("INSERT INTO lotes (botica_id, producto_id, codigo, fecha_vencimiento, stock, costo_unitario) " +
+                "VALUES (?, ?, ?, CURRENT_DATE + 365, 1000, 0.50)", boticaId, productoId, "L-ID-" + sufijo);
 
         if (cajaDao.buscarAbiertaDelUsuario(boticaId, usuarioId).isEmpty()) {
             cajaDao.insertar(CajaDiaria.builder()
@@ -80,9 +86,9 @@ class VentaIdempotenciaConcurrenteTest {
     void dosLlamadasConcurrentes_mismaClaveIdempotencia_devuelvenLaMismaVenta_nuncaUn500() throws Exception {
         UUID claveCompartida = UUID.randomUUID();
         NuevaVentaRequest pedido1 = new NuevaVentaRequest(claveCompartida,
-                List.of(new ItemVentaRequest(productoId, presentacionId, 2, "BUSQUEDA")), "efectivo");
+                List.of(new ItemVentaRequest(productoId, presentacionId, 2, "BUSQUEDA")), "efectivo", null);
         NuevaVentaRequest pedido2 = new NuevaVentaRequest(claveCompartida,
-                List.of(new ItemVentaRequest(productoId, presentacionId, 2, "BUSQUEDA")), "efectivo");
+                List.of(new ItemVentaRequest(productoId, presentacionId, 2, "BUSQUEDA")), "efectivo", null);
 
         CountDownLatch arrancar = new CountDownLatch(1);
         ExecutorService executor = Executors.newFixedThreadPool(2);

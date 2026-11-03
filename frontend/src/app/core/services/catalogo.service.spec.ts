@@ -11,7 +11,7 @@ const BASE_URL = `${environment.apiUrl}/productos`;
 function producto(id: number, activo = true): ProductoCatalogo {
   return {
     id, nombre: `Producto ${id}`, laboratorio: null, categoria: 'Otros', codigoBarras: `77${id}`,
-    unidadNombre: 'tableta', activo,
+    unidadNombre: 'tableta', activo, requiereReceta: false,
     presentaciones: [{ id: id * 10, etiqueta: 'Unidad', factorConversion: 1, precio: 0.2, activo: true }],
   };
 }
@@ -21,7 +21,7 @@ function pagina(...contenido: ProductoCatalogo[]): PaginaResponse<ProductoCatalo
 }
 
 const REQUEST: ProductoRequest = {
-  nombre: 'Nuevo', laboratorio: null, categoria: 'Otros', codigoBarras: '775', unidadNombre: 'tableta',
+  nombre: 'Nuevo', laboratorio: null, categoria: 'Otros', codigoBarras: '775', unidadNombre: 'tableta', requiereReceta: true,
   presentaciones: [{ etiqueta: 'Unidad', factorConversion: 1, precio: 0.2 }],
 };
 

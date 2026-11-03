@@ -195,6 +195,7 @@ public class CatalogoProductoService {
                 .categoria(request.categoria().trim())
                 .codigoBarras(request.codigoBarras().trim())
                 .unidadNombre(request.unidadNombre().trim())
+                .requiereReceta(request.requiereReceta())
                 .build();
     }
 

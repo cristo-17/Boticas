@@ -18,6 +18,7 @@ function productoDePrueba(id: number): Producto {
     fechaVencimiento: '2027-01-01',
     presentaciones: [],
     activo: true,
+    requiereReceta: false,
   };
 }
 

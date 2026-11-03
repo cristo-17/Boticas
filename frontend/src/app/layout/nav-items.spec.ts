@@ -7,6 +7,7 @@ describe('navItemsDe', () => {
     expect(rutas).toContain('/catalogo');
     expect(rutas).toContain('/usuarios');
     expect(rutas).toContain('/reportes');
+    expect(rutas).toContain('/kardex');
   });
 
   it('el TECNICO no ve Catálogo, Usuarios ni Resultados, pero sí el resto', () => {
@@ -14,6 +15,7 @@ describe('navItemsDe', () => {
     expect(rutas).not.toContain('/catalogo');
     expect(rutas).not.toContain('/usuarios');
     expect(rutas).not.toContain('/reportes');
+    expect(rutas).not.toContain('/kardex');
     expect(rutas).toContain('/punto-venta');
     expect(rutas).toHaveLength(6);
   });

@@ -33,4 +33,6 @@ export interface Producto {
   presentaciones: PresentacionProducto[];
   /** Tarea 17: solo Merma recibe desactivados (incluirInactivos); Punto de Venta nunca los ve. */
   activo: boolean;
+  /** Tarea 20: se vende solo con receta. Punto de Venta lo marca y pide la receta al cobrar. */
+  requiereReceta: boolean;
 }

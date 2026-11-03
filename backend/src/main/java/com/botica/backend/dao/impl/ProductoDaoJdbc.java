@@ -167,8 +167,8 @@ public class ProductoDaoJdbc implements ProductoDao {
 
     @Override
     public Long insertar(Producto producto) {
-        String sql = "INSERT INTO productos (botica_id, nombre, laboratorio, categoria, codigo_barras, unidad_nombre, activo, creado_por) " +
-                "VALUES (:boticaId, :nombre, :laboratorio, :categoria, :codigoBarras, :unidadNombre, true, :creadoPor) RETURNING id";
+        String sql = "INSERT INTO productos (botica_id, nombre, laboratorio, categoria, codigo_barras, unidad_nombre, requiere_receta, activo, creado_por) " +
+                "VALUES (:boticaId, :nombre, :laboratorio, :categoria, :codigoBarras, :unidadNombre, :requiereReceta, true, :creadoPor) RETURNING id";
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", producto.getBoticaId())
                 .addValue("nombre", producto.getNombre())
@@ -176,6 +176,7 @@ public class ProductoDaoJdbc implements ProductoDao {
                 .addValue("categoria", producto.getCategoria())
                 .addValue("codigoBarras", producto.getCodigoBarras())
                 .addValue("unidadNombre", producto.getUnidadNombre())
+                .addValue("requiereReceta", producto.isRequiereReceta())
                 .addValue("creadoPor", producto.getCreadoPor());
         return jdbc.queryForObject(sql, params, Long.class);
     }
@@ -183,7 +184,7 @@ public class ProductoDaoJdbc implements ProductoDao {
     @Override
     public void actualizar(Producto producto) {
         String sql = "UPDATE productos SET nombre = :nombre, laboratorio = :laboratorio, categoria = :categoria, " +
-                "codigo_barras = :codigoBarras, unidad_nombre = :unidadNombre " +
+                "codigo_barras = :codigoBarras, unidad_nombre = :unidadNombre, requiere_receta = :requiereReceta " +
                 "WHERE botica_id = :boticaId AND id = :id";
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", producto.getBoticaId())
@@ -192,7 +193,8 @@ public class ProductoDaoJdbc implements ProductoDao {
                 .addValue("laboratorio", producto.getLaboratorio())
                 .addValue("categoria", producto.getCategoria())
                 .addValue("codigoBarras", producto.getCodigoBarras())
-                .addValue("unidadNombre", producto.getUnidadNombre());
+                .addValue("unidadNombre", producto.getUnidadNombre())
+                .addValue("requiereReceta", producto.isRequiereReceta());
         jdbc.update(sql, params);
     }
 

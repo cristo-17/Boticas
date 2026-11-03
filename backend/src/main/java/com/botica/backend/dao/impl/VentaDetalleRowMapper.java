@@ -24,6 +24,7 @@ public class VentaDetalleRowMapper implements RowMapper<VentaDetalle> {
                 .costoUnitario(rs.getBigDecimal("costo_unitario"))
                 .totalLinea(rs.getBigDecimal("total_linea"))
                 .origenCaptura(rs.getString("origen_captura"))
+                .requiereReceta(rs.getBoolean("requiere_receta"))
                 .build();
     }
 }

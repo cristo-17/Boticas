@@ -1,0 +1,70 @@
+@if (abierto) {
+  <div class="modal-backdrop-bs modal-backdrop-bs--sheet" (click)="cancelado.emit()">
+    <div
+      class="modal-bs receta-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="receta-titulo"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="modal-bs__body">
+        <div class="eyebrow">Venta con receta</div>
+        <div id="receta-titulo" class="modal-bs__title">Datos de la receta</div>
+        <p class="field-hint receta-modal__productos">
+          Necesitan receta: <strong>{{ productos.join(', ') }}</strong>
+        </p>
+
+        <app-error-banner [mensaje]="error"></app-error-banner>
+
+        <form class="receta-modal__campos" (submit)="$event.preventDefault(); confirmar()">
+          <div class="receta-modal__fila">
+            <div class="bs-field">
+              <label for="receta-numero" class="bs-field__label">N.º de receta</label>
+              <div class="bs-field__control">
+                <input id="receta-numero" class="bs-field__input" type="text" maxlength="30" autocomplete="off"
+                  [value]="numero()" (input)="numero.set($any($event.target).value)" />
+              </div>
+            </div>
+            <div class="bs-field">
+              <label for="receta-cmp" class="bs-field__label">CMP del médico</label>
+              <div class="bs-field__control">
+                <input id="receta-cmp" class="bs-field__input num" type="text" maxlength="6" inputmode="numeric"
+                  autocomplete="off" placeholder="Solo dígitos"
+                  [value]="cmp()" (input)="cmp.set($any($event.target).value)" />
+              </div>
+            </div>
+          </div>
+          <div class="receta-modal__fila">
+            <div class="bs-field">
+              <label for="receta-medico" class="bs-field__label">Médico (opcional)</label>
+              <div class="bs-field__control">
+                <input id="receta-medico" class="bs-field__input" type="text" maxlength="150" autocomplete="off"
+                  [value]="medico()" (input)="medico.set($any($event.target).value)" />
+              </div>
+            </div>
+            <div class="bs-field">
+              <label for="receta-fecha" class="bs-field__label">Fecha de emisión (opcional)</label>
+              <div class="bs-field__control">
+                <input id="receta-fecha" class="bs-field__input num" type="date" [max]="hoy()"
+                  [value]="fecha()" (input)="fecha.set($any($event.target).value)" />
+              </div>
+            </div>
+          </div>
+
+          @if (intento() && errores().length > 0) {
+            <ul class="receta-modal__errores">
+              @for (e of errores(); track e) {
+                <li>{{ e }}</li>
+              }
+            </ul>
+          }
+          <button type="submit" hidden aria-hidden="true" tabindex="-1"></button>
+        </form>
+      </div>
+      <div class="modal-bs__actions">
+        <app-button variant="secondary" [disabled]="enviando" (clicked)="cancelado.emit()">Volver</app-button>
+        <app-button variant="action" [loading]="enviando" (clicked)="confirmar()">Cobrar con receta</app-button>
+      </div>
+    </div>
+  </div>
+}

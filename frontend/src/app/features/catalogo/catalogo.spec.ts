@@ -12,7 +12,7 @@ const BASE_URL = `${environment.apiUrl}/productos`;
 
 const PRODUCTO: ProductoCatalogo = {
   id: 5, nombre: 'Paracetamol 500 mg', laboratorio: 'Genfar', categoria: 'Analgésicos', codigoBarras: '7751',
-  unidadNombre: 'tableta', activo: true,
+  unidadNombre: 'tableta', activo: true, requiereReceta: false,
   presentaciones: [
     { id: 51, etiqueta: 'Caja', factorConversion: 100, precio: 12.9, activo: true },
     { id: 52, etiqueta: 'Blíster', factorConversion: 10, precio: 1.8, activo: true },
@@ -67,6 +67,24 @@ describe('CatalogoScreen', () => {
     ]);
     req.flush({ ...PRODUCTO });
     expect(pantalla.formularioAbierto()).toBe(false);
+  });
+
+  it('Tarea 20: "requiere receta" viaja en el PUT y se muestra en la lista', async () => {
+    const fixture = await crear();
+    const pantalla = fixture.componentInstance;
+    expect((fixture.nativeElement as HTMLElement).textContent).not.toContain('Con receta');
+
+    pantalla.abrirEdicion(PRODUCTO);
+    expect(pantalla.requiereReceta()).toBe(false);
+    fixture.detectChanges();
+    const check = (fixture.nativeElement as HTMLElement).querySelector<HTMLInputElement>('#cat-receta')!;
+    check.checked = true;
+    check.dispatchEvent(new Event('change'));
+    pantalla.guardar();
+
+    const req = http.expectOne(`${BASE_URL}/5`);
+    expect(req.request.body.requiereReceta).toBe(true);
+    req.flush({ ...PRODUCTO, requiereReceta: true });
   });
 
   it('la fila de factor 1 no se puede quitar', async () => {

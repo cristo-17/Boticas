@@ -55,6 +55,9 @@
             <td>
               <span class="catalogo__nombre">{{ p.nombre }}</span>
               <span class="catalogo__meta">{{ p.laboratorio ?? 'Sin laboratorio' }} · {{ p.categoria }}</span>
+              @if (p.requiereReceta) {
+                <app-badge variant="info" class="catalogo__receta">Con receta</app-badge>
+              }
             </td>
             <td class="num catalogo__code">{{ p.codigoBarras }}</td>
             <td>
@@ -73,6 +76,7 @@
             <td class="align-end">
               <div class="catalogo__acciones">
                 <app-button variant="secondary" (clicked)="abrirEdicion(p)">Editar</app-button>
+                <app-button variant="ghost" (clicked)="verKardex(p)">Kardex</app-button>
                 <app-button
                   [variant]="p.activo ? 'ghost' : 'secondary'"
                   [loading]="productoEnCambio() === p.id"
@@ -94,7 +98,12 @@
                   {{ p.laboratorio ?? 'Sin laboratorio' }} · {{ p.categoria }} · <span class="num">{{ p.codigoBarras }}</span>
                 </div>
               </div>
-              <app-badge [variant]="p.activo ? 'ok' : 'neutral'">{{ p.activo ? 'Activo' : 'Desactivado' }}</app-badge>
+              <div class="catalogo__badges">
+                @if (p.requiereReceta) {
+                  <app-badge variant="info">Con receta</app-badge>
+                }
+                <app-badge [variant]="p.activo ? 'ok' : 'neutral'">{{ p.activo ? 'Activo' : 'Desactivado' }}</app-badge>
+              </div>
             </div>
             <div class="catalogo__presentaciones">
               @for (x of presentacionesActivas(p); track x.id) {
@@ -106,6 +115,7 @@
             </div>
             <div class="catalogo__acciones">
               <app-button variant="secondary" (clicked)="abrirEdicion(p)">Editar</app-button>
+              <app-button variant="ghost" (clicked)="verKardex(p)">Kardex</app-button>
               <app-button
                 [variant]="p.activo ? 'ghost' : 'secondary'"
                 [loading]="productoEnCambio() === p.id"
@@ -184,6 +194,20 @@
                   [value]="unidadNombre()" (input)="unidadNombre.set($any($event.target).value)" />
               </div>
             </div>
+          </div>
+
+          <label class="catalogo__check">
+            <input
+              id="cat-receta"
+              type="checkbox"
+              [checked]="requiereReceta()"
+              (change)="requiereReceta.set($any($event.target).checked)"
+            />
+            <span>Se vende solo con receta médica</span>
+          </label>
+          <div class="field-hint catalogo__check-ayuda">
+            Al cobrar, Punto de Venta pide el número de receta y el CMP del médico. El cambio solo afecta las ventas que
+            vengan.
           </div>
 
           <div class="catalogo__pres-head">

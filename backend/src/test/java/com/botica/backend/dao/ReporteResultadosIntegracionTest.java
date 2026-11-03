@@ -339,8 +339,8 @@ class ReporteResultadosIntegracionTest {
 
     private Long insertarProducto(String codigoBarras, BigDecimal precioVenta) {
         jdbcTemplate.update(
-                "INSERT INTO productos (botica_id, nombre, laboratorio, categoria, codigo_barras, unidad_nombre) " +
-                        "VALUES (?, 'Prod ' || ?, 'Lab Test', 'Analgésicos', ?, 'tableta')",
+                "INSERT INTO productos (botica_id, nombre, laboratorio, categoria, codigo_barras, unidad_nombre, requiere_receta) " +
+                        "VALUES (?, 'Prod ' || ?, 'Lab Test', 'Analgésicos', ?, 'tableta', false)",
                 boticaId, codigoBarras, codigoBarras);
         Long productoId = jdbcTemplate.queryForObject(
                 "SELECT id FROM productos WHERE botica_id = ? AND codigo_barras = ?",

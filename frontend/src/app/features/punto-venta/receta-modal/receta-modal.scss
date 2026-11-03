@@ -1,0 +1,33 @@
+// Layout local del modal de receta (Tarea 20). Los estilos de campo y modal son los compartidos (bs-*).
+.receta-modal {
+  max-width: 560px;
+}
+
+.receta-modal__productos {
+  margin: var(--s-1, 4px) 0 var(--s-3);
+}
+
+.receta-modal__campos {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+}
+
+.receta-modal__fila {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s-3);
+}
+
+.receta-modal__errores {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  color: var(--rojo-600);
+}
+
+@media (max-width: 575.98px) {
+  .receta-modal__fila {
+    grid-template-columns: 1fr;
+  }
+}

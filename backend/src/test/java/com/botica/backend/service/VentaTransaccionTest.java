@@ -75,7 +75,7 @@ class VentaTransaccionTest {
 
     private NuevaVentaRequest pedido(int cantidad) {
         return new NuevaVentaRequest(UUID.randomUUID(),
-                List.of(new ItemVentaRequest(PRODUCTO_ID, PRESENTACION_ID, cantidad, "BUSQUEDA")), "efectivo");
+                List.of(new ItemVentaRequest(PRODUCTO_ID, PRESENTACION_ID, cantidad, "BUSQUEDA")), "efectivo", null);
     }
 
     private Producto productoDePrueba() {
@@ -96,7 +96,7 @@ class VentaTransaccionTest {
     void ejecutar_conClaveYaExistente_devuelveLaVentaExistente_sinValidarNadaMas() {
         UUID clave = UUID.randomUUID();
         NuevaVentaRequest request = new NuevaVentaRequest(clave,
-                List.of(new ItemVentaRequest(PRODUCTO_ID, PRESENTACION_ID, 1, "BUSQUEDA")), "efectivo");
+                List.of(new ItemVentaRequest(PRODUCTO_ID, PRESENTACION_ID, 1, "BUSQUEDA")), "efectivo", null);
         Venta existente = Venta.builder().id(99L).boticaId(BOTICA_ID).usuarioId(USUARIO_ID)
                 .subtotal(new BigDecimal("1.00")).igv(new BigDecimal("0.18")).total(new BigDecimal("1.18"))
                 .metodoPago("efectivo").claveIdempotencia(clave).sincronizada(true).build();

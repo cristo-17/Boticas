@@ -26,6 +26,9 @@ public interface LoteDao {
 
     Lote insertar(Lote lote);
 
+    /** Tarea 20: movimiento INGRESO por el stock inicial del lote recién insertado (origen_captura NULL). */
+    void registrarIngreso(Lote lote);
+
     Optional<Lote> buscarPorId(Long boticaId, Long id);
 
     /** Misma forma que listarPaginado (JOIN + estados calculados), para que un lote recién creado se vea igual que en el listado. */

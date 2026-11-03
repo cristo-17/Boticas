@@ -8,7 +8,7 @@ import { ErrorBannerComponent } from '../../shared/components/error-banner/error
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
 import { ToastComponent } from '../../shared/components/toast/toast';
 import { PresentacionProducto, Producto } from '../../core/models/producto.model';
-import { MetodoPago, OrigenCaptura } from '../../core/models/venta.model';
+import { MetodoPago, OrigenCaptura, RecetaVenta } from '../../core/models/venta.model';
 import { ProductoService } from '../../core/services/producto.service';
 import { VentaService } from '../../core/services/venta.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -16,6 +16,7 @@ import { formatearMoneda } from '../../core/utils/moneda.util';
 import { textoAlertaVencimiento } from '../../core/utils/fecha.util';
 import { CarritoPanelComponent } from './carrito-panel/carrito-panel';
 import { PresentacionModalComponent } from './presentacion-modal/presentacion-modal';
+import { RecetaModalComponent } from './receta-modal/receta-modal';
 import { EstadoEscaneo, ScannerComponent } from './scanner/scanner';
 import { CarritoService } from './services/carrito.service';
 
@@ -30,6 +31,7 @@ import { CarritoService } from './services/carrito.service';
     ToastComponent,
     CarritoPanelComponent,
     PresentacionModalComponent,
+    RecetaModalComponent,
     ScannerComponent,
   ],
   templateUrl: './punto-venta.html',
@@ -37,7 +39,7 @@ import { CarritoService } from './services/carrito.service';
 })
 export class PuntoVentaScreen implements OnInit {
   private readonly productoService = inject(ProductoService);
-  private readonly ventaService = inject(VentaService);
+  readonly ventaService = inject(VentaService);
   private readonly configService = inject(ConfigService);
   readonly carrito = inject(CarritoService);
 
@@ -61,6 +63,9 @@ export class PuntoVentaScreen implements OnInit {
    * recién al agregarla al carrito (agregarPresentacion).
    */
   private readonly origenSeleccionActual = signal<OrigenCaptura>('BUSQUEDA');
+
+  /** Tarea 20: método elegido mientras se piden los datos de la receta (null = modal cerrado). */
+  readonly metodoConReceta = signal<MetodoPago | null>(null);
 
   readonly toastVisible = signal(false);
   readonly toastMensaje = signal('');
@@ -165,16 +170,34 @@ export class PuntoVentaScreen implements OnInit {
     return textoAlertaVencimiento(producto.estadoVencimiento, producto.fechaVencimiento);
   }
 
+  /**
+   * Tarea 20: si alguna línea requiere receta, primero se piden sus datos
+   * (modal); el servidor igual la exige (400 RECETA_REQUERIDA).
+   */
   cobrar(metodo: MetodoPago = 'efectivo'): void {
     if (this.carrito.vacio()) return;
+    if (this.carrito.productosConReceta().length > 0) {
+      this.metodoConReceta.set(metodo);
+      return;
+    }
+    this.enviarVenta(metodo, null);
+  }
+
+  cobrarConReceta(receta: RecetaVenta): void {
+    const metodo = this.metodoConReceta();
+    if (metodo) this.enviarVenta(metodo, receta);
+  }
+
+  private enviarVenta(metodo: MetodoPago, receta: RecetaVenta | null): void {
     const items = this.carrito.lineas().map((l) => ({
       productoId: l.productoId,
       presentacionId: l.presentacionId,
       cantidad: l.cantidad,
       origenCaptura: l.origenCaptura,
     }));
-    this.ventaService.registrarVenta({ items, metodoPago: metodo }).subscribe({
+    this.ventaService.registrarVenta({ items, metodoPago: metodo, receta }).subscribe({
       next: (venta) => {
+        this.metodoConReceta.set(null);
         this.carrito.vaciar();
         this.mostrarToast(
           venta.sincronizada
@@ -182,7 +205,7 @@ export class PuntoVentaScreen implements OnInit {
             : `Venta guardada localmente · ${formatearMoneda(venta.total)}`,
         );
       },
-      error: () => {}, // el error ya queda en productoService.error()/ventaService.error() (mostrado en el banner)
+      error: () => {}, // el error ya queda en ventaService.error(): banner de la pantalla y, si está abierto, el modal de receta
     });
   }
 

@@ -43,6 +43,9 @@
                         >{{ p.laboratorio }} · {{ p.categoria }}</span
                       >
                     </span>
+                    @if (p.requiereReceta) {
+                      <app-badge variant="info" class="pos__resultado-badge">Con receta</app-badge>
+                    }
                     @if (alertaVencimientoDe(p); as texto) {
                       <app-badge variant="warn" class="pos__resultado-badge">{{ texto }}</app-badge>
                     }
@@ -67,6 +70,9 @@
         @for (p of masVendidos(); track p.id) {
           <button type="button" class="pos__quick" (click)="elegirProducto(p)">
             <span class="pos__quick-nombre">{{ p.nombre }}</span>
+            @if (p.requiereReceta) {
+              <span class="pos__quick-receta">Con receta</span>
+            }
             <span class="num pos__quick-precio">desde {{ formatearMoneda(precioDesde(p)) }}</span>
           </button>
         }
@@ -96,6 +102,15 @@
   (elegida)="agregarPresentacion($event)"
   (cerrado)="cerrarModalPresentacion()"
 ></app-presentacion-modal>
+
+<app-receta-modal
+  [abierto]="metodoConReceta() !== null"
+  [productos]="carrito.productosConReceta()"
+  [enviando]="cobrando()"
+  [error]="ventaService.error()"
+  (confirmado)="cobrarConReceta($event)"
+  (cancelado)="metodoConReceta.set(null)"
+></app-receta-modal>
 
 <app-toast
   [visible]="toastVisible()"

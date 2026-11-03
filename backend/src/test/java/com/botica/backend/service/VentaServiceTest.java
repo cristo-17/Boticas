@@ -207,11 +207,11 @@ class VentaServiceTest {
 
     private NuevaVentaRequest pedido() {
         return new NuevaVentaRequest(UUID.randomUUID(),
-                List.of(new ItemVentaRequest(1L, 1L, 1, "BUSQUEDA")), "efectivo");
+                List.of(new ItemVentaRequest(1L, 1L, 1, "BUSQUEDA")), "efectivo", null);
     }
 
     private VentaResponse respuestaDePrueba(Long id, UUID clave) {
         return new VentaResponse(id, OffsetDateTime.now(), 1L, List.of(),
-                new BigDecimal("1.00"), new BigDecimal("0.18"), new BigDecimal("1.18"), "efectivo", true, clave);
+                new BigDecimal("1.00"), new BigDecimal("0.18"), new BigDecimal("1.18"), "efectivo", true, clave, null);
     }
 }

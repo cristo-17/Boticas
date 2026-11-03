@@ -1,5 +1,6 @@
 import { Component, DestroyRef, OnInit, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
 import { BadgeComponent } from '../../shared/components/badge/badge';
@@ -60,6 +61,7 @@ function filaDesde(p: PresentacionCatalogo): FilaPresentacion {
 export class CatalogoScreen implements OnInit {
   private readonly catalogo = inject(CatalogoService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly router = inject(Router);
 
   readonly productos = this.catalogo.productos;
   readonly pagina = this.catalogo.pagina;
@@ -119,6 +121,11 @@ export class CatalogoScreen implements OnInit {
     return x.factorConversion === 1 ? x.etiqueta : `${x.etiqueta} ×${x.factorConversion} ${unidadNombre}`;
   }
 
+  /** Tarea 20: el Kardex del producto (también de uno desactivado: su historia sigue visible). */
+  verKardex(p: ProductoCatalogo): void {
+    this.router.navigate(['/kardex'], { queryParams: { productoId: p.id } });
+  }
+
   // --- Activar / desactivar (reversible: sin confirmación; el servidor lo valida) ---
   readonly productoEnCambio = signal<number | null>(null);
 
@@ -138,6 +145,8 @@ export class CatalogoScreen implements OnInit {
   readonly categoria = signal('');
   readonly codigoBarras = signal('');
   readonly unidadNombre = signal('');
+  /** Tarea 20: obligatorio en el servidor; un producto nuevo empieza en false (lo decide el administrador). */
+  readonly requiereReceta = signal(false);
   readonly filas = signal<FilaPresentacion[]>([]);
   /** Presentaciones desactivadas del producto en edición: se pueden reactivar. */
   readonly desactivadas = signal<PresentacionCatalogo[]>([]);
@@ -176,6 +185,7 @@ export class CatalogoScreen implements OnInit {
     this.categoria.set('');
     this.codigoBarras.set('');
     this.unidadNombre.set('');
+    this.requiereReceta.set(false);
     this.filas.set([filaUnidad()]);
     this.desactivadas.set([]);
     this.quitadas.set([]);
@@ -191,6 +201,7 @@ export class CatalogoScreen implements OnInit {
     this.categoria.set(p.categoria);
     this.codigoBarras.set(p.codigoBarras);
     this.unidadNombre.set(p.unidadNombre);
+    this.requiereReceta.set(p.requiereReceta);
     const activas = p.presentaciones.filter((x) => x.activo).map(filaDesde);
     // Un producto viejo sin fila de factor 1 la gana al editar (el servidor la exige).
     this.filas.set(activas.some((f) => f.esUnidad) ? activas : [...activas, filaUnidad()]);
@@ -250,6 +261,7 @@ export class CatalogoScreen implements OnInit {
       categoria: this.categoria().trim(),
       codigoBarras: this.codigoBarras().trim(),
       unidadNombre: this.unidadNombre().trim(),
+      requiereReceta: this.requiereReceta(),
       presentaciones: this.filas().map((f) => ({
         ...(f.id !== undefined ? { id: f.id } : {}),
         etiqueta: f.etiqueta.trim(),

@@ -4,6 +4,7 @@ import com.botica.backend.dao.VentaDao;
 import com.botica.backend.dto.PaginaResponse;
 import com.botica.backend.exception.OrdenInvalidoException;
 import com.botica.backend.model.MovimientoStock;
+import com.botica.backend.model.Receta;
 import com.botica.backend.model.Venta;
 import com.botica.backend.model.VentaDetalle;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
@@ -18,7 +19,7 @@ import java.util.Optional;
 import java.util.UUID;
 
 /**
- * Único DAO que sabe SQL de ventas/venta_detalle/movimientos_stock.
+ * Único DAO que sabe SQL de ventas/venta_detalle/recetas y de los movimientos_stock de una venta.
  * Todo WHERE incluye botica_id (Regla FILTRADO POR BOTICA, Tarea 8).
  */
 @Repository
@@ -32,6 +33,7 @@ public class VentaDaoJdbc implements VentaDao {
     private final NamedParameterJdbcTemplate jdbc;
     private final VentaRowMapper ventaRowMapper = new VentaRowMapper();
     private final VentaDetalleRowMapper ventaDetalleRowMapper = new VentaDetalleRowMapper();
+    private final RecetaRowMapper recetaRowMapper = new RecetaRowMapper();
 
     public VentaDaoJdbc(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -81,9 +83,9 @@ public class VentaDaoJdbc implements VentaDao {
     @Override
     public VentaDetalle insertarDetalle(VentaDetalle detalle) {
         String sql = "INSERT INTO venta_detalle (venta_id, botica_id, producto_id, presentacion_id, lote_id, " +
-                "nombre_producto, etiqueta_presentacion, cantidad, precio_unitario, costo_unitario, total_linea, origen_captura) " +
+                "nombre_producto, etiqueta_presentacion, cantidad, precio_unitario, costo_unitario, total_linea, origen_captura, requiere_receta) " +
                 "VALUES (:ventaId, :boticaId, :productoId, :presentacionId, :loteId, :nombreProducto, :etiquetaPresentacion, " +
-                ":cantidad, :precioUnitario, :costoUnitario, :totalLinea, :origenCaptura)";
+                ":cantidad, :precioUnitario, :costoUnitario, :totalLinea, :origenCaptura, :requiereReceta)";
         var params = new MapSqlParameterSource()
                 .addValue("ventaId", detalle.getVentaId())
                 .addValue("boticaId", detalle.getBoticaId())
@@ -96,7 +98,8 @@ public class VentaDaoJdbc implements VentaDao {
                 .addValue("precioUnitario", detalle.getPrecioUnitario())
                 .addValue("costoUnitario", detalle.getCostoUnitario())
                 .addValue("totalLinea", detalle.getTotalLinea())
-                .addValue("origenCaptura", detalle.getOrigenCaptura());
+                .addValue("origenCaptura", detalle.getOrigenCaptura())
+                .addValue("requiereReceta", detalle.isRequiereReceta());
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(sql, params, keyHolder, new String[]{"id"});
         detalle.setId(keyHolder.getKey().longValue());
@@ -117,6 +120,30 @@ public class VentaDaoJdbc implements VentaDao {
                 .addValue("referenciaMermaId", movimiento.getReferenciaMermaId())
                 .addValue("creadoPor", movimiento.getCreadoPor());
         jdbc.update(sql, params);
+    }
+
+    @Override
+    public void insertarReceta(Receta receta) {
+        String sql = "INSERT INTO recetas (botica_id, venta_id, numero, cmp, medico_nombre, fecha_emision, creado_por) " +
+                "VALUES (:boticaId, :ventaId, :numero, :cmp, :medicoNombre, :fechaEmision, :creadoPor)";
+        var params = new MapSqlParameterSource()
+                .addValue("boticaId", receta.getBoticaId())
+                .addValue("ventaId", receta.getVentaId())
+                .addValue("numero", receta.getNumero())
+                .addValue("cmp", receta.getCmp())
+                .addValue("medicoNombre", receta.getMedicoNombre())
+                .addValue("fechaEmision", receta.getFechaEmision())
+                .addValue("creadoPor", receta.getCreadoPor());
+        jdbc.update(sql, params);
+    }
+
+    @Override
+    public Optional<Receta> buscarReceta(Long boticaId, Long ventaId) {
+        String sql = "SELECT * FROM recetas WHERE botica_id = :boticaId AND venta_id = :ventaId";
+        var params = new MapSqlParameterSource()
+                .addValue("boticaId", boticaId)
+                .addValue("ventaId", ventaId);
+        return jdbc.query(sql, params, recetaRowMapper).stream().findFirst();
     }
 
     @Override

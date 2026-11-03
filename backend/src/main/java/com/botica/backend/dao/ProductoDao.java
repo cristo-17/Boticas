@@ -39,7 +39,7 @@ public interface ProductoDao {
     /** Devuelve el id. DuplicateKeyException si el código de barras ya existe en la botica. */
     Long insertar(Producto producto);
 
-    /** Nombre, laboratorio, categoría, código de barras y unidad. DuplicateKeyException si el código choca. */
+    /** Nombre, laboratorio, categoría, código de barras, unidad y requiereReceta (solo ventas futuras). DuplicateKeyException si el código choca. */
     void actualizar(Producto producto);
 
     void cambiarEstado(Long boticaId, Long productoId, boolean activo);

@@ -25,6 +25,7 @@ public class ProductoRowMapper implements RowMapper<Producto> {
                 .codigoBarras(rs.getString("codigo_barras"))
                 .unidadNombre(rs.getString("unidad_nombre"))
                 .activo(rs.getBoolean("activo"))
+                .requiereReceta(rs.getBoolean("requiere_receta"))
                 .creadoEn(rs.getObject("creado_en", OffsetDateTime.class))
                 .creadoPor(rs.getObject("creado_por", Long.class))
                 .build();

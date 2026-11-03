@@ -23,7 +23,9 @@ public record ProductoResponse(
         LocalDate fechaVencimiento,
         List<PresentacionResponse> presentaciones,
         /** Tarea 17: Merma busca también los desactivados (tienen stock que retirar) y los marca. */
-        boolean activo
+        boolean activo,
+        /** Tarea 20: Punto de Venta muestra el indicador y pide la receta al cobrar. */
+        boolean requiereReceta
 ) {
     public static ProductoResponse desde(
             Producto producto,
@@ -40,7 +42,8 @@ public record ProductoResponse(
                 estadoVencimiento,
                 fechaVencimiento,
                 presentaciones,
-                Boolean.TRUE.equals(producto.getActivo())
+                Boolean.TRUE.equals(producto.getActivo()),
+                producto.isRequiereReceta()
         );
     }
 }

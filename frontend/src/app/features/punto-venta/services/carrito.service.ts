@@ -16,6 +16,8 @@ export interface LineaCarrito {
   alerta: string | null;
   /** Capturado al agregar (D4/Nota 1) — no se reconstruye después. Si el cajero suma más del mismo producto por otro camino, se conserva el origen original. */
   origenCaptura: OrigenCaptura;
+  /** Tarea 20: el producto se vende solo con receta. */
+  requiereReceta: boolean;
 }
 
 /** Fallback si /api/config no llegó a cargar todavía (no debería pasar: provideAppInitializer la espera antes de arrancar la app). */
@@ -31,6 +33,10 @@ export class CarritoService {
   readonly vacio = computed(() => this._lineas().length === 0);
   readonly cantidadLineas = computed(() => this._lineas().length);
   readonly unidades = computed(() => this._lineas().reduce((acc, l) => acc + l.cantidad, 0));
+  /** Tarea 20: productos del carrito que piden receta (sin repetir). Vacío = se cobra directo. */
+  readonly productosConReceta = computed(() => [
+    ...new Set(this._lineas().filter((l) => l.requiereReceta).map((l) => l.nombre)),
+  ]);
   /** Op. gravada / IGV / Total con la regla del servidor (DIF-07): ver dinero.util.ts. */
   private readonly resumen = computed(() =>
     resumirDinero(
@@ -62,6 +68,7 @@ export class CarritoService {
           // Capturado una sola vez, al agregar: no se recalcula mientras la línea vive en el carrito.
           alerta: textoAlertaVencimiento(producto.estadoVencimiento, producto.fechaVencimiento),
           origenCaptura: origen,
+          requiereReceta: producto.requiereReceta,
         },
       ];
     });

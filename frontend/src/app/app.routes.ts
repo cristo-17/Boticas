@@ -52,6 +52,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/catalogo/catalogo').then((m) => m.CatalogoScreen),
       },
       {
+        path: 'kardex',
+        canActivate: [rolGuard('ADMINISTRADOR')],
+        loadComponent: () => import('./features/kardex/kardex').then((m) => m.KardexScreen),
+      },
+      {
         path: 'usuarios',
         canActivate: [rolGuard('ADMINISTRADOR')],
         loadComponent: () => import('./features/usuarios/usuarios').then((m) => m.UsuariosScreen),

@@ -13,6 +13,18 @@ export interface ItemVenta {
   origenCaptura: OrigenCaptura;
 }
 
+/**
+ * Datos de la receta (D-E2-4, Tarea 20): número y CMP del médico obligatorios
+ * (CMP: 1 a 6 dígitos), nombre del médico y fecha de emisión opcionales. La
+ * fecha no puede ser futura (400 RECETA_INVALIDA).
+ */
+export interface RecetaVenta {
+  numero: string;
+  cmp: string;
+  medicoNombre: string | null;
+  fechaEmision: string | null; // yyyy-MM-dd
+}
+
 export interface Venta {
   id: number;
   fecha: string; // ISO datetime
@@ -24,6 +36,8 @@ export interface Venta {
   metodoPago: MetodoPago;
   sincronizada: boolean;
   claveIdempotencia: string;
+  /** Tarea 20: la receta guardada con la venta; null si ninguna línea la necesitó. */
+  receta: RecetaVenta | null;
 }
 
 /**
@@ -36,4 +50,6 @@ export interface NuevaVentaRequest {
   claveIdempotencia: string;
   items: { productoId: number; presentacionId: number; cantidad: number; origenCaptura: OrigenCaptura }[];
   metodoPago: MetodoPago;
+  /** Tarea 20: obligatoria si alguna línea es de un producto con requiereReceta; si ninguna lo es, el servidor la ignora. */
+  receta?: RecetaVenta | null;
 }

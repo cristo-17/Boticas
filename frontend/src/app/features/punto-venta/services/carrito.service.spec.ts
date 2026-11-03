@@ -43,6 +43,20 @@ describe('CarritoService — vectores de dinero compartidos con el servidor', ()
     });
   }
 
+  it('Tarea 20: productosConReceta lista sin repetir los productos que piden receta', () => {
+    const carrito = carritoCon([]);
+    const amox = { id: 7, nombre: 'Amoxicilina', estadoVencimiento: null, fechaVencimiento: null, requiereReceta: true } as unknown as Producto;
+    const vit = { id: 8, nombre: 'Vitamina C', estadoVencimiento: null, fechaVencimiento: null, requiereReceta: false } as unknown as Producto;
+    const caja = { id: 70, etiqueta: 'Caja', factorConversion: 10, unidadNombre: 'cápsula', precio: 9 };
+    const unidad = { id: 71, etiqueta: 'Unidad', factorConversion: 1, unidadNombre: 'cápsula', precio: 1 };
+    carrito.agregar(vit, { ...unidad, id: 80 }, 'BUSQUEDA');
+    expect(carrito.productosConReceta()).toEqual([]);
+    carrito.agregar(amox, caja, 'BUSQUEDA');
+    carrito.agregar(amox, unidad, 'ESCANEO');
+    expect(carrito.productosConReceta()).toEqual(['Amoxicilina']);
+    expect(carrito.lineas().find((l) => l.productoId === 7)?.requiereReceta).toBe(true);
+  });
+
   it('vaciar deja el carrito sin líneas y los montos en cero', () => {
     const carrito = carritoCon([{ cantidad: 2, precioPresentacion: '5.00' }]);
     carrito.vaciar();

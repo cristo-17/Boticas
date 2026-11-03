@@ -15,6 +15,8 @@ public record VentaResponse(
         BigDecimal total,
         String metodoPago,
         boolean sincronizada,
-        UUID claveIdempotencia
+        UUID claveIdempotencia,
+        /** Tarea 20: la receta guardada con la venta; null si ninguna línea la necesitó. */
+        RecetaResponse receta
 ) {
 }

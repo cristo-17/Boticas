@@ -60,7 +60,7 @@ class NotificacionListenerFallaIntegracionTest {
         Long boticaId = contexto.boticaId();
         String sufijo = String.valueOf(System.nanoTime() % 1_000_000_000_000L); // codigo_barras es VARCHAR(20)
         jdbcTemplate.update(
-                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre) VALUES (?, ?, 'Otros', ?, 'unidad')",
+                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre, requiere_receta) VALUES (?, ?, 'Otros', ?, 'unidad', false)",
                 boticaId, "Producto falla QA " + sufijo, "QA-FA-" + sufijo);
         Long productoId = jdbcTemplate.queryForObject(
                 "SELECT id FROM productos WHERE botica_id = ? AND codigo_barras = ?", Long.class, boticaId, "QA-FA-" + sufijo);
@@ -76,7 +76,7 @@ class NotificacionListenerFallaIntegracionTest {
         UUID clave = UUID.randomUUID();
         // 12 - 2 = 10 <= umbral: dispara el evento, y el listener revienta.
         ventaService.registrar(new NuevaVentaRequest(clave, List.of(
-                new ItemVentaRequest(productoId, presentacionId, 2, "BUSQUEDA")), "efectivo"));
+                new ItemVentaRequest(productoId, presentacionId, 2, "BUSQUEDA")), "efectivo", null));
 
         assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ventas WHERE clave_idempotencia = ?", Long.class, clave))
                 .isEqualTo(1);

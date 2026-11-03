@@ -30,6 +30,8 @@ public class Producto {
     /** V9: false = desactivado por el administrador (no se vende ni recibe lotes). */
     @Builder.Default
     private Boolean activo = true;
+    /** V10: true = solo se vende con receta (D-E2-4). La API lo exige; el DEFAULT false de la base es temporal (R23). Cada venta lo congela en venta_detalle. */
+    private boolean requiereReceta;
     private OffsetDateTime creadoEn;
     private Long creadoPor;
 }

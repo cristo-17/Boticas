@@ -4,6 +4,7 @@ import com.botica.backend.config.GlobalExceptionHandler;
 import com.botica.backend.dto.ItemVentaResponse;
 import com.botica.backend.dto.PaginaResponse;
 import com.botica.backend.dto.VentaResponse;
+import com.botica.backend.exception.RecetaRequeridaException;
 import com.botica.backend.exception.SinCajaAbiertaException;
 import com.botica.backend.exception.SinPermisoException;
 import com.botica.backend.exception.StockInsuficienteException;
@@ -25,6 +26,7 @@ import java.util.UUID;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -61,7 +63,7 @@ class VentaControllerTest {
         VentaResponse respuesta = new VentaResponse(1L, OffsetDateTime.now(), 1L,
                 List.of(new ItemVentaResponse(1L, 1L, "Paracetamol 500 mg", "Unidad", new BigDecimal("0.20"), 2, "BUSQUEDA")),
                 new BigDecimal("0.34"), new BigDecimal("0.06"), new BigDecimal("0.40"), "efectivo", true,
-                UUID.fromString("b3f1c2a0-7e4d-4f2a-9c1e-0a1b2c3d4e5f"));
+                UUID.fromString("b3f1c2a0-7e4d-4f2a-9c1e-0a1b2c3d4e5f"), null);
         when(ventaService.registrar(any())).thenReturn(respuesta);
 
         mockMvc.perform(post("/api/ventas").contentType("application/json").content(CUERPO_VALIDO))
@@ -104,6 +106,32 @@ class VentaControllerTest {
     }
 
     @Test
+    void registrar_recetaConCmpNoNumerico_devuelve400FormatoInvalido() throws Exception {
+        String cuerpo = """
+                {
+                  "claveIdempotencia": "b3f1c2a0-7e4d-4f2a-9c1e-0a1b2c3d4e5f",
+                  "items": [ { "productoId": 1, "presentacionId": 1, "cantidad": 2, "origenCaptura": "BUSQUEDA" } ],
+                  "metodoPago": "efectivo",
+                  "receta": { "numero": "R-1", "cmp": "12A45" }
+                }
+                """;
+
+        mockMvc.perform(post("/api/ventas").contentType("application/json").content(cuerpo))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
+        verifyNoInteractions(ventaService);
+    }
+
+    @Test
+    void registrar_sinRecetaCuandoHaceFalta_devuelve400RecetaRequerida() throws Exception {
+        when(ventaService.registrar(any())).thenThrow(new RecetaRequeridaException("Amoxicilina 500 mg"));
+
+        mockMvc.perform(post("/api/ventas").contentType("application/json").content(CUERPO_VALIDO))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("RECETA_REQUERIDA"));
+    }
+
+    @Test
     void registrar_conOrigenCapturaInvalido_devuelve400FormatoInvalido() throws Exception {
         String cuerpo = """
                 {
@@ -123,7 +151,7 @@ class VentaControllerTest {
         VentaResponse venta = new VentaResponse(1L, OffsetDateTime.now(), 1L,
                 List.of(new ItemVentaResponse(1L, 1L, "Paracetamol 500 mg", "Unidad", new BigDecimal("0.20"), 2, "BUSQUEDA")),
                 new BigDecimal("0.34"), new BigDecimal("0.06"), new BigDecimal("0.40"), "efectivo", true,
-                UUID.randomUUID());
+                UUID.randomUUID(), null);
         PaginaResponse<VentaResponse> pagina = PaginaResponse.de(List.of(venta), 0, 20, 1L);
         when(ventaService.listar(anyInt(), anyInt(), anyString())).thenReturn(pagina);
 
@@ -139,7 +167,7 @@ class VentaControllerTest {
         VentaResponse venta = new VentaResponse(10L, OffsetDateTime.now(), 1L,
                 List.of(new ItemVentaResponse(1L, 1L, "Ibuprofeno 400 mg", "Unidad", new BigDecimal("0.50"), 1, "BUSQUEDA")),
                 new BigDecimal("0.42"), new BigDecimal("0.08"), new BigDecimal("0.50"), "efectivo", true,
-                UUID.randomUUID());
+                UUID.randomUUID(), null);
         when(ventaService.obtenerPorId(10L)).thenReturn(venta);
 
         mockMvc.perform(get("/api/ventas/10"))

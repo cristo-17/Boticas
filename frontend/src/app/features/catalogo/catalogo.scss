@@ -156,6 +156,33 @@
   gap: var(--s-2);
 }
 
+// Tarea 20: requiere receta
+.catalogo__check {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  font-size: 14px;
+  font-weight: var(--fw-bold);
+  color: var(--ink-2);
+  cursor: pointer;
+}
+
+.catalogo__check-ayuda {
+  margin-top: calc(-1 * var(--s-2));
+}
+
+.catalogo__receta {
+  display: inline-block;
+  margin-top: 4px;
+}
+
+.catalogo__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-1, 4px);
+  justify-content: flex-end;
+}
+
 .catalogo__aviso {
   color: var(--ambar-700, var(--ink-2));
 }

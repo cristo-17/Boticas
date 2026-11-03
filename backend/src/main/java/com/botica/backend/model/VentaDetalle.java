@@ -37,4 +37,6 @@ public class VentaDetalle {
     private BigDecimal costoUnitario;
     private BigDecimal totalLinea;
     private String origenCaptura;
+    /** Tarea 20: productos.requiere_receta CONGELADO al vender (como precio y costo). El Kardex clasifica con esto. */
+    private boolean requiereReceta;
 }

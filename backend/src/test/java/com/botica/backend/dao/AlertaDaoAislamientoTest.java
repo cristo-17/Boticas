@@ -98,7 +98,7 @@ class AlertaDaoAislamientoTest {
         // VARCHAR(20): "QA-" + hasta 12 dígitos entra sobrado, sin colisionar entre llamadas del mismo test.
         String codigoBarras = "QA-" + (System.nanoTime() % 1_000_000_000_000L);
         jdbcTemplate.update(
-                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre, requiere_receta) VALUES (?, ?, ?, ?, ?, false)",
                 boticaId, "Producto aislamiento QA", "Otros", codigoBarras, "unidad");
         Long productoId = jdbcTemplate.queryForObject(
                 "SELECT id FROM productos WHERE botica_id = ? AND codigo_barras = ?", Long.class, boticaId, codigoBarras);

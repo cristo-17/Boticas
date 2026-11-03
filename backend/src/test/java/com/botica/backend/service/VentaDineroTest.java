@@ -251,7 +251,7 @@ class VentaDineroTest {
         when(ventaDao.insertarDetalle(captor.capture())).thenAnswer(inv -> inv.getArgument(0));
 
         VentaTransaccion transaccion = new VentaTransaccion(ventaDao, loteDao, productoDao, cajaDao, contexto, config, fechaNegocio);
-        NuevaVentaRequest request = new NuevaVentaRequest(UUID.randomUUID(), pedidoItems, "efectivo");
+        NuevaVentaRequest request = new NuevaVentaRequest(UUID.randomUUID(), pedidoItems, "efectivo", null);
         VentaResponse respuesta = transaccion.ejecutar(request);
         detallesCapturados.addAll(captor.getAllValues());
 

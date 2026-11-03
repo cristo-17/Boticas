@@ -137,6 +137,18 @@ public class LoteDaoJdbc implements LoteDao {
     }
 
     @Override
+    public void registrarIngreso(Lote lote) {
+        String sql = "INSERT INTO movimientos_stock (botica_id, lote_id, tipo, cantidad, origen_captura, creado_por) " +
+                "VALUES (:boticaId, :loteId, 'INGRESO', :cantidad, NULL, :creadoPor)";
+        var params = new MapSqlParameterSource()
+                .addValue("boticaId", lote.getBoticaId())
+                .addValue("loteId", lote.getId())
+                .addValue("cantidad", lote.getStock())
+                .addValue("creadoPor", lote.getCreadoPor());
+        jdbc.update(sql, params);
+    }
+
+    @Override
     public Optional<Lote> buscarPorId(Long boticaId, Long id) {
         String sql = "SELECT * FROM lotes WHERE botica_id = :boticaId AND id = :id";
         var params = new MapSqlParameterSource()

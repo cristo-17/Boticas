@@ -35,7 +35,10 @@ export class VentaService {
    */
   private readonly _claveIdempotencia = signal<string | null>(null);
 
-  // POST /api/ventas
+  // POST /api/ventas — NuevaVentaRequest. Tarea 20: con alguna línea de un producto con
+  // requiereReceta, la receta es obligatoria → 400 RECETA_REQUERIDA (el mensaje del servidor
+  // nombra los productos). 400 RECETA_INVALIDA (fecha de emisión futura), 400 FORMATO_INVALIDO
+  // (sin número o CMP que no sean de 1 a 6 dígitos). La respuesta trae `receta` (o null).
   registrarVenta(request: Omit<NuevaVentaRequest, 'claveIdempotencia'>): Observable<Venta> {
     this._cargando.set(true);
     this._error.set(null);

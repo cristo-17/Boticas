@@ -116,14 +116,14 @@ class VentaLoteVencidoIntegracionTest {
 
     private NuevaVentaRequest pedido(long[] producto, int cantidad) {
         return new NuevaVentaRequest(UUID.randomUUID(),
-                List.of(new ItemVentaRequest(producto[0], producto[1], cantidad, "BUSQUEDA")), "efectivo");
+                List.of(new ItemVentaRequest(producto[0], producto[1], cantidad, "BUSQUEDA")), "efectivo", null);
     }
 
     /** productoId, presentacionId ("Unidad", factor 1) -- nuevos, aislados del resto del seed. */
     private long[] productoConPresentacionUnidad() {
         String codigoBarras = "QV" + System.nanoTime(); // codigo_barras es VARCHAR(20)
         jdbcTemplate.update(
-                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre, requiere_receta) VALUES (?, ?, ?, ?, ?, false)",
                 boticaId, "Producto vencimiento QA", "Otros", codigoBarras, "unidad");
         Long productoId = jdbcTemplate.queryForObject(
                 "SELECT id FROM productos WHERE botica_id = ? AND codigo_barras = ?", Long.class, boticaId, codigoBarras);

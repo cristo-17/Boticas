@@ -40,7 +40,7 @@ class MermaDaoPrecioVsCostoTest {
     void bloquearLoteConPrecio_devuelveElPrecioDeVenta_nuncaElCostoDelLote_aunqueSeanMuyDistintos() {
         String codigoBarras = "QA-" + (System.nanoTime() % 1_000_000_000_000L);
         jdbcTemplate.update(
-                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre) VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO productos (botica_id, nombre, categoria, codigo_barras, unidad_nombre, requiere_receta) VALUES (?, ?, ?, ?, ?, false)",
                 boticaId, "Producto precio vs costo QA", "Otros", codigoBarras, "unidad");
         Long productoId = jdbcTemplate.queryForObject(
                 "SELECT id FROM productos WHERE botica_id = ? AND codigo_barras = ?", Long.class, boticaId, codigoBarras);

@@ -18,6 +18,7 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/merma', label: 'Registrar merma', shortLabel: 'Merma', icon: 'bi-trash3' },
   { path: '/caja', label: 'Caja', shortLabel: 'Caja', icon: 'bi-cash-stack' },
   { path: '/catalogo', label: 'Catálogo', shortLabel: 'Catálogo', icon: 'bi-journal-medical', roles: ['ADMINISTRADOR'] },
+  { path: '/kardex', label: 'Kardex', shortLabel: 'Kardex', icon: 'bi-list-columns-reverse', roles: ['ADMINISTRADOR'] },
   { path: '/usuarios', label: 'Usuarios', shortLabel: 'Usuarios', icon: 'bi-people', roles: ['ADMINISTRADOR'] },
   { path: '/reportes', label: 'Resultados', shortLabel: 'Resultados', icon: 'bi-bar-chart-line', roles: ['ADMINISTRADOR'] },
 ];
