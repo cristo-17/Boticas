@@ -179,3 +179,19 @@
   grid-template-columns: 1fr 1fr;
   gap: var(--s-3);
 }
+
+// Tarea 19: botón de escanear al lado del <select> de producto
+.inventario__producto-fila {
+  display: flex;
+  gap: var(--s-2);
+  align-items: center;
+
+  select {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+.inventario__lector {
+  margin-top: var(--s-2);
+}

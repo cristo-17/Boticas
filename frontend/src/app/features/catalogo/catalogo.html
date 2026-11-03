@@ -182,9 +182,16 @@
           <div class="catalogo__form-fila">
             <div class="bs-field">
               <label for="cat-codigo" class="bs-field__label">Código de barras</label>
-              <div class="bs-field__control">
-                <input id="cat-codigo" class="bs-field__input num" type="text" maxlength="20" inputmode="numeric"
-                  placeholder="Escanéalo o escríbelo" [value]="codigoBarras()" (input)="codigoBarras.set($any($event.target).value)" />
+              <div class="catalogo__codigo-fila">
+                <div class="bs-field__control">
+                  <input id="cat-codigo" class="bs-field__input num" type="text" maxlength="20" inputmode="numeric"
+                    placeholder="Escanéalo o escríbelo" [value]="codigoBarras()" (input)="codigoBarras.set($any($event.target).value)" />
+                </div>
+                <app-button variant="secondary" [icon]="true"
+                  [ariaLabel]="escaneandoCodigo() ? 'Cerrar el escáner' : 'Escanear el código de barras'"
+                  (clicked)="alternarEscaneoCodigo()">
+                  <i class="bi" [class.bi-upc-scan]="!escaneandoCodigo()" [class.bi-x-lg]="escaneandoCodigo()" aria-hidden="true"></i>
+                </app-button>
               </div>
             </div>
             <div class="bs-field">
@@ -195,6 +202,10 @@
               </div>
             </div>
           </div>
+
+          @if (escaneandoCodigo()) {
+            <app-lector-camara [compacto]="true" (leido)="onCodigoLeido($event)"></app-lector-camara>
+          }
 
           <label class="catalogo__check">
             <input

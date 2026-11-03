@@ -17,8 +17,9 @@ import { textoAlertaVencimiento } from '../../core/utils/fecha.util';
 import { CarritoPanelComponent } from './carrito-panel/carrito-panel';
 import { PresentacionModalComponent } from './presentacion-modal/presentacion-modal';
 import { RecetaModalComponent } from './receta-modal/receta-modal';
-import { EstadoEscaneo, ScannerComponent } from './scanner/scanner';
 import { CarritoService } from './services/carrito.service';
+import { EstadoEscaneo, LectorCamaraComponent } from '../../shared/components/lector-camara/lector-camara';
+import { DetectorLectorUsb, RELOJ } from '../../core/utils/lector-usb';
 
 @Component({
   selector: 'app-punto-venta',
@@ -32,7 +33,7 @@ import { CarritoService } from './services/carrito.service';
     CarritoPanelComponent,
     PresentacionModalComponent,
     RecetaModalComponent,
-    ScannerComponent,
+    LectorCamaraComponent,
   ],
   templateUrl: './punto-venta.html',
   styleUrl: './punto-venta.scss',
@@ -59,10 +60,15 @@ export class PuntoVentaScreen implements OnInit {
   /**
    * De dónde salió el producto actualmente seleccionado (D4/Nota 2) —
    * no es una pantalla ni un campo que el cajero vea o elija: se
-   * detecta en simularEscaneo()/elegirProducto() y viaja con la línea
-   * recién al agregarla al carrito (agregarPresentacion).
+   * detecta en buscarCodigoLeido() (cámara o lector USB: ESCANEO) y en
+   * elegirProducto() (Nota 2), y viaja con la línea recién al agregarla al
+   * carrito (agregarPresentacion).
    */
   private readonly origenSeleccionActual = signal<OrigenCaptura>('BUSQUEDA');
+
+  /** DIF-05 (DECISIONES 2026-11-03, "D4 revisada"): un lector USB que teclea en el buscador también es ESCANEO. */
+  private readonly detectorUsb = new DetectorLectorUsb();
+  private readonly reloj = inject(RELOJ);
 
   /** Tarea 20: método elegido mientras se piden los datos de la receta (null = modal cerrado). */
   readonly metodoConReceta = signal<MetodoPago | null>(null);
@@ -106,39 +112,38 @@ export class PuntoVentaScreen implements OnInit {
   }
 
   onQueryInput(event: Event): void {
+    // Pegar, autocompletar o la sugerencia del teclado del celular no es una ráfaga de lector (DIF-05).
+    if ((event as InputEvent).inputType !== 'insertText') this.detectorUsb.cambioAjeno();
     const valor = (event.target as HTMLInputElement).value;
     this.query.set(valor);
     this.busqueda$.next(valor);
   }
 
-  simularEscaneo(): void {
-    const candidatos = this.masVendidos();
-    const elegido = candidatos[Math.floor(Math.random() * candidatos.length)];
-    if (!elegido) {
-      this.simularFallo();
-      return;
-    }
-    this.estadoEscaneo.set('buscando');
-    this.codigoEscaneado.set(null);
-    this.origenSeleccionActual.set('ESCANEO');
-    this.productoService.buscarPorCodigoBarras(elegido.codigoBarras).subscribe({
-      next: (producto) => {
-        this.codigoEscaneado.set(elegido.codigoBarras);
-        this.estadoEscaneo.set(producto ? 'encontrado' : 'error');
-      },
-      // PRODUCTO_NO_ENCONTRADO es un código silencioso (sin toast) pero la
-      // pantalla igual necesita reflejar el fallo del escaneo.
-      error: () => {
-        this.codigoEscaneado.set(elegido.codigoBarras);
-        this.estadoEscaneo.set('error');
-      },
-    });
+  /** Keydown del buscador: si la ráfaga es de un lector USB (DIF-05), busca el código como un escaneo. */
+  onQueryKeydown(event: KeyboardEvent): void {
+    const codigo = this.detectorUsb.tecla(event, this.reloj());
+    if (!codigo) return;
+    event.preventDefault();
+    // El lector tecleó el código en el campo: se limpia (y con él la búsqueda por texto en curso).
+    this.query.set('');
+    this.busqueda$.next('');
+    this.buscarCodigoLeido(codigo);
   }
 
-  simularFallo(): void {
-    this.productoService.cerrarSeleccion();
-    this.estadoEscaneo.set('error');
-    this.codigoEscaneado.set('error');
+  /**
+   * Un código que leyó una máquina (cámara o lector USB) y ya pasó el dígito
+   * verificador: ESCANEO. Si existe, el modal de presentación se abre solo
+   * (seleccionado del servicio); si no, el banner muestra el error.
+   */
+  buscarCodigoLeido(codigo: string): void {
+    this.estadoEscaneo.set('buscando');
+    this.codigoEscaneado.set(codigo);
+    this.origenSeleccionActual.set('ESCANEO');
+    this.productoService.buscarPorCodigoBarras(codigo).subscribe({
+      next: () => this.estadoEscaneo.set('encontrado'),
+      // PRODUCTO_NO_ENCONTRADO es silencioso (sin toast), pero el banner y el marco lo reflejan.
+      error: () => this.estadoEscaneo.set('error'),
+    });
   }
 
   /** MANUAL (Nota 2): match exacto entre lo tecleado en el buscador y el código de barras — no es una pantalla aparte, es una detección. Cualquier otra selección desde resultados es BUSQUEDA. */

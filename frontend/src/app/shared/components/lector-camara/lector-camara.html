@@ -1,0 +1,55 @@
+<div class="lector">
+  <div
+    class="lector__marco"
+    [class.lector__marco--compacto]="compacto()"
+    [class.lector__marco--ok]="camara() === 'activa' && estado() === 'encontrado'"
+    [class.lector__marco--error]="camara() === 'activa' && estado() === 'error'"
+  >
+    <video
+      #video
+      class="lector__video"
+      [class.lector__video--visible]="camara() === 'activa'"
+      autoplay
+      muted
+      playsinline
+      aria-label="Vista de la cámara"
+    ></video>
+    <span class="lector__esquina lector__esquina--tl"></span>
+    <span class="lector__esquina lector__esquina--tr"></span>
+    <span class="lector__esquina lector__esquina--bl"></span>
+    <span class="lector__esquina lector__esquina--br"></span>
+    @if (barriendo()) {
+      <span class="lector__barrido"></span>
+    }
+    <div class="lector__estado" role="status">
+      <span class="lector__punto"></span>
+      <span class="lector__msg">{{ mensaje() }}</span>
+      @if (codigo() && camara() === 'activa') {
+        <span class="lector__codigo num">{{ codigo() }}</span>
+      }
+    </div>
+  </div>
+
+  <div class="lector__acciones">
+    @if (camara() === 'apagada') {
+      <app-button variant="primary" [block]="true" (clicked)="abrir()">
+        <i class="bi bi-camera" aria-hidden="true"></i> Abrir cámara
+      </app-button>
+    } @else {
+      <app-button variant="secondary" [block]="true" (clicked)="cerrar()">Cerrar cámara</app-button>
+    }
+  </div>
+
+  @if (textoFalla(); as f) {
+    <div class="lector__falla" role="alert">
+      <div class="lector__falla-titulo">{{ f.titulo }}</div>
+      <div class="lector__falla-texto">{{ f.texto }}</div>
+    </div>
+  }
+
+  @if (motor() && camara() === 'activa') {
+    <div class="lector__motor field-hint">
+      {{ motor() === 'nativo' ? 'Lector del navegador' : 'Lector ZXing' }}
+    </div>
+  }
+</div>

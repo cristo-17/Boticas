@@ -207,3 +207,9 @@
     display: none;
   }
 }
+
+.catalogo__codigo-fila {
+  display: flex;
+  gap: var(--s-2);
+  > .bs-field__control { flex: 1; min-width: 0; }
+}

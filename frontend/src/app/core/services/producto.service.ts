@@ -53,9 +53,17 @@ export class ProductoService {
 
   // GET /api/productos/codigo/{codigoBarras} — usado por el escáner. 404 PRODUCTO_NO_ENCONTRADO es un resultado esperado (código silencioso en error.interceptor.ts), no un fallo. 409 PRODUCTO_INACTIVO si está desactivado (Tarea 17).
   buscarPorCodigoBarras(codigoBarras: string): Observable<Producto> {
+    return this.consultarPorCodigoBarras(codigoBarras).pipe(tap((data) => this._seleccionado.set(data)));
+  }
+
+  /**
+   * Misma ruta, sin dejar el producto como `seleccionado` (Tarea 19: alta de
+   * lote). Si lo dejara, al entrar a Punto de Venta se abriría solo el modal
+   * de presentación con el producto que se escaneó en Inventario.
+   */
+  consultarPorCodigoBarras(codigoBarras: string): Observable<Producto> {
     this._error.set(null);
-    return this.http.get<Producto>(`${BASE_URL}/codigo/${codigoBarras}`).pipe(
-      tap((data) => this._seleccionado.set(data)),
+    return this.http.get<Producto>(`${BASE_URL}/codigo/${encodeURIComponent(codigoBarras)}`).pipe(
       catchError((err) => this.manejarError(err, 'No se pudo buscar el producto escaneado.')),
     );
   }

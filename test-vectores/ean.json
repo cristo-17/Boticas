@@ -1,0 +1,22 @@
+{
+  "descripcion": "Vectores del dígito verificador EAN (Tarea 19). Los leen JUnit (Ean13Test, contra Ean13.esValido: solo esEan13) y Vitest (ean.util.spec.ts: esEan13, esEan8 y esEanValido). Un cambio aquí se prueba en los dos lados.",
+  "vectores": [
+    { "codigo": "4006381333931", "esEan13": true,  "esEan8": false, "nota": "ejemplo clásico de EAN-13" },
+    { "codigo": "5901234123457", "esEan13": true,  "esEan8": false, "nota": "ejemplo de GS1" },
+    { "codigo": "7751234000115", "esEan13": true,  "esEan8": false, "nota": "prefijo GS1 Perú 775, dígito verificador 5" },
+    { "codigo": "7750000000007", "esEan13": true,  "esEan8": false, "nota": "prefijo 775 con ceros" },
+    { "codigo": "0000000000000", "esEan13": true,  "esEan8": false, "nota": "todo ceros: suma 0, verificador 0" },
+    { "codigo": "7751234000118", "esEan13": false, "esEan8": false, "nota": "seed/dev V4: el verificador correcto es 5" },
+    { "codigo": "4006381333932", "esEan13": false, "esEan8": false, "nota": "último dígito alterado" },
+    { "codigo": "4006381333913", "esEan13": false, "esEan8": false, "nota": "dos dígitos transpuestos" },
+    { "codigo": "7777777777777", "esEan13": false, "esEan8": false, "nota": "una tecla mantenida (autorrepetición)" },
+    { "codigo": "96385074",      "esEan13": false, "esEan8": true,  "nota": "ejemplo clásico de EAN-8" },
+    { "codigo": "55123457",      "esEan13": false, "esEan8": true,  "nota": "EAN-8 válido" },
+    { "codigo": "96385075",      "esEan13": false, "esEan8": false, "nota": "EAN-8 con el último dígito alterado" },
+    { "codigo": "775123400011",  "esEan13": false, "esEan8": false, "nota": "12 dígitos: le falta el verificador" },
+    { "codigo": "77512340001150","esEan13": false, "esEan8": false, "nota": "14 dígitos" },
+    { "codigo": "775123400011A", "esEan13": false, "esEan8": false, "nota": "una letra" },
+    { "codigo": " 7751234000115","esEan13": false, "esEan8": false, "nota": "espacio adelante: no se recorta" },
+    { "codigo": "",              "esEan13": false, "esEan8": false, "nota": "vacío" }
+  ]
+}

@@ -11,6 +11,7 @@ import { ErrorBannerComponent } from '../../shared/components/error-banner/error
 import { PaginacionComponent } from '../../shared/components/paginacion/paginacion';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
 import { TableComponent } from '../../shared/components/table/table';
+import { LectorCamaraComponent } from '../../shared/components/lector-camara/lector-camara';
 import { PresentacionCatalogo, ProductoCatalogo, ProductoRequest } from '../../core/models/catalogo.model';
 import { CatalogoService } from '../../core/services/catalogo.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
@@ -54,6 +55,7 @@ function filaDesde(p: PresentacionCatalogo): FilaPresentacion {
     PaginacionComponent,
     SkeletonComponent,
     TableComponent,
+    LectorCamaraComponent,
   ],
   templateUrl: './catalogo.html',
   styleUrl: './catalogo.scss',
@@ -144,6 +146,8 @@ export class CatalogoScreen implements OnInit {
   readonly laboratorio = signal('');
   readonly categoria = signal('');
   readonly codigoBarras = signal('');
+  /** Tarea 19: la cámara llena el campo; el código se sigue pudiendo escribir a mano. */
+  readonly escaneandoCodigo = signal(false);
   readonly unidadNombre = signal('');
   /** Tarea 20: obligatorio en el servidor; un producto nuevo empieza en false (lo decide el administrador). */
   readonly requiereReceta = signal(false);
@@ -190,6 +194,7 @@ export class CatalogoScreen implements OnInit {
     this.desactivadas.set([]);
     this.quitadas.set([]);
     this.intentoGuardar.set(false);
+    this.escaneandoCodigo.set(false);
     this.formularioAbierto.set(true);
   }
 
@@ -208,7 +213,17 @@ export class CatalogoScreen implements OnInit {
     this.desactivadas.set(p.presentaciones.filter((x) => !x.activo));
     this.quitadas.set([]);
     this.intentoGuardar.set(false);
+    this.escaneandoCodigo.set(false);
     this.formularioAbierto.set(true);
+  }
+
+  alternarEscaneoCodigo(): void {
+    this.escaneandoCodigo.update((v) => !v);
+  }
+
+  onCodigoLeido(codigo: string): void {
+    this.codigoBarras.set(codigo);
+    this.escaneandoCodigo.set(false);
   }
 
   cerrarFormulario(): void {

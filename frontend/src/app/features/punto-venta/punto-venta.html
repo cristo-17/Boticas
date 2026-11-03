@@ -5,17 +5,16 @@
     <app-card>
       <div class="pos__card-head">
         <h2 class="pos__section-titulo">Escáner</h2>
-        <span class="pos__section-hint">Simulación — la cámara real se integra aparte</span>
+        <span class="pos__section-hint">Cámara o lector USB</span>
       </div>
 
       <div class="pos__scan-grid">
-        <app-scanner
+        <app-lector-camara
           [estado]="estadoEscaneo()"
           [codigo]="codigoEscaneado()"
-          [buscando]="estadoEscaneo() === 'buscando'"
-          (simularEscaneo)="simularEscaneo()"
-          (simularFallo)="simularFallo()"
-        ></app-scanner>
+          [pausado]="productoSeleccionado() !== null || metodoConReceta() !== null"
+          (leido)="buscarCodigoLeido($event)"
+        ></app-lector-camara>
 
         <div class="pos__busqueda">
           <div>
@@ -25,6 +24,8 @@
               class="bs-field-compact pos__input"
               [value]="query()"
               (input)="onQueryInput($event)"
+              (keydown)="onQueryKeydown($event)"
+              autocomplete="off"
               placeholder="Nombre, principio activo o código"
             />
           </div>

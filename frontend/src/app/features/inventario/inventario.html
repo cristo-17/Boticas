@@ -179,12 +179,31 @@
         <div class="inventario__form-campos">
           <div class="bs-field">
             <label for="lote-producto" class="bs-field__label">Producto</label>
-            <select id="lote-producto" class="bs-field__select" (change)="onProductoSeleccionado($event)">
-              <option value="">Selecciona un producto</option>
-              @for (p of productosDisponibles(); track p.id) {
-                <option [value]="p.id">{{ p.nombre }}</option>
-              }
-            </select>
+            <div class="inventario__producto-fila">
+              <select id="lote-producto" class="bs-field__select" (change)="onProductoSeleccionado($event)">
+                <option value="" [selected]="nuevoProductoId() === null">Selecciona un producto</option>
+                @for (p of productosDisponibles(); track p.id) {
+                  <option [value]="p.id" [selected]="p.id === nuevoProductoId()">{{ p.nombre }}</option>
+                }
+              </select>
+              <app-button
+                variant="secondary"
+                [icon]="true"
+                [ariaLabel]="escaneandoProducto() ? 'Cerrar el escáner' : 'Escanear el código del producto'"
+                (clicked)="alternarEscaneoProducto()"
+              >
+                <i class="bi" [class.bi-upc-scan]="!escaneandoProducto()" [class.bi-x-lg]="escaneandoProducto()" aria-hidden="true"></i>
+              </app-button>
+            </div>
+            @if (escaneandoProducto()) {
+              <app-lector-camara
+                class="inventario__lector"
+                [compacto]="true"
+                [estado]="estadoEscaneoProducto()"
+                [codigo]="codigoEscaneadoProducto()"
+                (leido)="onCodigoProductoLeido($event)"
+              ></app-lector-camara>
+            }
           </div>
 
           <div class="inventario__form-fila">

@@ -9,6 +9,7 @@ import { ErrorBannerComponent } from '../../shared/components/error-banner/error
 import { PaginacionComponent } from '../../shared/components/paginacion/paginacion';
 import { SkeletonComponent } from '../../shared/components/skeleton/skeleton';
 import { TableComponent } from '../../shared/components/table/table';
+import { EstadoEscaneo, LectorCamaraComponent } from '../../shared/components/lector-camara/lector-camara';
 import { EstadoVencimiento } from '../../core/models/estados.model';
 import { Lote } from '../../core/models/lote.model';
 import { Producto } from '../../core/models/producto.model';
@@ -71,6 +72,7 @@ function filaDeLote(lote: Lote): FilaLote {
     PaginacionComponent,
     SkeletonComponent,
     TableComponent,
+    LectorCamaraComponent,
   ],
   templateUrl: './inventario.html',
   styleUrl: './inventario.scss',
@@ -133,7 +135,13 @@ export class InventarioScreen implements OnInit {
   readonly nuevaUbicacion = signal('');
   readonly nuevoCostoUnitario = signal<number | null>(null);
   readonly registrando = this.inventario.cargando;
-  readonly errorFormulario = this.inventario.error;
+  /** Regla de frontend 1: el modal usa dos servicios (registrar el lote y, desde la Tarea 19, buscar el código escaneado). */
+  readonly errorFormulario = computed(() => this.inventario.error() ?? this.productoService.error());
+
+  // --- Tarea 19: la cámara solo identifica el producto; el lote no registra origen de captura (Bloque A, punto 3) ---
+  readonly escaneandoProducto = signal(false);
+  readonly estadoEscaneoProducto = signal<EstadoEscaneo>('idle');
+  readonly codigoEscaneadoProducto = signal<string | null>(null);
 
   readonly formularioValido = computed(
     () =>
@@ -200,6 +208,9 @@ export class InventarioScreen implements OnInit {
 
   abrirFormulario(): void {
     this.formularioAbierto.set(true);
+    this.escaneandoProducto.set(false);
+    this.estadoEscaneoProducto.set('idle');
+    this.codigoEscaneadoProducto.set(null);
     this.nuevoProductoId.set(null);
     this.nuevoCodigo.set('');
     this.nuevaFechaVencimiento.set('');
@@ -218,6 +229,32 @@ export class InventarioScreen implements OnInit {
   onProductoSeleccionado(event: Event): void {
     const valor = (event.target as HTMLSelectElement).value;
     this.nuevoProductoId.set(valor ? Number(valor) : null);
+  }
+
+  alternarEscaneoProducto(): void {
+    this.escaneandoProducto.update((v) => !v);
+  }
+
+  /**
+   * Busca el producto del código leído y lo deja elegido en el <select>.
+   * Si no está entre los que lista el formulario (lista solo los primeros
+   * de la búsqueda vacía, deuda conocida), se agrega a las opciones.
+   * Al encontrarlo se cierra la cámara.
+   */
+  onCodigoProductoLeido(codigo: string): void {
+    this.estadoEscaneoProducto.set('buscando');
+    this.codigoEscaneadoProducto.set(codigo);
+    this.productoService.consultarPorCodigoBarras(codigo).subscribe({
+      next: (producto) => {
+        if (!this.productosDisponibles().some((p) => p.id === producto.id)) {
+          this.productosDisponibles.update((lista) => [producto, ...lista]);
+        }
+        this.nuevoProductoId.set(producto.id);
+        this.estadoEscaneoProducto.set('encontrado');
+        this.escaneandoProducto.set(false);
+      },
+      error: () => this.estadoEscaneoProducto.set('error'),
+    });
   }
 
   registrarLote(): void {
