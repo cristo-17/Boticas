@@ -3,7 +3,7 @@
     <div>
       <div class="reportes__eyebrow">
         <app-badge variant="info">Reporte interno, sin valor tributario</app-badge>
-        <span class="field-hint">Montos con IGV incluido · Día calendario de Lima</span>
+        <span class="field-hint">Montos con IGV incluido · Fechas de Lima · Semanas de lunes a domingo</span>
       </div>
       <h1 class="reportes__titulo">Reporte de resultados</h1>
     </div>
@@ -11,10 +11,10 @@
     <div class="reportes__acciones-header">
       <app-button
         variant="secondary"
-        [loading]="descargandoCsv()"
-        (clicked)="exportarCsv()"
+        [loading]="descargandoExcel()"
+        (clicked)="descargarExcel()"
       >
-        <i class="bi bi-file-earmark-spreadsheet"></i> Exportar CSV
+        <i class="bi bi-file-earmark-excel"></i> Descargar Excel
       </app-button>
     </div>
   </header>
@@ -22,58 +22,63 @@
   <app-error-banner [mensaje]="error()" />
 
   <app-card class="reportes__filtros">
-    <form class="reportes__filtros-grid" (ngSubmit)="consultar()">
-      <div class="reportes__campo">
-        <label class="field-label" for="reporte-desde">Desde</label>
-        <input
-          id="reporte-desde"
-          type="date"
-          class="input num"
-          name="desde"
-          [ngModel]="desde()"
-          (ngModelChange)="desde.set($event)"
-        />
+    <div class="reportes__campo">
+      <span class="field-label">Rango</span>
+      <div class="reportes__chips reportes__chips--wrap" role="group" aria-label="Accesos rápidos de fecha">
+        @for (r of accesosRapidos; track r.id) {
+          <app-chip [activo]="rangoActivo() === r.id" (clicked)="elegirRango(r.id)">{{ r.label }}</app-chip>
+        }
       </div>
+    </div>
 
-      <div class="reportes__campo">
-        <label class="field-label" for="reporte-hasta">Hasta</label>
-        <input
-          id="reporte-hasta"
-          type="date"
-          class="input num"
-          name="hasta"
-          [ngModel]="hasta()"
-          (ngModelChange)="hasta.set($event)"
-        />
-      </div>
+    <form class="reportes__filtros-grid" (ngSubmit)="consultar()">
+      @if (rangoActivo() === 'personalizado') {
+        <div class="reportes__campo">
+          <label class="field-label" for="reporte-desde">Desde</label>
+          <input
+            id="reporte-desde"
+            type="date"
+            class="input num"
+            name="desde"
+            [ngModel]="desde()"
+            (ngModelChange)="desde.set($event)"
+          />
+        </div>
+
+        <div class="reportes__campo">
+          <label class="field-label" for="reporte-hasta">Hasta</label>
+          <input
+            id="reporte-hasta"
+            type="date"
+            class="input num"
+            name="hasta"
+            [ngModel]="hasta()"
+            (ngModelChange)="hasta.set($event)"
+          />
+        </div>
+      } @else {
+        <div class="reportes__campo">
+          <span class="field-label">Período</span>
+          <span class="num reportes__rango-texto">{{ fechaCorta(desde()) }} al {{ fechaCorta(hasta()) }}</span>
+        </div>
+      }
 
       <div class="reportes__campo">
         <span class="field-label">Agrupar por</span>
         <div class="reportes__chips">
-          <app-chip
-            [activo]="agrupar() === 'dia'"
-            (clicked)="cambiarAgrupacion('dia')"
-          >
-            Día
-          </app-chip>
-          <app-chip
-            [activo]="agrupar() === 'mes'"
-            (clicked)="cambiarAgrupacion('mes')"
-          >
-            Mes
-          </app-chip>
+          <app-chip [activo]="agrupar() === 'dia'" (clicked)="cambiarAgrupacion('dia')">Día</app-chip>
+          <app-chip [activo]="agrupar() === 'semana'" (clicked)="cambiarAgrupacion('semana')">Semana</app-chip>
+          <app-chip [activo]="agrupar() === 'mes'" (clicked)="cambiarAgrupacion('mes')">Mes</app-chip>
         </div>
       </div>
 
-      <div class="reportes__campo reportes__campo--boton">
-        <app-button
-          type="submit"
-          variant="primary"
-          [loading]="cargando()"
-        >
-          <i class="bi bi-funnel"></i> Consultar
-        </app-button>
-      </div>
+      @if (rangoActivo() === 'personalizado') {
+        <div class="reportes__campo reportes__campo--boton">
+          <app-button type="submit" variant="primary" [loading]="cargando()">
+            <i class="bi bi-funnel"></i> Consultar
+          </app-button>
+        </div>
+      }
     </form>
   </app-card>
 
@@ -110,6 +115,16 @@
       />
     </section>
 
+    @if (rep.filas.length > 0) {
+      <app-card class="reportes__grafico-card">
+        <h2 class="reportes__subtitulo">Ingresos contra gastos</h2>
+        <p class="field-hint reportes__grafico-nota">
+          Gastos = costo de ventas + mermas a costo + egresos de caja. La línea es el resultado neto.
+        </p>
+        <app-grafico-resultados [filas]="rep.filas" [alto]="300" />
+      </app-card>
+    }
+
     <app-card class="reportes__tabla-card">
       @if (rep.filas.length === 0) {
         <app-empty-state
@@ -127,18 +142,20 @@
                 <th class="reportes__col-num">Margen bruto</th>
                 <th class="reportes__col-num">Mermas (costo)</th>
                 <th class="reportes__col-num">Egresos de caja</th>
+                <th class="reportes__col-num">Gastos</th>
                 <th class="reportes__col-num">Resultado neto</th>
               </tr>
             </thead>
             <tbody>
               @for (f of rep.filas; track f.periodo) {
                 <tr [class.reportes__fila--cero]="f.ventas === 0 && f.mermasCosto === 0 && f.egresos === 0">
-                  <td class="num reportes__periodo">{{ f.periodo }}</td>
+                  <td class="num reportes__periodo">{{ f.etiqueta }}</td>
                   <td class="num reportes__col-num">{{ formatearMoneda(f.ventas) }}</td>
                   <td class="num reportes__col-num">{{ formatearMoneda(f.costoVentas) }}</td>
                   <td class="num reportes__col-num">{{ formatearConSigno(f.margenBruto) }}</td>
                   <td class="num reportes__col-num">{{ formatearMoneda(f.mermasCosto) }}</td>
                   <td class="num reportes__col-num">{{ formatearMoneda(f.egresos) }}</td>
+                  <td class="num reportes__col-num">{{ formatearMoneda(f.gastos) }}</td>
                   <td
                     class="num reportes__col-num reportes__resultado"
                     [class.reportes__resultado--negativo]="f.resultado < 0"
@@ -156,6 +173,7 @@
                 <td class="num reportes__col-num">{{ formatearConSigno(rep.totales.margenBruto) }}</td>
                 <td class="num reportes__col-num">{{ formatearMoneda(rep.totales.mermasCosto) }}</td>
                 <td class="num reportes__col-num">{{ formatearMoneda(rep.totales.egresos) }}</td>
+                <td class="num reportes__col-num">{{ formatearMoneda(rep.totales.gastos) }}</td>
                 <td
                   class="num reportes__col-num reportes__resultado"
                   [class.reportes__resultado--negativo]="rep.totales.resultado < 0"

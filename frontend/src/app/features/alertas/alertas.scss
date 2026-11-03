@@ -244,3 +244,25 @@
   font-weight: var(--fw-medium);
   color: var(--muted);
 }
+
+.alertas__tendencia-btn {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.alertas__tendencia-btn:focus-visible {
+  outline: 2px solid var(--verde-500);
+}
+
+.alertas__tendencia-head {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+  margin-bottom: var(--s-2);
+}

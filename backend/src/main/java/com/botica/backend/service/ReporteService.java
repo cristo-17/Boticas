@@ -2,16 +2,16 @@ package com.botica.backend.service;
 
 import com.botica.backend.config.ContextoOperacion;
 import com.botica.backend.dao.ReporteDao;
+import com.botica.backend.dto.EgresoPorMotivoResponse;
 import com.botica.backend.dto.FilaResultadoResponse;
 import com.botica.backend.dto.ReporteResultadosResponse;
 import com.botica.backend.dto.TotalesResultadoResponse;
 import com.botica.backend.exception.FiltroInvalidoException;
 import com.botica.backend.exception.RangoFechasInvalidoException;
+import com.botica.backend.util.FechaNegocio;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;
@@ -22,9 +22,10 @@ import java.util.Set;
  * <ul>
  *   <li>Solo {@code ADMINISTRADOR} (restringido en {@code SecurityConfig}).</li>
  *   <li>Rango válido: {@code desde <= hasta} y máximo 1 año ({@code hasta <= desde.plusYears(1)}).</li>
- *   <li>Agrupación: {@code dia} (por defecto) o {@code mes}, por día calendario de Lima.</li>
+ *   <li>Agrupación: {@code dia} (por defecto), {@code semana} (lunes a domingo) o {@code mes},
+ *       por día calendario de Lima.</li>
  *   <li>Totales calculados en el servidor (R19: el frontend no suma dinero).</li>
- *   <li>CSV en UTF-8 con BOM ({@code \uFEFF}) para apertura directa en Excel con tildes.</li>
+ *   <li>Exportación .xlsx (Bloque C, {@link ReporteExcel}): valores del servidor, no fórmulas.</li>
  * </ul>
  */
 @Service
@@ -33,16 +34,16 @@ public class ReporteService {
     public static final String NOTA_REPORTE_INTERNO =
             "Reporte interno, sin valor tributario. Montos con IGV incluido.";
 
-    public static final String UTF8_BOM = "\uFEFF";
-
-    private static final Set<String> AGRUPACIONES_VALIDAS = Set.of("dia", "mes");
+    private static final Set<String> AGRUPACIONES_VALIDAS = Set.of("dia", "semana", "mes");
 
     private final ReporteDao reporteDao;
     private final ContextoOperacion contexto;
+    private final FechaNegocio fechaNegocio;
 
-    public ReporteService(ReporteDao reporteDao, ContextoOperacion contexto) {
+    public ReporteService(ReporteDao reporteDao, ContextoOperacion contexto, FechaNegocio fechaNegocio) {
         this.reporteDao = reporteDao;
         this.contexto = contexto;
+        this.fechaNegocio = fechaNegocio;
     }
 
     @Transactional(readOnly = true)
@@ -69,37 +70,23 @@ public class ReporteService {
         );
     }
 
+    /** Archivo .xlsx del reporte (Bloque C): reemplaza al CSV, cuyo separador dependía del Excel regional. */
     @Transactional(readOnly = true)
-    public String generarCsvResultados(
-            LocalDate desde, LocalDate hasta, String agrupar) {
-        return generarCsvResultados(contexto.boticaId(), desde, hasta, agrupar);
+    public byte[] generarExcelResultados(LocalDate desde, LocalDate hasta, String agrupar) {
+        return generarExcelResultados(contexto.boticaId(), desde, hasta, agrupar);
     }
 
     @Transactional(readOnly = true)
-    public String generarCsvResultados(
-            Long boticaId, LocalDate desde, LocalDate hasta, String agrupar) {
+    public byte[] generarExcelResultados(Long boticaId, LocalDate desde, LocalDate hasta, String agrupar) {
         ReporteResultadosResponse reporte = obtenerResultados(boticaId, desde, hasta, agrupar);
-        StringBuilder sb = new StringBuilder();
-        sb.append(UTF8_BOM);
-        sb.append("Período,Ventas (S/),Costo de ventas (S/),Margen bruto (S/),Mermas a costo (S/),Egresos de caja (S/),Resultado neto (S/)\r\n");
-        for (FilaResultadoResponse f : reporte.filas()) {
-            sb.append(f.periodo()).append(',')
-              .append(fmt(f.ventas())).append(',')
-              .append(fmt(f.costoVentas())).append(',')
-              .append(fmt(f.margenBruto())).append(',')
-              .append(fmt(f.mermasCosto())).append(',')
-              .append(fmt(f.egresos())).append(',')
-              .append(fmt(f.resultado())).append("\r\n");
-        }
-        TotalesResultadoResponse t = reporte.totales();
-        sb.append("TOTAL").append(',')
-          .append(fmt(t.ventas())).append(',')
-          .append(fmt(t.costoVentas())).append(',')
-          .append(fmt(t.margenBruto())).append(',')
-          .append(fmt(t.mermasCosto())).append(',')
-          .append(fmt(t.egresos())).append(',')
-          .append(fmt(t.resultado())).append("\r\n");
-        return sb.toString();
+        List<EgresoPorMotivoResponse> egresos = reporteDao.consultarEgresosPorMotivo(boticaId, desde, hasta);
+        String nombreBotica = reporteDao.consultarNombreBotica(boticaId);
+        return ReporteExcel.generar(nombreBotica, reporte, egresos, fechaNegocio.ahora());
+    }
+
+    /** Nombre de descarga: {@code reporte-resultados_<desde>_<hasta>.xlsx}. */
+    public static String nombreArchivoExcel(LocalDate desde, LocalDate hasta) {
+        return "reporte-resultados_" + desde + "_" + hasta + ".xlsx";
     }
 
     private String validarParametros(LocalDate desde, LocalDate hasta, String agrupar) {
@@ -117,12 +104,5 @@ public class ReporteService {
             throw new FiltroInvalidoException("agrupar", agrupar);
         }
         return norm;
-    }
-
-    private static String fmt(BigDecimal valor) {
-        if (valor == null) {
-            return "0.00";
-        }
-        return valor.setScale(2, RoundingMode.HALF_UP).toPlainString();
     }
 }

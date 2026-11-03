@@ -22,7 +22,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
@@ -69,8 +68,8 @@ class ReporteControllerSeguridadTest {
     }
 
     @Test
-    void tecnico_recibe403SinPermiso_enReporteResultadosCsv() throws Exception {
-        mockMvc.perform(get("/api/reportes/resultados/csv?desde=2026-05-01&hasta=2026-05-10")
+    void tecnico_recibe403SinPermiso_enReporteResultadosExcel() throws Exception {
+        mockMvc.perform(get("/api/reportes/resultados/xlsx?desde=2026-05-01&hasta=2026-05-10")
                         .header("Authorization", "Bearer " + tokenTecnico()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.error").value("SIN_PERMISO"));
@@ -79,30 +78,30 @@ class ReporteControllerSeguridadTest {
     }
 
     @Test
-    void sinToken_recibe401NoAutenticado_enReporteResultadosJsonYCsv() throws Exception {
+    void sinToken_recibe401NoAutenticado_enReporteResultadosJsonYExcel() throws Exception {
         mockMvc.perform(get("/api/reportes/resultados?desde=2026-05-01&hasta=2026-05-10"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("NO_AUTENTICADO"));
 
-        mockMvc.perform(get("/api/reportes/resultados/csv?desde=2026-05-01&hasta=2026-05-10"))
+        mockMvc.perform(get("/api/reportes/resultados/xlsx?desde=2026-05-01&hasta=2026-05-10"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.error").value("NO_AUTENTICADO"));
     }
 
     @Test
-    void admin_recibe200_enReporteResultadosJsonYCsvConBomUtf8() throws Exception {
+    void admin_recibe200_enReporteResultadosJsonYExcel() throws Exception {
         LocalDate desde = LocalDate.of(2026, 5, 1);
         LocalDate hasta = LocalDate.of(2026, 5, 2);
 
         when(reporteService.obtenerResultados(desde, hasta, "dia")).thenReturn(
                 new ReporteResultadosResponse(
                         desde, hasta, "dia", ReporteService.NOTA_REPORTE_INTERNO,
-                        List.of(new FilaResultadoResponse("2026-05-01",
+                        List.of(new FilaResultadoResponse("2026-05-01", "01/05/2026",
                                 new BigDecimal("50.00"), new BigDecimal("30.00"), new BigDecimal("20.00"),
-                                BigDecimal.ZERO, new BigDecimal("5.00"), new BigDecimal("15.00"))),
+                                BigDecimal.ZERO, new BigDecimal("5.00"), new BigDecimal("35.00"), new BigDecimal("15.00"))),
                         new TotalesResultadoResponse(
                                 new BigDecimal("50.00"), new BigDecimal("30.00"), new BigDecimal("20.00"),
-                                BigDecimal.ZERO, new BigDecimal("5.00"), new BigDecimal("15.00"))
+                                BigDecimal.ZERO, new BigDecimal("5.00"), new BigDecimal("35.00"), new BigDecimal("15.00"))
                 ));
 
         mockMvc.perform(get("/api/reportes/resultados?desde=2026-05-01&hasta=2026-05-02")
@@ -111,22 +110,32 @@ class ReporteControllerSeguridadTest {
                 .andExpect(jsonPath("$.agrupar").value("dia"))
                 .andExpect(jsonPath("$.nota").value(ReporteService.NOTA_REPORTE_INTERNO))
                 .andExpect(jsonPath("$.filas[0].periodo").value("2026-05-01"))
+                .andExpect(jsonPath("$.filas[0].etiqueta").value("01/05/2026"))
+                .andExpect(jsonPath("$.filas[0].gastos").value(35.00))
+                .andExpect(jsonPath("$.totales.gastos").value(35.00))
                 .andExpect(jsonPath("$.totales.resultado").value(15.00));
 
-        String csvEsperado = "\uFEFFPeríodo,Ventas (S/),Costo de ventas (S/)\r\nTOTAL,50.00,30.00\r\n";
-        when(reporteService.generarCsvResultados(desde, hasta, "dia")).thenReturn(csvEsperado);
+        byte[] xlsxSimulado = {0x50, 0x4B, 0x03, 0x04};
+        when(reporteService.generarExcelResultados(desde, hasta, "dia")).thenReturn(xlsxSimulado);
 
-        byte[] bytes = mockMvc.perform(get("/api/reportes/resultados/csv?desde=2026-05-01&hasta=2026-05-02")
+        byte[] bytes = mockMvc.perform(get("/api/reportes/resultados/xlsx?desde=2026-05-01&hasta=2026-05-02")
                         .header("Authorization", "Bearer " + tokenAdmin()))
                 .andExpect(status().isOk())
+                .andExpect(header().string("Content-Type",
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .andExpect(header().string("Content-Disposition",
-                        "attachment; filename=\"reporte-resultados-2026-05-01-a-2026-05-02.csv\""))
+                        "attachment; filename=\"reporte-resultados_2026-05-01_2026-05-02.xlsx\""))
                 .andReturn().getResponse().getContentAsByteArray();
 
-        assertThat(bytes[0]).isEqualTo((byte) 0xEF);
-        assertThat(bytes[1]).isEqualTo((byte) 0xBB);
-        assertThat(bytes[2]).isEqualTo((byte) 0xBF);
-        assertThat(new String(bytes, StandardCharsets.UTF_8)).startsWith("\uFEFFPeríodo");
+        assertThat(bytes).isEqualTo(xlsxSimulado);
+    }
+
+    @Test
+    void rutaCsvAnterior_yaNoExiste_paraAdmin() throws Exception {
+        mockMvc.perform(get("/api/reportes/resultados/csv?desde=2026-05-01&hasta=2026-05-02")
+                        .header("Authorization", "Bearer " + tokenAdmin()))
+                .andExpect(result -> assertThat(result.getResponse().getStatus()).isNotEqualTo(200));
+        verifyNoInteractions(reporteService);
     }
 
     private String tokenTecnico() {

@@ -12,20 +12,22 @@ import { ToastComponent, ToastVariant } from '../../shared/components/toast/toas
 import { AgrupacionReporte } from '../../core/models/reporte.model';
 import { ReporteService } from '../../core/services/reporte.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
+import { RangoRapido, rangoRapido } from '../../core/utils/fecha-lima.util';
+import { GraficoResultadosComponent } from '../../shared/components/grafico-resultados/grafico-resultados';
 
-/** Fecha YYYY-MM-DD en zona America/Lima. */
-function fechaLimaIso(fecha: Date): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'America/Lima',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(fecha);
-  const y = parts.find((p) => p.type === 'year')?.value ?? '2026';
-  const m = parts.find((p) => p.type === 'month')?.value ?? '01';
-  const d = parts.find((p) => p.type === 'day')?.value ?? '01';
-  return `${y}-${m}-${d}`;
+interface AccesoRapido {
+  id: RangoRapido;
+  label: string;
 }
+
+const ACCESOS_RAPIDOS: AccesoRapido[] = [
+  { id: 'hoy', label: 'Hoy' },
+  { id: 'semana', label: 'Esta semana' },
+  { id: 'mes', label: 'Este mes' },
+  { id: 'mes-anterior', label: 'Mes anterior' },
+  { id: 'ultimos-30', label: 'Últimos 30 días' },
+  { id: 'personalizado', label: 'Personalizado' },
+];
 
 @Component({
   selector: 'app-reportes',
@@ -37,6 +39,7 @@ function fechaLimaIso(fecha: Date): string {
     ChipComponent,
     EmptyStateComponent,
     ErrorBannerComponent,
+    GraficoResultadosComponent,
     SkeletonComponent,
     SummaryCardComponent,
     ToastComponent,
@@ -49,23 +52,24 @@ export class ReportesScreen implements OnInit {
 
   readonly reporte = this.reporteService.reporte;
   readonly cargando = this.reporteService.cargando;
-  readonly descargandoCsv = this.reporteService.descargandoCsv;
+  readonly descargandoExcel = this.reporteService.descargandoExcel;
   readonly error = this.reporteService.error;
   readonly formatearMoneda = formatearMoneda;
 
   readonly desde = signal('');
   readonly hasta = signal('');
   readonly agrupar = signal<AgrupacionReporte>('dia');
+  readonly rangoActivo = signal<RangoRapido>('mes');
+  readonly accesosRapidos = ACCESOS_RAPIDOS;
 
   readonly toastVisible = signal(false);
   readonly toastMensaje = signal('');
   readonly toastVariant = signal<ToastVariant>('success');
 
   constructor() {
-    const hoyIso = fechaLimaIso(new Date());
-    const inicioMesIso = `${hoyIso.slice(0, 8)}01`;
-    this.desde.set(inicioMesIso);
-    this.hasta.set(hoyIso);
+    const { desde, hasta } = rangoRapido('mes');
+    this.desde.set(desde);
+    this.hasta.set(hasta);
   }
 
   ngOnInit(): void {
@@ -78,32 +82,47 @@ export class ReportesScreen implements OnInit {
       .subscribe({ error: () => {} });
   }
 
+  /** Accesos rápidos: fechas del calendario de Lima. "Personalizado" solo abre los campos. */
+  elegirRango(id: RangoRapido): void {
+    this.rangoActivo.set(id);
+    if (id === 'personalizado') return;
+    const { desde, hasta } = rangoRapido(id);
+    this.desde.set(desde);
+    this.hasta.set(hasta);
+    this.consultar();
+  }
+
   cambiarAgrupacion(nueva: AgrupacionReporte): void {
     if (this.agrupar() === nueva) return;
     this.agrupar.set(nueva);
     this.consultar();
   }
 
-  exportarCsv(): void {
+  descargarExcel(): void {
     const d = this.desde();
     const h = this.hasta();
-    const ag = this.agrupar();
-    this.reporteService.descargarCsv(d, h, ag).subscribe({
+    this.reporteService.descargarExcel(d, h, this.agrupar()).subscribe({
       next: (blob) => {
         if (typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function') {
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.href = url;
-          a.download = `reporte-resultados-${d}-a-${h}.csv`;
+          a.download = ReporteService.nombreArchivoExcel(d, h);
           a.click();
           URL.revokeObjectURL(url);
         }
-        this.mostrarToast('success', 'CSV exportado');
+        this.mostrarToast('success', 'Excel descargado');
       },
       error: () => {
-        this.mostrarToast('error', this.error() ?? 'No se pudo exportar el CSV');
+        this.mostrarToast('error', this.error() ?? 'No se pudo descargar el Excel');
       },
     });
+  }
+
+  /** YYYY-MM-DD → dd/MM/yyyy (solo presentación). */
+  fechaCorta(iso: string): string {
+    const [y, m, d] = iso.split('-');
+    return y && m && d ? `${d}/${m}/${y}` : iso;
   }
 
   formatearConSigno(valor: number): string {

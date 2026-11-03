@@ -42,6 +42,30 @@
     </div>
   }
 
+  @if (esAdmin()) {
+    <button
+      type="button"
+      class="alertas__tendencia-btn"
+      data-testid="tendencia-7-dias"
+      (click)="irA('/reportes')"
+      aria-label="Ver el reporte de resultados"
+    >
+      <app-card class="alertas__tendencia">
+        <div class="alertas__tendencia-head">
+          <h2 class="alertas__lista-titulo">Últimos 7 días</h2>
+          <span class="alertas__lista-hint">Ingresos contra gastos · Ver resultados <i class="bi bi-arrow-right"></i></span>
+        </div>
+        @if (errorTendencia(); as e) {
+          <p class="field-hint text-danger m-0" role="alert">{{ e }}</p>
+        } @else if (tendencia(); as t) {
+          <app-grafico-resultados [filas]="t.filas" [alto]="160" [compacto]="true" />
+        } @else if (cargandoTendencia()) {
+          <app-skeleton variant="block"></app-skeleton>
+        }
+      </app-card>
+    </button>
+  }
+
   <app-card [flat]="false" class="alertas__lista">
     <div class="alertas__lista-head">
       <div>

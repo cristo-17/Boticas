@@ -128,6 +128,14 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<!-- Tarea 18 Bloque C: reporte .xlsx con formato y gráfico (Apache POI).
+		     5.5.1 y no 6.0.0: 6.0.0 salió el 2026-10-19 (mayor, 2 semanas);
+		     5.5.1 (2025-11) corre en Java 25 (verificado con la suite). -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.5.1</version>
+		</dependency>
 	</dependencies>
 
 	<build>

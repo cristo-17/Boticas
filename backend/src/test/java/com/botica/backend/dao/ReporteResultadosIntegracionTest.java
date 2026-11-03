@@ -1,5 +1,6 @@
 package com.botica.backend.dao;
 
+import com.botica.backend.dto.EgresoPorMotivoResponse;
 import com.botica.backend.dto.FilaResultadoResponse;
 import com.botica.backend.dto.ReporteResultadosResponse;
 import com.botica.backend.dto.TotalesResultadoResponse;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -44,6 +46,8 @@ class ReporteResultadosIntegracionTest {
     private ReporteService reporteService;
     @Autowired
     private CajaDao cajaDao;
+    @Autowired
+    private ReporteDao reporteDao;
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
@@ -226,6 +230,111 @@ class ReporteResultadosIntegracionTest {
         FilaResultadoResponse fila = rep.filas().get(0);
         assertThat(fila.mermasCosto()).isEqualByComparingTo("5.00");
         assertThat(fila.resultado()).isEqualByComparingTo("-5.00");
+    }
+
+    /**
+     * Bloque C: semana de lunes a domingo con la fecha de Lima. Rango mar 03/11 → jue 12/11/2026:
+     * la primera semana (lun 02/11) queda cortada y se rotula "03/11 al 08/11"; la segunda, "09/11 al 12/11".
+     * Una venta del domingo 08/11 a las 23:30 Lima (lunes 04:30Z en UTC) cae en la primera.
+     */
+    @Test
+    void agruparPorSemana_lunesADomingoDeLima_sumaIgualAlTotal_yDomingo2330CaeEnSuSemana() {
+        Long productoId = insertarProducto("REP-SEM-1", new BigDecimal("10.00"));
+        Long presentacionId = obtenerPresentacionUnidadId(productoId);
+        Long loteId = insertarLote(productoId, "L-SEM-1", new BigDecimal("4.00"));
+        Long cajaId = abrirCaja(usuarioId, LocalDate.of(2026, 11, 3), "Noche");
+
+        insertarVentaConDetalle(cajaId, OffsetDateTime.parse("2026-11-03T09:00:00-05:00"), "efectivo",
+                productoId, presentacionId, loteId, 1,
+                new BigDecimal("10.00"), new BigDecimal("4.00"), new BigDecimal("10.00"));
+        // Domingo 23:30 en Lima = lunes 2026-11-09T04:30Z.
+        insertarVentaConDetalle(cajaId, OffsetDateTime.parse("2026-11-08T23:30:00-05:00"), "yape",
+                productoId, presentacionId, loteId, 3,
+                new BigDecimal("10.00"), new BigDecimal("4.00"), new BigDecimal("30.00"));
+        insertarVentaConDetalle(cajaId, OffsetDateTime.parse("2026-11-09T10:00:00-05:00"), "efectivo",
+                productoId, presentacionId, loteId, 2,
+                new BigDecimal("10.00"), new BigDecimal("4.00"), new BigDecimal("20.00"));
+        insertarEgreso(cajaId, "Movilidad", "-7.50", "2026-11-05T12:00:00-05:00");
+        insertarMerma(loteId, 1, new BigDecimal("10.00"), OffsetDateTime.parse("2026-11-10T15:00:00-05:00"));
+        // Fuera del rango (lunes 02/11, misma semana ISO que el 03/11): no debe sumarse.
+        insertarVentaConDetalle(cajaId, OffsetDateTime.parse("2026-11-02T18:00:00-05:00"), "efectivo",
+                productoId, presentacionId, loteId, 5,
+                new BigDecimal("10.00"), new BigDecimal("4.00"), new BigDecimal("50.00"));
+
+        LocalDate desde = LocalDate.of(2026, 11, 3);
+        LocalDate hasta = LocalDate.of(2026, 11, 12);
+        ReporteResultadosResponse porSemana = reporteService.obtenerResultados(boticaId, desde, hasta, "semana");
+        ReporteResultadosResponse porDia = reporteService.obtenerResultados(boticaId, desde, hasta, "dia");
+
+        assertThat(porSemana.filas()).hasSize(2);
+        FilaResultadoResponse sem1 = porSemana.filas().get(0);
+        FilaResultadoResponse sem2 = porSemana.filas().get(1);
+        assertThat(sem1.periodo()).isEqualTo("2026-11-03");
+        assertThat(sem1.etiqueta()).isEqualTo("03/11 al 08/11");
+        assertThat(sem2.periodo()).isEqualTo("2026-11-09");
+        assertThat(sem2.etiqueta()).isEqualTo("09/11 al 12/11");
+
+        // La venta del domingo 23:30 está en la semana 1 (10 + 30), no en la 2.
+        assertThat(sem1.ventas()).isEqualByComparingTo("40.00");
+        assertThat(sem2.ventas()).isEqualByComparingTo("20.00");
+        assertThat(sem1.egresos()).isEqualByComparingTo("7.50");
+        assertThat(sem2.mermasCosto()).isEqualByComparingTo("4.00");
+        // gastos = costo de ventas + mermas a costo + egresos (calculado en SQL)
+        assertThat(sem1.gastos()).isEqualByComparingTo("23.50");   // 16.00 + 0 + 7.50
+        assertThat(sem2.gastos()).isEqualByComparingTo("12.00");   // 8.00 + 4.00 + 0
+
+        TotalesResultadoResponse t = porSemana.totales();
+        assertThat(sumar(porSemana, FilaResultadoResponse::ventas)).isEqualByComparingTo(t.ventas()).isEqualByComparingTo("60.00");
+        assertThat(sumar(porSemana, FilaResultadoResponse::costoVentas)).isEqualByComparingTo(t.costoVentas());
+        assertThat(sumar(porSemana, FilaResultadoResponse::margenBruto)).isEqualByComparingTo(t.margenBruto());
+        assertThat(sumar(porSemana, FilaResultadoResponse::mermasCosto)).isEqualByComparingTo(t.mermasCosto());
+        assertThat(sumar(porSemana, FilaResultadoResponse::egresos)).isEqualByComparingTo(t.egresos());
+        assertThat(sumar(porSemana, FilaResultadoResponse::gastos)).isEqualByComparingTo(t.gastos()).isEqualByComparingTo("35.50");
+        assertThat(sumar(porSemana, FilaResultadoResponse::resultado)).isEqualByComparingTo(t.resultado()).isEqualByComparingTo("24.50");
+        assertThat(t.ventas().subtract(t.gastos())).isEqualByComparingTo(t.resultado());
+        assertThat(sumar(porDia, FilaResultadoResponse::resultado)).isEqualByComparingTo(t.resultado());
+        assertThat(porDia.filas()).hasSize(10);
+        assertThat(porDia.filas().get(0).etiqueta()).isEqualTo("03/11/2026");
+    }
+
+    @Test
+    void egresosPorMotivo_agrupaEnSqlPorDescripcion_soloDelRango_yCuadraConTotales() {
+        Long cajaId = abrirCaja(usuarioId, LocalDate.of(2026, 6, 10), "Mañana");
+        insertarEgreso(cajaId, "Servicios básicos", "-20.00", "2026-06-10T09:00:00-05:00");
+        insertarEgreso(cajaId, "Servicios básicos", "-5.25", "2026-06-11T09:00:00-05:00");
+        insertarEgreso(cajaId, "Movilidad", "-30.00", "2026-06-11T10:00:00-05:00");
+        insertarEgreso(cajaId, "Movilidad", "-99.00", "2026-06-13T10:00:00-05:00"); // fuera del rango
+
+        LocalDate desde = LocalDate.of(2026, 6, 10);
+        LocalDate hasta = LocalDate.of(2026, 6, 12);
+        List<EgresoPorMotivoResponse> porMotivo = reporteDao.consultarEgresosPorMotivo(boticaId, desde, hasta);
+
+        assertThat(porMotivo).hasSize(2);
+        assertThat(porMotivo.get(0).motivo()).isEqualTo("Movilidad");
+        assertThat(porMotivo.get(0).cantidad()).isEqualTo(1);
+        assertThat(porMotivo.get(0).total()).isEqualByComparingTo("30.00");
+        assertThat(porMotivo.get(1).motivo()).isEqualTo("Servicios básicos");
+        assertThat(porMotivo.get(1).cantidad()).isEqualTo(2);
+        assertThat(porMotivo.get(1).total()).isEqualByComparingTo("25.25");
+
+        BigDecimal suma = porMotivo.stream().map(EgresoPorMotivoResponse::total).reduce(BigDecimal.ZERO, BigDecimal::add);
+        assertThat(suma).isEqualByComparingTo(
+                reporteService.obtenerResultados(boticaId, desde, hasta, "dia").totales().egresos());
+        assertThat(reporteDao.consultarNombreBotica(boticaId)).isEqualTo("Botica Test Reportes");
+    }
+
+    private static BigDecimal sumar(ReporteResultadosResponse rep,
+                                    java.util.function.Function<FilaResultadoResponse, BigDecimal> campo) {
+        return rep.filas().stream().map(campo).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    private void insertarEgreso(Long cajaId, String motivo, String montoNegativo, String fecha) {
+        cajaDao.insertarMovimiento(MovimientoCaja.builder()
+                .boticaId(boticaId).cajaId(cajaId).tipo("egreso")
+                .descripcion(motivo).nota(null).monto(new BigDecimal(montoNegativo))
+                .afectaEfectivo(true).creadoPor(usuarioId)
+                .creadoEn(OffsetDateTime.parse(fecha))
+                .build());
     }
 
     private Long insertarProducto(String codigoBarras, BigDecimal precioVenta) {

@@ -109,3 +109,23 @@
   border-top: 2px solid var(--line);
   border-bottom: none;
 }
+
+.reportes__chips--wrap {
+  flex-wrap: wrap;
+  margin-bottom: var(--s-3);
+}
+
+.reportes__rango-texto {
+  font-weight: var(--fw-bold);
+  padding: var(--s-2) 0;
+}
+
+.reportes__subtitulo {
+  margin: 0 0 var(--s-1);
+  font-size: 16px;
+  font-weight: var(--fw-black);
+}
+
+.reportes__grafico-nota {
+  margin: 0 0 var(--s-3);
+}

@@ -39,11 +39,14 @@ ruta tiene su 403 para el TECNICO.
 
 **Reportes y Egresos (Tarea 18)** abre una caja del ADMINISTRADOR, registra un
 egreso (`POST /api/caja/egresos`), verifica que reste del efectivo esperado al
-cerrar la caja, consulta el reporte de resultados por día y por mes
-(`GET /api/reportes/resultados`), exporta el CSV con BOM UTF-8
-(`GET /api/reportes/resultados/csv`), valida los errores de rango (`desde > hasta`
-y rango mayor a 1 año → `400 RANGO_FECHAS_INVALIDO`) y verifica el `403 SIN_PERMISO`
-del TECNICO en ambas rutas.
+cerrar la caja, consulta el reporte de resultados por día, por mes y por semana
+(`GET /api/reportes/resultados`; la semana cortada por el rango se rotula
+`"03/11 al 08/11"` y la suma de las semanas da el total al céntimo), comprueba
+que cada fila cumpla `gastos = costo + mermas + egresos`, descarga el Excel
+(`GET /api/reportes/resultados/xlsx`: tipo, nombre `reporte-resultados_<desde>_<hasta>.xlsx`
+y cuerpo zip `PK`), valida los errores (`desde > hasta` y rango mayor a 1 año →
+`400 RANGO_FECHAS_INVALIDO`; `agrupar=anio` → `400 FILTRO_INVALIDO`) y verifica el
+`403 SIN_PERMISO` del TECNICO en el JSON y en el Excel.
 
 **Solo lectura** no escribe nada y hace su propio login. Es la única carpeta
 que se corre contra producción, y solo con usuarios demo (R23).

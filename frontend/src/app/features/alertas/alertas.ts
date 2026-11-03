@@ -17,6 +17,9 @@ import { AlertaService } from '../../core/services/alerta.service';
 import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
+import { ReporteService } from '../../core/services/reporte.service';
+import { fechaLimaIso, sumarDias } from '../../core/utils/fecha-lima.util';
+import { GraficoResultadosComponent } from '../../shared/components/grafico-resultados/grafico-resultados';
 import { formatearMoneda } from '../../core/utils/moneda.util';
 
 export type FiltroAlertaNivel = 'todos' | 'urgente' | 'atencion' | 'con-monto';
@@ -65,6 +68,7 @@ const FORMATO_HORA_SEGUNDOS = new Intl.DateTimeFormat('es-PE', {
     ChipComponent,
     EmptyStateComponent,
     ErrorBannerComponent,
+    GraficoResultadosComponent,
     PaginacionComponent,
     SkeletonComponent,
     SummaryCardComponent,
@@ -78,6 +82,7 @@ export class AlertasScreen implements OnInit, OnDestroy {
   private readonly config = inject(ConfigService);
   private readonly notificaciones = inject(NotificacionService);
   private readonly router = inject(Router);
+  private readonly reporteService = inject(ReporteService);
 
   readonly alertas = this.alertaService.alertas;
   readonly pagina = this.alertaService.pagina;
@@ -89,6 +94,15 @@ export class AlertasScreen implements OnInit, OnDestroy {
 
   readonly nivelBadge = NIVEL_BADGE;
   readonly nivelLabel = NIVEL_LABEL;
+
+  /**
+   * Gráfico de los últimos 7 días (Bloque C): solo ADMINISTRADOR. El TECNICO no
+   * ve ningún monto (conteo ciego) — ni siquiera se pide el reporte.
+   */
+  readonly esAdmin = computed(() => this.auth.usuarioActual()?.rol === 'ADMINISTRADOR');
+  readonly tendencia = this.reporteService.tendencia;
+  readonly cargandoTendencia = this.reporteService.cargandoTendencia;
+  readonly errorTendencia = this.reporteService.errorTendencia;
 
   readonly paginaActual = signal(0);
   readonly filtroNivel = signal<FiltroAlertaNivel>('todos');
@@ -190,6 +204,7 @@ export class AlertasScreen implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.cargarTodo();
+    this.cargarTendencia();
     // Sondeo suave periódico cada 30 segundos si la pantalla queda abierta
     this.timerRef = setInterval(() => {
       if (document.visibilityState === 'visible') {
@@ -218,6 +233,14 @@ export class AlertasScreen implements OnInit, OnDestroy {
 
   actualizarManual(): void {
     this.cargarTodo(false);
+    this.cargarTendencia();
+  }
+
+  /** Últimos 7 días con la fecha de Lima (hoy incluido). */
+  cargarTendencia(): void {
+    if (!this.esAdmin()) return;
+    const hoy = fechaLimaIso();
+    this.reporteService.obtenerTendencia(sumarDias(hoy, -6), hoy).subscribe({ error: () => {} });
   }
 
   cambiarFiltro(f: FiltroAlertaNivel): void {

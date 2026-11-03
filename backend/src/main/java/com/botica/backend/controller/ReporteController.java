@@ -11,17 +11,19 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 
 /**
- * Endpoints del reporte de resultados y exportación CSV (D-E2-3, Tarea 18).
+ * Endpoints del reporte de resultados y exportación .xlsx (D-E2-3, Tarea 18 Bloque C).
  * Restringidos en {@code SecurityConfig} exclusivamente a {@code ADMINISTRADOR}.
  */
 @RestController
 @RequestMapping("/api/reportes")
 public class ReporteController {
+
+    static final MediaType MEDIA_XLSX =
+            MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
 
     private final ReporteService reporteService;
 
@@ -39,19 +41,19 @@ public class ReporteController {
         return reporteService.obtenerResultados(fechaDesde, fechaHasta, agrupar);
     }
 
-    @GetMapping(value = "/resultados/csv", produces = "text/csv;charset=UTF-8")
-    public ResponseEntity<byte[]> exportarResultadosCsv(
+    @GetMapping("/resultados/xlsx")
+    public ResponseEntity<byte[]> exportarResultadosExcel(
             @RequestParam(required = false) String desde,
             @RequestParam(required = false) String hasta,
             @RequestParam(required = false, defaultValue = "dia") String agrupar) {
         LocalDate fechaDesde = parsearFecha(desde, "desde");
         LocalDate fechaHasta = parsearFecha(hasta, "hasta");
-        String csv = reporteService.generarCsvResultados(fechaDesde, fechaHasta, agrupar);
-        String filename = String.format("reporte-resultados-%s-a-%s.csv", fechaDesde, fechaHasta);
+        byte[] xlsx = reporteService.generarExcelResultados(fechaDesde, fechaHasta, agrupar);
+        String filename = ReporteService.nombreArchivoExcel(fechaDesde, fechaHasta);
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .contentType(new MediaType("text", "csv", StandardCharsets.UTF_8))
-                .body(csv.getBytes(StandardCharsets.UTF_8));
+                .contentType(MEDIA_XLSX)
+                .body(xlsx);
     }
 
     private static LocalDate parsearFecha(String raw, String nombreParametro) {
