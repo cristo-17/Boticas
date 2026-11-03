@@ -1,9 +1,9 @@
 <div class="app-header">
   <div class="app-header__brand">
     <img src="/logo.png" alt="BoticaSys Logo" class="app-header__logo-img" />
-    <div>
+    <div class="app-header__texto">
       <div class="app-header__name">BoticaSys</div>
-      <div class="app-header__sede">{{ sede() }}</div>
+      <div class="app-header__sede" [attr.title]="sede()">{{ sede() }}</div>
     </div>
   </div>
 
@@ -19,8 +19,12 @@
       mode="chip"
       [state]="estadoConexion()"
       [label]="etiquetaConexion()"
+      [compactoEnMovil]="true"
     ></app-conn-status>
   </button>
 
-  <app-button variant="secondary" (clicked)="cerrarSesion()">Salir</app-button>
+  <app-button variant="secondary" class="app-header__salir-texto" (clicked)="cerrarSesion()">Salir</app-button>
+  <app-button variant="secondary" class="app-header__salir-icono" [icon]="true" ariaLabel="Salir" (clicked)="cerrarSesion()">
+    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+  </app-button>
 </div>

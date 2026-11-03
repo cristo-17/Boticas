@@ -132,7 +132,43 @@
           text="Ajusta las fechas y vuelve a consultar."
         />
       } @else {
-        <div class="reportes__tabla-wrap">
+        <!-- Móvil y tablet (T1): debajo de 768 px, una tarjeta por período y una de total; desde 768, la tabla con sombra. -->
+        <div class="reportes__tarjetas">
+          @for (f of rep.filas; track f.periodo) {
+            <article class="reportes__tarjeta" [class.reportes__fila--cero]="f.ventas === 0 && f.mermasCosto === 0 && f.egresos === 0">
+              <h3 class="num reportes__tarjeta-titulo">{{ f.etiqueta }}</h3>
+              <dl class="reportes__tarjeta-datos">
+                <dt>Ventas</dt><dd class="num">{{ formatearMoneda(f.ventas) }}</dd>
+                <dt>Costo de ventas</dt><dd class="num">{{ formatearMoneda(f.costoVentas) }}</dd>
+                <dt>Margen bruto</dt><dd class="num">{{ formatearConSigno(f.margenBruto) }}</dd>
+                <dt>Mermas (costo)</dt><dd class="num">{{ formatearMoneda(f.mermasCosto) }}</dd>
+                <dt>Egresos de caja</dt><dd class="num">{{ formatearMoneda(f.egresos) }}</dd>
+                <dt>Gastos</dt><dd class="num">{{ formatearMoneda(f.gastos) }}</dd>
+                <dt class="reportes__tarjeta-neto">Resultado neto</dt>
+                <dd class="num reportes__tarjeta-neto reportes__resultado" [class.reportes__resultado--negativo]="f.resultado < 0">
+                  {{ formatearConSigno(f.resultado) }}
+                </dd>
+              </dl>
+            </article>
+          }
+          <article class="reportes__tarjeta reportes__tarjeta--total">
+            <h3 class="reportes__tarjeta-titulo">TOTAL</h3>
+            <dl class="reportes__tarjeta-datos">
+              <dt>Ventas</dt><dd class="num">{{ formatearMoneda(rep.totales.ventas) }}</dd>
+              <dt>Costo de ventas</dt><dd class="num">{{ formatearMoneda(rep.totales.costoVentas) }}</dd>
+              <dt>Margen bruto</dt><dd class="num">{{ formatearConSigno(rep.totales.margenBruto) }}</dd>
+              <dt>Mermas (costo)</dt><dd class="num">{{ formatearMoneda(rep.totales.mermasCosto) }}</dd>
+              <dt>Egresos de caja</dt><dd class="num">{{ formatearMoneda(rep.totales.egresos) }}</dd>
+              <dt>Gastos</dt><dd class="num">{{ formatearMoneda(rep.totales.gastos) }}</dd>
+              <dt class="reportes__tarjeta-neto">Resultado neto</dt>
+              <dd class="num reportes__tarjeta-neto reportes__resultado" [class.reportes__resultado--negativo]="rep.totales.resultado < 0">
+                {{ formatearConSigno(rep.totales.resultado) }}
+              </dd>
+            </dl>
+          </article>
+        </div>
+
+        <div class="table-responsive reportes__tabla-wrap">
           <table class="reportes__tabla">
             <thead>
               <tr>

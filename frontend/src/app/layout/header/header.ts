@@ -5,6 +5,7 @@ import { ConnStatusComponent } from '../../shared/components/conn-status/conn-st
 import { HeaderNotificacionesComponent } from './header-notificaciones';
 import { AuthService } from '../../core/services/auth.service';
 import { ConexionService } from '../../core/services/conexion.service';
+import { textoSede } from '../../core/utils/sede.util';
 
 const ETIQUETAS_CONEXION = {
   online: 'En línea',
@@ -27,10 +28,10 @@ export class HeaderComponent {
   readonly estadoConexion = this.conexion.estado;
   readonly etiquetaConexion = computed(() => ETIQUETAS_CONEXION[this.estadoConexion()]);
 
-  // boticaNombre/boticaDireccion vienen crudos del backend (Tarea 12) -- el "sede" compuesto del mock se arma acá, el único consumidor.
+  // boticaNombre/boticaDireccion vienen crudos del backend (Tarea 12); sin dirección queda solo el nombre (textoSede).
   readonly sede = computed(() => {
     const u = this.usuario();
-    return u ? `${u.boticaNombre} · ${u.boticaDireccion}` : 'Sin sesión iniciada';
+    return u ? textoSede(u.boticaNombre, u.boticaDireccion) : 'Sin sesión iniciada';
   });
 
   alternarConexion(): void {

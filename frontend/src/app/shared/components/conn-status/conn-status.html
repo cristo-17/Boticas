@@ -1,7 +1,12 @@
 @if (mode === 'chip') {
-  <span class="bs-conn" [class]="'bs-conn--' + state">
+  <span
+    class="bs-conn"
+    [class]="'bs-conn--' + state"
+    [class.bs-conn--compacto-movil]="compactoEnMovil"
+    [attr.title]="compactoEnMovil ? label : null"
+  >
     <span class="bs-conn__dot"></span>
-    {{ label }}
+    <span class="bs-conn__texto">{{ label }}</span>
   </span>
 } @else if (state !== 'online') {
   <div class="bs-conn-banner" [class]="'bs-conn-banner--' + state">

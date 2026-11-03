@@ -67,4 +67,28 @@ describe('HeaderComponent', () => {
     const sedeEl = fixture.nativeElement.querySelector('.app-header__sede');
     expect(sedeEl.textContent).toContain('Botica San Lucas');
   });
+
+  it('E3: una botica sin dirección muestra solo su nombre, nunca "· null"', () => {
+    usuarioActual.set({ ...USUARIO, boticaNombre: 'Charito', boticaDireccion: null });
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+
+    expect(fixture.componentInstance.sede()).toBe('Charito');
+    const sedeEl = fixture.nativeElement.querySelector('.app-header__sede') as HTMLElement;
+    expect(sedeEl.textContent?.trim()).toBe('Charito');
+    expect(sedeEl.textContent).not.toContain('null');
+  });
+
+  it('E2: el chip de conexión va en modo compacto (texto oculto solo debajo de 1024 px) y "Salir" existe con texto y como ícono', () => {
+    usuarioActual.set(USUARIO);
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    const chip = el.querySelector('.bs-conn') as HTMLElement;
+    expect(chip.classList).toContain('bs-conn--compacto-movil');
+    expect(chip.querySelector('.bs-conn__texto')?.textContent).toContain('En línea'); // sigue para lectores de pantalla
+    expect(el.querySelector('.app-header__salir-texto')?.textContent).toContain('Salir');
+    expect(el.querySelector('.app-header__salir-icono button')?.getAttribute('aria-label')).toBe('Salir');
+  });
 });

@@ -17,7 +17,8 @@ export interface Usuario {
   rol: Rol;
   turno: Turno;
   boticaNombre: string;
-  boticaDireccion: string;
+  /** Opcional en la base (la botica real no la tiene): puede llegar null. */
+  boticaDireccion: string | null;
 }
 
 export interface CredencialesLogin {

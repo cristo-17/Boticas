@@ -176,8 +176,15 @@
 
 .inventario__form-fila {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: var(--s-3);
+}
+
+// Móvil y tablet: a 360-390 px dos campos por fila no entran (se cortaban la fecha y la ubicación).
+@media (max-width: 575.98px) {
+  .inventario__form-fila {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 // Tarea 19: botón de escanear al lado del <select> de producto
@@ -194,4 +201,11 @@
 
 .inventario__lector {
   margin-top: var(--s-2);
+}
+
+// M1: el formulario se desliza detrás del pie; el borde marca dónde termina.
+.inventario__form-modal .modal-bs__actions {
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
 }

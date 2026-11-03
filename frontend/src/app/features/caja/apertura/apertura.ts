@@ -5,6 +5,7 @@ import { ErrorBannerComponent } from '../../../shared/components/error-banner/er
 import { AuthService } from '../../../core/services/auth.service';
 import { CajaService } from '../../../core/services/caja.service';
 import { formatearMoneda } from '../../../core/utils/moneda.util';
+import { textoSede } from '../../../core/utils/sede.util';
 
 const MONTOS_RAPIDOS = [100, 150, 200, 300];
 
@@ -66,7 +67,7 @@ export class AperturaComponent {
       { k: 'Fecha y hora', v: ahora },
       { k: 'Responsable', v: usuario?.nombre ?? 'Sin sesión' },
       { k: 'Turno', v: usuario?.turno ?? '—' },
-      { k: 'Sede', v: usuario ? `${usuario.boticaNombre} · ${usuario.boticaDireccion}` : '—' },
+      { k: 'Sede', v: usuario ? textoSede(usuario.boticaNombre, usuario.boticaDireccion) : '—' },
     ];
   });
 

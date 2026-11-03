@@ -26,6 +26,12 @@
   min-width: 0;
 }
 
+// Sin min-width: 0 el texto no se recorta: una dirección larga ensanchaba toda la página
+// (429 px a 360 px de pantalla, Móvil y tablet E1).
+.app-header__texto {
+  min-width: 0;
+}
+
 .app-header__logo-img {
   width: 38px;
   height: 38px;
@@ -58,4 +64,46 @@
   background: transparent;
   padding: 0;
   border-radius: var(--r-pill);
+}
+
+.app-header__salir-icono {
+  display: none;
+}
+
+// Móvil y tablet (E2): una sola fila. Logo, sede recortada con "…", campana, punto de
+// conexión y "Salir" como ícono. Desde 1024 px no cambia.
+@media (max-width: 1023.98px) {
+  .app-header {
+    flex-wrap: nowrap;
+    gap: var(--s-2);
+    padding: var(--s-2) var(--s-3);
+  }
+
+  .app-header__brand {
+    flex: 1 1 auto;
+    gap: var(--s-2);
+  }
+
+  .app-header__logo-img {
+    width: 32px;
+    height: 32px;
+  }
+
+  .app-header__name {
+    font-size: 16px;
+  }
+
+  .app-header__conn,
+  app-header-notificaciones,
+  .app-header__salir-icono {
+    flex: none;
+  }
+
+  .app-header__salir-icono {
+    display: block;
+  }
+
+  .app-header__salir-texto {
+    display: none;
+  }
 }

@@ -1,14 +1,24 @@
+<!-- Debajo de 1024 px y plegado: una sola línea (P1). Tocar el resumen abre la hoja; "Cobrar" la abre en el pago. -->
+<div class="carrito-panel__barra">
+  <button type="button" class="carrito-panel__barra-resumen" [attr.aria-expanded]="expandido()" (click)="expandido.set(true)">
+    <i class="bi bi-cart3" aria-hidden="true"></i>
+    <span class="num carrito-panel__barra-texto">{{ textoBarra }}</span>
+    <i class="bi bi-chevron-up" aria-hidden="true"></i>
+  </button>
+  @if (!vacio) {
+    <app-button variant="action" class="carrito-panel__barra-cobrar" (clicked)="abrirEnPago()">Cobrar</app-button>
+  }
+</div>
+
 <div class="carrito-panel__head">
   <h2 class="carrito-panel__titulo">Venta actual</h2>
-  <button type="button" class="carrito-panel__toggle" (click)="expandido.set(!expandido())">
+  <button type="button" class="carrito-panel__toggle" [attr.aria-expanded]="expandido()" (click)="expandido.set(false)">
     <span class="carrito-panel__count num">{{ resumenTexto }}</span>
-    <span class="carrito-panel__toggle-cta">{{
-      expandido() ? 'Ocultar detalle' : 'Ver detalle'
-    }}</span>
+    <span class="carrito-panel__toggle-cta">Ocultar <i class="bi bi-chevron-down" aria-hidden="true"></i></span>
   </button>
 </div>
 
-<div class="carrito-panel__lineas" [class.carrito-panel__lineas--colapsado]="!expandido()">
+<div class="carrito-panel__lineas">
   @if (vacio) {
     <div class="carrito-panel__vacio">
       <div class="carrito-panel__vacio-icono"></div>
@@ -76,18 +86,20 @@
       <i class="bi bi-trash3"></i> Vaciar carrito
     </button>
   }
-  <div class="carrito-panel__linea-costo">
-    <span>Op. gravada</span><span class="num">{{ formatearMoneda(opGravada) }}</span>
-  </div>
-  @if (mostrarIgv) {
+  <div class="carrito-panel__desglose">
     <div class="carrito-panel__linea-costo">
-      <span>{{ igvLabel }}</span
-      ><span class="num">{{ formatearMoneda(igv) }}</span>
+      <span>Op. gravada</span><span class="num">{{ formatearMoneda(opGravada) }}</span>
     </div>
-  }
+    @if (mostrarIgv) {
+      <div class="carrito-panel__linea-costo">
+        <span>{{ igvLabel }}</span
+        ><span class="num">{{ formatearMoneda(igv) }}</span>
+      </div>
+    }
+  </div>
   <div class="carrito-panel__metodos">
     <span class="eyebrow">Método de pago</span>
-    <div class="carrito-panel__metodos-grid">
+    <div class="carrito-panel__metodos-grid" #metodos>
       <button
         type="button"
         class="carrito-panel__metodo-btn"

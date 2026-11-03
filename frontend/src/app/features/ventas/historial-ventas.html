@@ -50,8 +50,8 @@
             <th>Fecha y hora</th>
             <th>Método</th>
             <th>Líneas</th>
-            <th class="text-end">Subtotal</th>
-            <th class="text-end">IGV</th>
+            <th class="text-end historial-ventas__col-secundaria">Subtotal</th>
+            <th class="text-end historial-ventas__col-secundaria">IGV</th>
             <th class="text-end">Total</th>
             <th class="text-center">Detalle</th>
           </tr>
@@ -66,9 +66,9 @@
                   {{ labelMetodo(v.metodoPago) }}
                 </app-badge>
               </td>
-              <td>{{ v.items.length }} ítem(s)</td>
-              <td class="text-end num">{{ moneda(v.subtotal) }}</td>
-              <td class="text-end num">{{ moneda(v.igv) }}</td>
+              <td class="num">{{ v.items.length }} ítem(s)</td>
+              <td class="text-end num historial-ventas__col-secundaria">{{ moneda(v.subtotal) }}</td>
+              <td class="text-end num historial-ventas__col-secundaria">{{ moneda(v.igv) }}</td>
               <td class="text-end num font-bold">{{ moneda(v.total) }}</td>
               <td class="text-center">
                 <button

@@ -11,4 +11,6 @@ export class ConnStatusComponent {
   @Input() state: ConnState = 'online';
   @Input() label = '';
   @Input() message = '';
+  /** Debajo de 1024 px el chip queda en el punto de color; el texto sigue para lectores de pantalla (encabezado en una fila). */
+  @Input() compactoEnMovil = false;
 }

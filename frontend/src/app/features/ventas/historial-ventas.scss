@@ -184,3 +184,11 @@
   font-size: 11px;
 }
 
+
+// Móvil y tablet (T2): debajo de 1280 px la tabla no entra al lado de la barra lateral;
+// Subtotal e IGV siguen en el detalle de cada venta.
+@media (max-width: 1279.98px) {
+  .historial-ventas__col-secundaria {
+    display: none;
+  }
+}

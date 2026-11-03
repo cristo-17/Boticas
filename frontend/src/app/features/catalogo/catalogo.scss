@@ -213,3 +213,10 @@
   gap: var(--s-2);
   > .bs-field__control { flex: 1; min-width: 0; }
 }
+
+// M1: el formulario se desliza detrás del pie; el borde marca dónde termina.
+.catalogo__form-modal .modal-bs__actions {
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+}

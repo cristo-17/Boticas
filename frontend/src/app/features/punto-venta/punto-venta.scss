@@ -1,4 +1,6 @@
-$pos-breakpoint: 1180.98px;
+// Móvil y tablet (P4, P5): dos columnas desde 1024 px (carrito de 340 px hasta 1180, 400 px después);
+// debajo, una columna y el carrito es la barra fija de abajo.
+$pos-breakpoint: 1023.98px;
 $scan-breakpoint: 1400.98px;
 
 .pos {
@@ -8,10 +10,18 @@ $scan-breakpoint: 1400.98px;
   grid-template-columns: minmax(0, 1fr) 400px;
 }
 
+@media (max-width: 1180.98px) {
+  .pos {
+    gap: var(--s-4);
+    grid-template-columns: minmax(0, 1fr) 340px;
+  }
+}
+
 @media (max-width: $pos-breakpoint) {
   .pos {
     grid-template-columns: minmax(0, 1fr);
-    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    // Alto de la barra plegada (P4): los últimos resultados no quedan debajo.
+    padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px));
   }
 }
 

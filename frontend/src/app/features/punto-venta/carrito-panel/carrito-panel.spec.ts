@@ -54,4 +54,59 @@ describe('CarritoPanelComponent', () => {
     await fixture.whenStable();
     expect(botonVaciar()).toBeUndefined();
   });
+
+  describe('plegado en el celular (Móvil y tablet, P1)', () => {
+    const host = () => fixture.nativeElement as HTMLElement;
+    const barra = () => host().querySelector('.carrito-panel__barra') as HTMLElement;
+    const botonCobrarBarra = () => barra().querySelector('.carrito-panel__barra-cobrar button') as HTMLButtonElement | null;
+
+    it('empieza plegado: el host no tiene la clase de expandido y la barra resume líneas y total', () => {
+      expect(fixture.componentInstance.expandido()).toBe(false);
+      expect(host().classList).not.toContain('carrito-panel--expandido');
+      expect(barra().textContent).toContain('1 línea · S/ 25.00');
+      expect(botonCobrarBarra()?.textContent).toContain('Cobrar');
+    });
+
+    it('plural y vacío: "3 líneas · S/ …"; sin líneas dice "Carrito vacío" y no ofrece Cobrar', async () => {
+      fixture.componentRef.setInput('lineas', [LINEA, { ...LINEA, key: '2|20' }, { ...LINEA, key: '3|30' }]);
+      fixture.componentRef.setInput('total', 75.7);
+      fixture.detectChanges();
+      expect(barra().textContent).toContain('3 líneas · S/ 75.70');
+
+      fixture.componentRef.setInput('lineas', []);
+      fixture.detectChanges();
+      await fixture.whenStable();
+      expect(barra().textContent).toContain('Carrito vacío');
+      expect(botonCobrarBarra()).toBeNull();
+    });
+
+    it('tocar el resumen abre la hoja; "Ocultar" la vuelve a plegar', async () => {
+      (barra().querySelector('.carrito-panel__barra-resumen') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(host().classList).toContain('carrito-panel--expandido');
+
+      (host().querySelector('.carrito-panel__toggle') as HTMLButtonElement).click();
+      fixture.detectChanges();
+      expect(host().classList).not.toContain('carrito-panel--expandido');
+    });
+
+    it('"Cobrar" de la barra NO cobra: abre la hoja con el foco en el método de pago elegido', async () => {
+      let cobros = 0;
+      fixture.componentInstance.cobrar.subscribe(() => cobros++);
+      fixture.componentInstance.metodoSeleccionado.set('yape');
+      fixture.detectChanges();
+
+      botonCobrarBarra()!.click();
+      fixture.detectChanges();
+      await fixture.whenStable();
+
+      expect(cobros).toBe(0);
+      expect(host().classList).toContain('carrito-panel--expandido');
+      expect((document.activeElement as HTMLElement).textContent).toContain('Yape');
+    });
+
+    it('el nombre de cada línea está en el DOM de la hoja (P3)', () => {
+      expect(host().querySelector('.carrito-panel__linea-nombre')?.textContent).toContain('Paracetamol');
+    });
+  });
 });

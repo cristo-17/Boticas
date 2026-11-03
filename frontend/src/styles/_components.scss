@@ -650,6 +650,22 @@
 .bs-conn--offline .bs-conn__dot {
   background: var(--ambar-500);
 }
+// Móvil y tablet: en el encabezado queda solo el punto (el texto sigue para lectores de pantalla).
+@media (max-width: 1023.98px) {
+  .bs-conn--compacto-movil {
+    width: var(--tap);
+    padding: 0;
+    justify-content: center;
+  }
+  .bs-conn--compacto-movil .bs-conn__texto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+}
 
 .bs-conn-banner {
   display: flex;
@@ -672,16 +688,36 @@
 }
 
 // — tabla —
+// Tabla más ancha que su caja (Móvil y tablet, T1/T2): se desliza, y una sombra en el borde
+// avisa que hay más. Las capas "local" tapan la sombra cuando ya no queda nada por ver
+// de ese lado (sin JavaScript).
 .table-responsive {
   display: block;
   width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  background:
+    linear-gradient(to right, var(--surface) 30%, transparent) left center / 40px 100% no-repeat local,
+    linear-gradient(to left, var(--surface) 30%, transparent) right center / 40px 100% no-repeat local,
+    radial-gradient(farthest-side at 0 50%, rgba(14, 21, 18, 0.32), transparent) left center / 20px 100% no-repeat
+      scroll,
+    radial-gradient(farthest-side at 100% 50%, rgba(14, 21, 18, 0.32), transparent) right center / 20px 100% no-repeat
+      scroll,
+    var(--surface);
 }
 .table-bs {
   width: 100%;
   border-collapse: collapse;
   background: var(--surface);
+}
+// Dentro del contenedor que se desliza, la tabla es transparente para que se vea la sombra.
+.table-responsive > .table-bs {
+  background: transparent;
+}
+// Montos y números en una sola línea ("S/ 0.18", no "S/" arriba y "0.18" abajo).
+.table-bs td.num,
+.table-bs th.num {
+  white-space: nowrap;
 }
 .table-bs thead th {
   padding: 14px var(--s-4);
