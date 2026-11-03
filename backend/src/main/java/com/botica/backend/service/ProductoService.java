@@ -23,7 +23,10 @@ public class ProductoService {
 
     private static final int LIMITE_BUSQUEDA = 20;
     private static final int LIMITE_MAS_VENDIDOS = 6;
-    /** DIF-06: ventana de "más vendidos", hoy incluido. */
+    /**
+     * DIF-06: ventana de "más vendidos", hoy incluido. El Punto de Venta la rotula
+     * "Más vendidos (últimos 30 días)" (punto-venta.html): si cambia, cambia también el rótulo.
+     */
     private static final int DIAS_MAS_VENDIDOS = 30;
 
     private final ProductoDao productoDao;

@@ -121,7 +121,10 @@ public class AlertaDaoJdbc implements AlertaDao {
     public List<CajaAbierta> cajasSinCerrar(Long boticaId, LocalDate hoy) {
         String sql = "SELECT c.id AS caja_id, c.turno, u.nombre AS usuario_nombre, c.hora_apertura " +
                 "FROM caja_diaria c JOIN usuarios u ON u.id = c.usuario_id " +
-                "WHERE c.botica_id = :boticaId AND c.estado = 'ABIERTA' AND c.fecha < :hoy " +
+                // La Noche cruza la medianoche: su caja (fecha = día de apertura) no está "sin cerrar"
+                // en la madrugada siguiente, sino desde las 00:00 del otro día (DECISIONES 2026-11-03).
+                "WHERE c.botica_id = :boticaId AND c.estado = 'ABIERTA' " +
+                "AND c.fecha + CASE WHEN c.turno = 'Noche' THEN 1 ELSE 0 END < :hoy " +
                 "ORDER BY c.fecha ASC";
         var params = new MapSqlParameterSource().addValue("boticaId", boticaId).addValue("hoy", hoy);
         return jdbc.query(sql, params, (rs, rowNum) -> new CajaAbierta(

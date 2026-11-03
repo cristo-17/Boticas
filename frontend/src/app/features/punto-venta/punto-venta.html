@@ -65,7 +65,7 @@
     </app-card>
 
     <app-card>
-      <h2 class="pos__section-titulo pos__quick-titulo">Más vendidos del turno</h2>
+      <h2 class="pos__section-titulo pos__quick-titulo">Más vendidos (últimos 30 días)</h2>
       <div class="pos__quick-grid">
         @for (p of masVendidos(); track p.id) {
           <button type="button" class="pos__quick" (click)="elegirProducto(p)">

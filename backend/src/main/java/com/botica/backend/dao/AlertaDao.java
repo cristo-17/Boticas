@@ -33,7 +33,11 @@ public interface AlertaDao {
      */
     List<LoteAlerta> lotesVencidosOCriticos(Long boticaId, LocalDate hoy, int criticoDias);
 
-    /** Cajas ABIERTAS cuya fecha operativa es anterior a hoy. */
+    /**
+     * Cajas ABIERTAS cuya fecha operativa es anterior a hoy. La de turno Noche cuenta un día
+     * más (fecha + 1): abierta a las 22:00 del día D, no salta en la madrugada de D+1, sino
+     * desde las 00:00 de D+2 (DECISIONES 2026-11-03).
+     */
     List<CajaAbierta> cajasSinCerrar(Long boticaId, LocalDate hoy);
 
     record LoteAlerta(Long loteId, String productoNombre, String codigo, String ubicacion, int stock,
