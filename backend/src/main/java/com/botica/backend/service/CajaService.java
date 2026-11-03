@@ -20,6 +20,7 @@ import com.botica.backend.model.CajaDiaria;
 import com.botica.backend.model.MovimientoCaja;
 import com.botica.backend.util.Dinero;
 import com.botica.backend.util.FechaNegocio;
+import com.botica.backend.util.ReglasCaja;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DuplicateKeyException;
@@ -114,15 +115,16 @@ public class CajaService {
                 ? cajaDao.buscarAbiertaDelUsuario(boticaId, contexto.usuarioId()).orElseThrow(CajaNoAbiertaException::new)
                 : cajaAjenaACerrar(boticaId, request.cajaId());
 
-        BigDecimal montoEsperado = Dinero.redondear(
-                caja.getMontoApertura().add(cajaDao.sumarMovimientosEfectivo(boticaId, caja.getId())));
-        BigDecimal montoContado = Dinero.redondear(request.montoContado());
-        BigDecimal diferencia = Dinero.redondear(montoContado.subtract(montoEsperado));
+        ReglasCaja.Cierre cierre = ReglasCaja.calcularCierre(caja.getMontoApertura(),
+                cajaDao.sumarMovimientosEfectivo(boticaId, caja.getId()), request.montoContado(), config.getDescuadreLeve());
+        BigDecimal montoEsperado = cierre.esperado();
+        BigDecimal montoContado = cierre.contado();
+        BigDecimal diferencia = cierre.diferencia();
 
         caja.setMontoContado(montoContado);
         caja.setMontoEsperado(montoEsperado);
         caja.setDiferencia(diferencia);
-        String semaforo = calcularSemaforo(diferencia);
+        String semaforo = cierre.semaforo();
         caja.setSemaforoDescuadre(semaforo);
         caja.setHoraCierre(fechaNegocio.ahora());
         caja.setObservaciones(request.observaciones());
@@ -216,14 +218,4 @@ public class CajaService {
         }
     }
 
-    private String calcularSemaforo(BigDecimal diferencia) {
-        BigDecimal absoluta = diferencia.abs();
-        if (absoluta.compareTo(BigDecimal.ZERO) == 0) {
-            return "EXACTO";
-        }
-        if (absoluta.compareTo(config.getDescuadreLeve()) <= 0) {
-            return "LEVE";
-        }
-        return "GRAVE";
-    }
 }

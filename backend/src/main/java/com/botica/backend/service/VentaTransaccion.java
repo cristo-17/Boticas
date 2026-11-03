@@ -31,13 +31,13 @@ import com.botica.backend.model.VentaDetalle;
 import com.botica.backend.event.StockCriticoEvent;
 import com.botica.backend.util.Dinero;
 import com.botica.backend.util.FechaNegocio;
+import com.botica.backend.util.ReglasVenta;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
@@ -59,8 +59,6 @@ import java.util.Optional;
  */
 @Component
 class VentaTransaccion {
-
-    private static final int ESCALA_INTERMEDIA = 10;
 
     private final VentaDao ventaDao;
     private final LoteDao loteDao;
@@ -126,14 +124,13 @@ class VentaTransaccion {
                     .orElseThrow(PresentacionInvalidaException::new);
 
             int cantidadPresentacion = item.cantidad();
-            int factorConversion = presentacion.getFactorConversion();
-            int cantidadBaseTotal = cantidadPresentacion * factorConversion;
 
-            // Paso 3 + Anexo C regla 6: se redondea el TOTAL de línea, nunca el precio unitario primero.
-            BigDecimal totalLineaFinal = Dinero.redondear(
-                    presentacion.getPrecio().multiply(BigDecimal.valueOf(cantidadPresentacion)));
-            BigDecimal precioUnitarioBase = Dinero.redondear(
-                    presentacion.getPrecio().divide(BigDecimal.valueOf(factorConversion), ESCALA_INTERMEDIA, RoundingMode.HALF_UP));
+            // Paso 3 + Anexo C regla 6: se redondea el TOTAL de línea, nunca el precio unitario primero (ReglasVenta).
+            ReglasVenta.Linea linea = ReglasVenta.calcularLinea(
+                    presentacion.getPrecio(), cantidadPresentacion, presentacion.getFactorConversion());
+            int cantidadBaseTotal = linea.cantidadBase();
+            BigDecimal totalLineaFinal = linea.totalLinea();
+            BigDecimal precioUnitarioBase = linea.precioUnitarioBase();
 
             // Paso 5: lock FEFO, sin lotes vencidos. Paso 4: consumir en ese orden, repartiendo si hace falta.
             LocalDate hoy = fechaNegocio.hoy();
@@ -159,21 +156,13 @@ class VentaTransaccion {
                 restante -= consumir;
             }
 
-            BigDecimal totalAsignado = BigDecimal.ZERO;
+            // La última fila se lleva el resto exacto: la suma de filas es EXACTA al total de línea (ReglasVenta).
+            List<BigDecimal> totalesFila = ReglasVenta.repartirTotal(totalLineaFinal, cantidadesConsumidas, cantidadBaseTotal);
             int n = lotesUsados.size();
             for (int i = 0; i < n; i++) {
                 Lote lote = lotesUsados.get(i);
                 int consumido = cantidadesConsumidas.get(i);
-                BigDecimal totalFila;
-                if (i == n - 1) {
-                    // la última fila se lleva el resto exacto -- garantiza que la suma de filas sea EXACTA al total de línea, sin arrastre de redondeo.
-                    totalFila = totalLineaFinal.subtract(totalAsignado);
-                } else {
-                    BigDecimal proporcion = BigDecimal.valueOf(consumido)
-                            .divide(BigDecimal.valueOf(cantidadBaseTotal), ESCALA_INTERMEDIA, RoundingMode.HALF_UP);
-                    totalFila = Dinero.redondear(totalLineaFinal.multiply(proporcion));
-                    totalAsignado = totalAsignado.add(totalFila);
-                }
+                BigDecimal totalFila = totalesFila.get(i);
 
                 // Paso 7: precio y costo CONGELADOS -- nunca una referencia al precio/costo actual.
                 VentaDetalle detalle = VentaDetalle.builder()
@@ -197,7 +186,7 @@ class VentaTransaccion {
             }
 
             int stockRestante = disponibleTotal - cantidadBaseTotal;
-            if (stockRestante <= config.getUmbralStockBajo() && eventPublisher != null) {
+            if (ReglasVenta.dejaStockCritico(stockRestante, config.getUmbralStockBajo()) && eventPublisher != null) {
                 eventPublisher.publishEvent(new StockCriticoEvent(boticaId, item.productoId(), producto.getNombre(), stockRestante));
             }
 
@@ -213,8 +202,9 @@ class VentaTransaccion {
         // Anexo C regla 7: el IGV se EXTRAE del total ya cobrado, nunca se suma encima.
         BigDecimal igvTasa = config.getIgv();
         BigDecimal total = Dinero.redondear(totalVenta);
-        BigDecimal subtotal = Dinero.redondear(total.divide(BigDecimal.ONE.add(igvTasa), ESCALA_INTERMEDIA, RoundingMode.HALF_UP));
-        BigDecimal igv = total.subtract(subtotal);
+        Dinero.DesgloseIgv desglose = Dinero.extraerIgv(total, igvTasa);
+        BigDecimal subtotal = desglose.subtotal();
+        BigDecimal igv = desglose.igv();
 
         Venta venta = Venta.builder()
                 .boticaId(boticaId)
