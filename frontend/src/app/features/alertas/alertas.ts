@@ -18,7 +18,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { ConfigService } from '../../core/services/config.service';
 import { NotificacionService } from '../../core/services/notificacion.service';
 import { ReporteService } from '../../core/services/reporte.service';
-import { fechaLimaIso, sumarDias } from '../../core/utils/fecha-lima.util';
+import { fechaLimaIso, sumarDias, textoFechaLarga } from '../../core/utils/fecha-lima.util';
 import { GraficoResultadosComponent } from '../../shared/components/grafico-resultados/grafico-resultados';
 import { formatearMoneda } from '../../core/utils/moneda.util';
 
@@ -126,11 +126,7 @@ export class AlertasScreen implements OnInit, OnDestroy {
     return nombre ? `${saludoHora}, ${nombre}` : saludoHora;
   });
 
-  readonly fechaTexto = new Date().toLocaleDateString('es-PE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-  });
+  readonly fechaTexto = textoFechaLarga();
 
   readonly ultimaActualizacionTexto = computed(() =>
     FORMATO_HORA_SEGUNDOS.format(this.ultimaActualizacion()),

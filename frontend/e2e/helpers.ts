@@ -32,10 +32,14 @@ export async function login(
 export async function asegurarCajaAbierta(page: Page, montoInicial = '100.00') {
   await page.goto('/caja');
   const bloqueada = page.getByText('Ya existe una caja abierta hoy');
-  if (await bloqueada.isVisible().catch(() => false)) {
+  const monto = page.locator('#apertura-monto');
+  // [QA-005]: decidir recién cuando Caja terminó de cargar (si no, con una caja ya abierta
+  // isVisible() da false antes de que llegue /api/caja/hoy y el test espera un campo que nunca sale).
+  await expect(bloqueada.or(monto)).toBeVisible();
+  if (await bloqueada.isVisible()) {
     return;
   }
-  await page.locator('#apertura-monto').fill(montoInicial);
+  await monto.fill(montoInicial);
   await page.getByRole('button', { name: 'Abrir caja' }).click();
   await expect(page.getByText('Ya existe una caja abierta hoy')).toBeVisible();
 }

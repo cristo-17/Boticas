@@ -1,4 +1,6 @@
 import { TestBed } from '@angular/core/testing';
+import { of } from 'rxjs';
+import { vi } from 'vitest';
 import { signal } from '@angular/core';
 import { Router } from '@angular/router';
 import { HeaderComponent } from './header';
@@ -84,5 +86,21 @@ describe('HeaderComponent', () => {
     expect(chip.querySelector('.bs-conn__texto')?.textContent).toContain('En línea'); // sigue para lectores de pantalla
     expect(el.querySelector('.app-header__salir-texto')?.textContent).toContain('Salir');
     expect(el.querySelector('.app-header__salir-icono button')?.getAttribute('aria-label')).toBe('Salir');
+  });
+
+  it('RF-03: "Salir" (con texto y como ícono) cierra la sesión y lleva a /login', () => {
+    const auth = TestBed.inject(AuthService) as unknown as { cerrarSesion: () => unknown };
+    let cierres = 0;
+    auth.cerrarSesion = () => (cierres++, of(undefined));
+    const navegar = vi.spyOn(TestBed.inject(Router), 'navigateByUrl');
+    const fixture = TestBed.createComponent(HeaderComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+
+    (el.querySelector('.app-header__salir-texto button') as HTMLButtonElement).click();
+    (el.querySelector('.app-header__salir-icono button') as HTMLButtonElement).click();
+
+    expect(cierres).toBe(2);
+    expect(navegar).toHaveBeenCalledWith('/login');
   });
 });

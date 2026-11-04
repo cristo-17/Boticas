@@ -1,4 +1,4 @@
-import { fechaLimaIso, lunesDeLaSemana, rangoRapido, sumarDias } from './fecha-lima.util';
+import { fechaLimaIso, lunesDeLaSemana, rangoRapido, sumarDias, textoFechaLarga } from './fecha-lima.util';
 
 describe('fecha-lima.util (Tarea 18, Bloque C)', () => {
   // Domingo 2026-11-08 a las 23:30 en Lima = lunes 2026-11-09T04:30Z.
@@ -32,5 +32,17 @@ describe('fecha-lima.util (Tarea 18, Bloque C)', () => {
 
   it('mes anterior en marzo termina el 28 de febrero', () => {
     expect(rangoRapido('mes-anterior', martesMarzo)).toEqual({ desde: '2026-02-01', hasta: '2026-02-28' });
+  });
+});
+
+describe('textoFechaLarga', () => {
+  it('solo la primera letra en mayúscula: "Martes, 3 de noviembre" (antes "3 De Noviembre")', () => {
+    const mediodiaLima = new Date('2026-11-03T12:00:00-05:00');
+    expect(textoFechaLarga(mediodiaLima)).toBe('Martes, 3 de noviembre');
+    expect(textoFechaLarga(mediodiaLima, true)).toBe('Martes, 3 de noviembre de 2026');
+  });
+
+  it('usa el día de Lima, no el del navegador: las 23:30 de Lima siguen siendo el mismo día', () => {
+    expect(textoFechaLarga(new Date('2026-11-04T04:30:00Z'))).toBe('Martes, 3 de noviembre');
   });
 });

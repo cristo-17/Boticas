@@ -7,6 +7,7 @@ import { CajaService } from '../../core/services/caja.service';
 import { AperturaComponent } from './apertura/apertura';
 import { CierreComponent } from './cierre/cierre';
 import { CierreAdminComponent } from './cierre-admin/cierre-admin';
+import { textoFechaLarga } from '../../core/utils/fecha-lima.util';
 
 type TabCaja = 'apertura' | 'cierre';
 
@@ -40,12 +41,7 @@ export class CajaScreen implements OnInit {
     this.queryParams().get('tab') === 'cierre' ? 'cierre' : 'apertura',
   );
 
-  readonly fechaTexto = new Date().toLocaleDateString('es-PE', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  readonly fechaTexto = textoFechaLarga(new Date(), true);
 
   /** D-E2-1: el ADMINISTRADOR cierra eligiendo entre las cajas abiertas de la botica; el TECNICO, la suya. */
   readonly esAdministrador = computed(() => this.auth.usuarioActual()?.rol === 'ADMINISTRADOR');

@@ -104,6 +104,20 @@ class MermaServiceTest {
     }
 
     @Test
+    void registrar_conMotivoRoboOPerdidaSinObservacion_lanzaObservacionRequerida() {
+        when(contexto.boticaId()).thenReturn(BOTICA_ID);
+        when(mermaDao.bloquearLoteConPrecio(BOTICA_ID, 6L))
+                .thenReturn(Optional.of(new MermaDao.LoteParaMerma(6L, 2L, "Omeprazol 20 mg", "L-2311D", 5, new BigDecimal("11.50"))));
+        when(configService.obtener()).thenReturn(CONFIG);
+
+        assertThatThrownBy(() -> service.registrar(new NuevaMermaRequest(6L, 2, "Robo o pérdida", null)))
+                .isInstanceOf(ObservacionRequeridaException.class);
+        assertThatThrownBy(() -> service.registrar(new NuevaMermaRequest(6L, 2, "Robo o pérdida", "   ")))
+                .isInstanceOf(ObservacionRequeridaException.class);
+        verify(mermaDao, never()).insertar(any());
+    }
+
+    @Test
     void registrar_conMotivoQueNoEstaEnConfig_lanzaMotivoInvalido() {
         when(contexto.boticaId()).thenReturn(BOTICA_ID);
         when(mermaDao.bloquearLoteConPrecio(BOTICA_ID, 6L))

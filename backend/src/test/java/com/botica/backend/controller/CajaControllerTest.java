@@ -112,6 +112,28 @@ class CajaControllerTest {
     }
 
     @Test
+    void cerrar_conObservacionesDe501Caracteres_devuelve400FormatoInvalido_sinLlamarAlServicio() throws Exception {
+        String observaciones = "x".repeat(501);
+
+        mockMvc.perform(post("/api/caja/cerrar")
+                        .contentType("application/json")
+                        .content("{\"montoContado\": 100.00, \"observaciones\": \"" + observaciones + "\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("FORMATO_INVALIDO"));
+        org.mockito.Mockito.verifyNoInteractions(cajaService);
+    }
+
+    @Test
+    void cerrar_conObservacionesDe500Caracteres_pasaLaValidacion() throws Exception {
+        when(cajaService.cerrar(any())).thenReturn(cajaResponseAbierta());
+
+        mockMvc.perform(post("/api/caja/cerrar")
+                        .contentType("application/json")
+                        .content("{\"montoContado\": 100.00, \"observaciones\": \"" + "x".repeat(500) + "\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void resumenCierre_nuncaIncluyeMontoEsperadoNiDiferenciaNiSemaforo_conteoCiego() throws Exception {
         ResumenCierreResponse resumen = new ResumenCierreResponse(new BigDecimal("340.00"), 52L, 4L);
         when(cajaService.obtenerResumenCierre(1L)).thenReturn(resumen);

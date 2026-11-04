@@ -89,3 +89,19 @@ export function rangoRapido(rango: Exclude<RangoRapido, 'personalizado'>, ahora:
       return { desde: sumarDias(hoy, -29), hasta: hoy };
   }
 }
+
+/**
+ * "Martes, 3 de noviembre" (o "… de 2026" con año): fecha larga de Lima con SOLO la
+ * primera letra en mayúscula. Antes era `text-transform: capitalize` en el CSS, que
+ * ponía "3 De Noviembre" (mayúscula en cada palabra).
+ */
+export function textoFechaLarga(fecha: Date = new Date(), conAnio = false): string {
+  const texto = fecha.toLocaleDateString('es-PE', {
+    timeZone: 'America/Lima',
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    ...(conAnio ? { year: 'numeric' as const } : {}),
+  });
+  return texto.charAt(0).toLocaleUpperCase('es') + texto.slice(1);
+}

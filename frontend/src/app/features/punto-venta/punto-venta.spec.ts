@@ -7,6 +7,7 @@ import { Producto } from '../../core/models/producto.model';
 import { RELOJ } from '../../core/utils/lector-usb';
 import { environment } from '../../../environments/environment';
 import { PuntoVentaScreen } from './punto-venta';
+import { vi } from 'vitest';
 
 const BASE_URL = `${environment.apiUrl}/productos`;
 const EAN = '7751234000115';
@@ -119,5 +120,75 @@ describe('PuntoVentaScreen — lector USB en el buscador (DIF-05)', () => {
     const { fixture } = await crear();
     expect(fixture.nativeElement.textContent).not.toContain('Simular escaneo');
     expect(fixture.nativeElement.querySelector('app-lector-camara')).not.toBeNull();
+  });
+});
+
+/**
+ * RF-08 ([FE-008]): la búsqueda espera 300 ms sin teclas antes de pedir, y una respuesta
+ * vieja nunca pisa a la nueva (switchMap cancela la consulta anterior).
+ */
+describe('PuntoVentaScreen — búsqueda con debounce y switchMap (RF-08)', () => {
+  let http: HttpTestingController;
+
+  beforeEach(() => {
+    TestBed.configureTestingModule({
+      imports: [PuntoVentaScreen],
+      providers: [
+        provideHttpClient(withInterceptors([errorInterceptor])),
+        provideHttpClientTesting(),
+        provideRouter([]),
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+  });
+
+  afterEach(() => vi.useRealTimers());
+
+  const busquedas = () => http.match((r) => r.url === BASE_URL && r.params.has('buscar'));
+
+  async function crear() {
+    vi.useFakeTimers();
+    const fixture = TestBed.createComponent(PuntoVentaScreen);
+    fixture.detectChanges();
+    await vi.advanceTimersByTimeAsync(300);
+    busquedas().forEach((r) => r.flush([])); // la búsqueda vacía del arranque
+    const campo = fixture.nativeElement.querySelector('#pos-query') as HTMLInputElement;
+    return { fixture, pantalla: fixture.componentInstance, campo };
+  }
+
+  function escribir(campo: HTMLInputElement, texto: string): void {
+    campo.value = texto;
+    campo.dispatchEvent(new InputEvent('input', { inputType: 'insertText', data: texto.at(-1) ?? '', bubbles: true }));
+  }
+
+  it('tres teclas seguidas (< 300 ms entre sí) hacen UNA sola petición, con el texto final, a los 300 ms', async () => {
+    const { campo } = await crear();
+    escribir(campo, 'i');
+    await vi.advanceTimersByTimeAsync(100);
+    escribir(campo, 'ib');
+    await vi.advanceTimersByTimeAsync(100);
+    escribir(campo, 'ibu');
+    await vi.advanceTimersByTimeAsync(299);
+    expect(busquedas()).toEqual([]); // todavía no
+
+    await vi.advanceTimersByTimeAsync(1);
+    const pedidos = busquedas();
+    expect(pedidos.map((r) => r.request.params.get('buscar'))).toEqual(['ibu']);
+    pedidos[0].flush([PRODUCTO]);
+  });
+
+  it('una respuesta vieja que llega tarde no pisa a la nueva: la consulta anterior se cancela', async () => {
+    const { pantalla, campo } = await crear();
+    escribir(campo, 'para');
+    await vi.advanceTimersByTimeAsync(300);
+    const [vieja] = busquedas();
+
+    escribir(campo, 'ibu');
+    await vi.advanceTimersByTimeAsync(300);
+    const [nueva] = busquedas();
+
+    expect(vieja.cancelled).toBe(true);
+    nueva.flush([PRODUCTO]);
+    expect(pantalla.resultados().map((p) => p.nombre)).toEqual(['Ibuprofeno 400 mg']);
   });
 });
