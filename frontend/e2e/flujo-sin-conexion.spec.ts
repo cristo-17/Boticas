@@ -9,10 +9,15 @@ import { login } from './helpers';
  * 2. La red se corta a la mitad del envío: el servidor registró la venta pero
  *    la respuesta se pierde. La venta queda en la cola con la misma clave y el
  *    reenvío devuelve la misma venta (idempotencia), no una segunda.
- * Usa un técnico demo con su propia caja (no choca con los otros flujos).
+ * 3. (PWA) La caja se abrió en otro equipo y el cajero va directo a Punto de
+ *    Venta, sin pasar por Caja: igual vende sin conexión (el Shell consulta la
+ *    caja abierta al iniciar la sesión). Una recarga con la venta todavía en la
+ *    cola no la pierde.
+ * Usa técnicos demo con su propia caja (no chocan con los otros flujos).
  */
 const TECNICO_DEMO = { usuario: 'demo_esperanza_andres', password: 'demo123' } as const;
 const API = process.env['E2E_API_URL'] ?? 'http://localhost:8080/api';
+const TECNICO_OTRO_EQUIPO = { usuario: 'demo_sanmartin_karina', password: 'demo123' } as const;
 const PRODUCTO = 'Cetirizina 10 mg';
 
 test.describe.configure({ mode: 'serial' });
@@ -81,6 +86,56 @@ test('la red se corta a la mitad del envío: el reenvío con la misma clave no d
   expect(ventas[0].vendidaSinConexion).toBe(false);
 });
 
+test('caja abierta en otro equipo: directo a Punto de Venta, vende sin conexión y una recarga no pierde la cola', async ({ page, context, request }) => {
+  // La caja se abre por la API (como desde otro equipo): este navegador nunca la vio en la pantalla Caja.
+  const token = await tokenDe(request, TECNICO_OTRO_EQUIPO);
+  const apertura = await request.post(`${API}/caja/abrir`, {
+    headers: { Authorization: `Bearer ${token}` },
+    data: { montoInicial: 50, turno: 'Tarde' },
+  });
+  expect([200, 409]).toContain(apertura.status()); // 409: ya estaba abierta desde otra corrida
+
+  const foto = page.waitForResponse((r) => r.url().includes('/api/productos/catalogo-offline') && r.ok());
+  const cajaHoy = page.waitForResponse((r) => r.url().endsWith('/api/caja/hoy') && r.ok()).catch(() => null);
+  await login(page, 'Tarde', TECNICO_OTRO_EQUIPO);
+  await foto;
+  // Sin esperarla a la fuerza: si la app no la pidiera, el test tiene que fallar en la venta, no acá.
+  await Promise.race([cajaHoy, page.waitForTimeout(5_000)]);
+  await page.goto('/punto-venta');
+
+  await context.setOffline(true);
+  await expect(page.getByTestId('pos-sin-conexion')).toBeVisible();
+  await agregarAlCarrito(page);
+  await page.getByRole('button', { name: /Cobrar S\/ [\d.]+/ }).click();
+  await expect(page.getByText('Venta guardada sin conexión. Se enviará sola.')).toBeVisible();
+  await expect(page.getByTestId('contador-cola')).toHaveText('1');
+
+  // Vuelve la red pero el servidor no contesta las ventas: la venta sigue en la cola y se recarga la app.
+  await page.route('**/api/ventas', (ruta) =>
+    ruta.request().method() === 'POST' ? ruta.abort('internetdisconnected') : ruta.continue(),
+  );
+  await context.setOffline(false);
+  await page.reload();
+  await expect(page.getByTestId('contador-cola')).toHaveText('1'); // la recarga no la perdió (IndexedDB)
+
+  const enviadas = escucharPostVentas(page);
+  await page.unroute('**/api/ventas');
+  // La cola reintenta sola (al reconectar o cada minuto); "Enviar ahora" solo si todavía no salió.
+  const enviarAhora = page.getByRole('button', { name: 'Enviar ahora' });
+  await page.getByTestId('indicador-conexion').click();
+  if (await enviarAhora.isVisible()) await enviarAhora.click();
+  await expect(page.getByTestId('contador-cola')).toHaveCount(0, { timeout: 70_000 });
+  const ventas = await ventasConClave(request, page, enviadas[0].claveIdempotencia);
+  expect(ventas, 'una sola venta con esa clave en el servidor').toHaveLength(1);
+  expect(ventas[0].vendidaSinConexion).toBe(true);
+});
+
+async function tokenDe(request: APIRequestContext, cred: { usuario: string; password: string }): Promise<string> {
+  const r = await request.post(`${API}/auth/login`, { data: { ...cred, turno: 'Tarde' } });
+  expect(r.ok()).toBe(true);
+  return ((await r.json()) as { token: string }).token;
+}
+
 interface CuerpoVenta {
   claveIdempotencia: string;
   sinConexion?: { cajaId: number; horaDispositivo: string };
@@ -95,11 +150,12 @@ function escucharPostVentas(page: Page): CuerpoVenta[] {
 }
 
 async function prepararPuntoDeVenta(page: Page): Promise<void> {
-  await login(page, 'Tarde', TECNICO_DEMO);
-  await cajaAbierta(page);
+  // Desde la PWA el catálogo se baja al iniciar la sesión (Shell), no al entrar a Punto de Venta.
   const foto = page.waitForResponse((r) => r.url().includes('/api/productos/catalogo-offline') && r.ok());
-  await page.goto('/punto-venta');
+  await login(page, 'Tarde', TECNICO_DEMO);
   await foto; // la foto del catálogo ya está en el dispositivo
+  await cajaAbierta(page);
+  await page.goto('/punto-venta');
 }
 
 /** Como asegurarCajaAbierta, pero esperando a que la pantalla termine de cargar: el segundo test ya encuentra la caja abierta. */

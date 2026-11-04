@@ -16,6 +16,25 @@
 
   @if (abierto()) {
     <div class="header-cola__panel" role="dialog" aria-label="Ventas sin enviar">
+      <div class="header-cola__catalogo" data-testid="catalogo-offline">
+        <p class="header-cola__catalogo-texto">
+          <span class="header-cola__catalogo-titulo">Catálogo para vender sin conexión:</span>
+          {{ textoCatalogo() }}
+        </p>
+        <button
+          type="button"
+          class="header-cola__actualizar"
+          [disabled]="catalogo.actualizando() || !enLinea()"
+          (click)="actualizarCatalogo()"
+        >
+          {{ catalogo.actualizando() ? 'Actualizando…' : 'Actualizar ahora' }}
+        </button>
+        @if (catalogo.error(); as error) {
+          <p class="header-cola__catalogo-error" role="alert">{{ error }}</p>
+        }
+        <p class="header-cola__version" data-testid="version-app">Versión: app {{ versionApp }} · servidor {{ versionServidor() }}</p>
+      </div>
+
       <div class="header-cola__titulo">Ventas sin enviar</div>
 
       @if (!hayAlgo()) {

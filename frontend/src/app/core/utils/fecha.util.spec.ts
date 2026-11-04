@@ -1,4 +1,4 @@
-import { diasHasta, textoAlertaVencimiento } from './fecha.util';
+import { diasHasta, textoAlertaVencimiento, textoHaceCuanto } from './fecha.util';
 
 describe('diasHasta', () => {
   it('da 0 para la fecha de hoy', () => {
@@ -55,5 +55,23 @@ describe('textoAlertaVencimiento', () => {
     const dia = String(enUnaSemana.getDate()).padStart(2, '0');
     const iso = `${anio}-${mes}-${dia}`;
     expect(textoAlertaVencimiento('CRITICO', iso)).toBe('Vence en 7 días');
+  });
+
+  it('singular y "hoy": "Vence en 1 día", "Vencido hace 1 día", "Vence hoy" (antes "Vence en 1 días")', () => {
+    const desde = new Date(2026, 10, 3);
+    expect(textoAlertaVencimiento('CRITICO', '2026-11-04', desde)).toBe('Vence en 1 día');
+    expect(textoAlertaVencimiento('VENCIDO', '2026-11-02', desde)).toBe('Vencido hace 1 día');
+    expect(textoAlertaVencimiento('CRITICO', '2026-11-03', desde)).toBe('Vence hoy');
+  });
+});
+
+describe('textoHaceCuanto', () => {
+  const ahora = Date.parse('2026-11-03T21:30:00-05:00');
+  it('minutos, horas y días', () => {
+    expect(textoHaceCuanto('2026-11-03T21:29:40-05:00', ahora)).toBe('hace menos de 1 min');
+    expect(textoHaceCuanto('2026-11-03T21:23:00-05:00', ahora)).toBe('hace 7 min');
+    expect(textoHaceCuanto('2026-11-03T19:00:00-05:00', ahora)).toBe('hace 2 h');
+    expect(textoHaceCuanto('2026-11-02T20:00:00-05:00', ahora)).toBe('hace 1 día');
+    expect(textoHaceCuanto('2026-10-30T20:00:00-05:00', ahora)).toBe('hace 4 días');
   });
 });

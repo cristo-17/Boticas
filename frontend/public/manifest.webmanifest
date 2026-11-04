@@ -1,57 +1,37 @@
 {
-  "name": "frontend",
-  "short_name": "frontend",
+  "id": "/",
+  "name": "BoticaSys",
+  "short_name": "BoticaSys",
+  "description": "Gestión para boticas independientes: punto de venta, inventario con vencimientos, caja y reportes. Sigue vendiendo sin conexión.",
+  "lang": "es-PE",
+  "dir": "ltr",
   "display": "standalone",
-  "scope": "./",
-  "start_url": "./",
+  "orientation": "any",
+  "scope": "/",
+  "start_url": "/",
+  "theme_color": "#16875f",
+  "background_color": "#f5f8f6",
+  "categories": ["business", "medical", "productivity"],
   "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "logo.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ],
+  "screenshots": [
     {
-      "src": "icons/icon-72x72.png",
-      "sizes": "72x72",
+      "src": "screenshots/escritorio-1366x900.png",
+      "sizes": "1366x900",
       "type": "image/png",
-      "purpose": "maskable any"
+      "form_factor": "wide",
+      "label": "Panel del administrador con las ventas de los últimos 7 días"
     },
     {
-      "src": "icons/icon-96x96.png",
-      "sizes": "96x96",
+      "src": "screenshots/celular-390x844.png",
+      "sizes": "390x844",
       "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "icons/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
+      "form_factor": "narrow",
+      "label": "Panel del técnico en el celular"
     }
   ]
 }

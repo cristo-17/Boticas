@@ -1,4 +1,4 @@
-import { Component, OnInit, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, OnInit, computed, effect, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
@@ -12,6 +12,7 @@ import { MetodoPago, OrigenCaptura, RecetaVenta } from '../../core/models/venta.
 import { ProductoService } from '../../core/services/producto.service';
 import { VentaService } from '../../core/services/venta.service';
 import { CatalogoOfflineService } from '../../core/services/catalogo-offline.service';
+import { VentaEnCursoService } from '../../core/services/venta-en-curso.service';
 import { ColaVentasService } from '../../core/services/cola-ventas.service';
 import { ConexionService } from '../../core/services/conexion.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -129,6 +130,11 @@ export class PuntoVentaScreen implements OnInit {
   private readonly busqueda$ = new Subject<string>();
 
   constructor() {
+    // PWA: con líneas en el carrito o un cobro esperando respuesta, la app no se recarga sola (ActualizacionAppService).
+    const ventaEnCurso = inject(VentaEnCursoService);
+    effect(() => ventaEnCurso.marcar(!this.carrito.vacio() || this.cobrando()));
+    inject(DestroyRef).onDestroy(() => ventaEnCurso.marcar(false));
+
     this.busqueda$
       .pipe(
         debounceTime(300),

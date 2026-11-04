@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 150" role="img" aria-label="BoticaSys">
+  <title>BoticaSys</title>
+  <defs>
+    <clipPath id="boticasys-casa">
+      <path d="M77 5 L146 81 H8 Z M23 85 H137 V150 H23 Z"/>
+    </clipPath>
+  </defs>
+  <g clip-path="url(#boticasys-casa)">
+    <rect width="150" height="150" fill="#35c190"/>
+    <path d="M77 5 C60 34 52 96 103 150 H0 V0 Z" fill="#16875f"/>
+  </g>
+  <g fill="#ffffff">
+    <rect x="97" y="7" width="21" height="22.5"/>
+    <rect x="73" y="32" width="22" height="22"/>
+    <path d="M97 32 H141 V54 H118 V77 H97 Z"/>
+  </g>
+</svg>

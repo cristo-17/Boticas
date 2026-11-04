@@ -150,4 +150,30 @@ describe('ColaVentasService', () => {
     expect(cola.propias()[0].sinConexion).toBe(true);
     expect(cola.cantidadDeCaja(11)).toBe(1);
   });
+
+  it('una recarga de la app (actualización de la PWA) no pierde la cola: la instancia nueva la lee del almacén', async () => {
+    const antes = await crear([]);
+    entrar(1, 'Rosa Quispe');
+    await antes.guardar(entrada('x', 1, 1));
+    expect(antes.cantidadPropias()).toBe(1);
+
+    // Recargar = otro inyector y otra instancia del servicio, el mismo almacén del dispositivo.
+    TestBed.resetTestingModule();
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        { provide: AlmacenOffline, useValue: almacen },
+        { provide: AuthService, useValue: { usuarioActual, claims: () => claims } },
+        { provide: CatalogoOfflineService, useValue: { descargar: () => of(null) } },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    const despues = TestBed.inject(ColaVentasService);
+    await despues.cargar();
+    expect(despues.cantidadPropias()).toBe(1);
+    expect(despues.propias()[0].claveIdempotencia).toBe('x');
+    await hastaElProximoPost();
+    http.match(URL).forEach((r) => r.flush({ id: 1, revisiones: [] })); // el efecto de entrada la envía
+  });
 });

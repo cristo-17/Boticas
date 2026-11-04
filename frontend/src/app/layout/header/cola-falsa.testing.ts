@@ -14,3 +14,14 @@ export function colaFalsa(propias = signal<EntradaCola[]>([])) {
   };
 }
 
+
+/** Catálogo sin conexión de prueba con la forma que lee el panel. */
+export function catalogoFalso() {
+  return {
+    cantidadProductos: signal<number | null>(null),
+    generadoEn: signal<string | null>(null),
+    actualizando: signal(false),
+    error: signal<string | null>(null),
+    descargar: () => ({ subscribe: () => {} }),
+  };
+}

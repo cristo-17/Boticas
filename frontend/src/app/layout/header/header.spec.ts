@@ -7,7 +7,9 @@ import { ConexionService } from '../../core/services/conexion.service';
 import { Usuario } from '../../core/models/usuario.model';
 import { EstadoConexion } from '../../core/models/conexion.model';
 import { ColaVentasService } from '../../core/services/cola-ventas.service';
-import { colaFalsa } from './cola-falsa.testing';
+import { catalogoFalso, colaFalsa } from './cola-falsa.testing';
+import { CatalogoOfflineService } from '../../core/services/catalogo-offline.service';
+import { ConfigService } from '../../core/services/config.service';
 
 const USUARIO: Usuario = {
   id: 1,
@@ -33,6 +35,8 @@ describe('HeaderComponent', () => {
         { provide: AuthService, useValue: { usuarioActual, cerrarSesion: () => ({ subscribe: () => {} }) } },
         { provide: ConexionService, useValue: { estado: estadoConexion, enLinea: () => true, comprobar: async () => true } },
         { provide: ColaVentasService, useValue: colaFalsa() },
+        { provide: CatalogoOfflineService, useValue: catalogoFalso() },
+        { provide: ConfigService, useValue: { config: signal(null) } },
         { provide: Router, useValue: { navigateByUrl: () => {} } },
       ],
     });

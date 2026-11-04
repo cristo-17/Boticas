@@ -35,5 +35,18 @@ export function textoAlertaVencimiento(
     return null;
   }
   const dias = diasHasta(fechaVencimiento, desde);
-  return dias < 0 ? `Vencido hace ${Math.abs(dias)} días` : `Vence en ${dias} días`;
+  if (dias < 0) return `Vencido hace ${Math.abs(dias)} ${Math.abs(dias) === 1 ? 'día' : 'días'}`;
+  if (dias === 0) return 'Vence hoy';
+  return `Vence en ${dias} ${dias === 1 ? 'día' : 'días'}`;
+}
+
+/** "hace menos de 1 min", "hace 5 min", "hace 2 h", "hace 3 días": antigüedad de la foto del catálogo (panel de conexión). */
+export function textoHaceCuanto(iso: string, ahora: number = Date.now()): string {
+  const min = Math.floor((ahora - new Date(iso).getTime()) / 60_000);
+  if (min < 1) return 'hace menos de 1 min';
+  if (min < 60) return `hace ${min} min`;
+  const horas = Math.floor(min / 60);
+  if (horas < 24) return `hace ${horas} h`;
+  const dias = Math.floor(horas / 24);
+  return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
 }

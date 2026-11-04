@@ -9,6 +9,8 @@ import { ErrorBannerComponent } from '../../shared/components/error-banner/error
 import { AlertaService } from '../../core/services/alerta.service';
 import { ConexionService } from '../../core/services/conexion.service';
 import { ConfigService } from '../../core/services/config.service';
+import { CatalogoOfflineService } from '../../core/services/catalogo-offline.service';
+import { CajaService } from '../../core/services/caja.service';
 import { ConfigNegocio } from '../../core/models/config.model';
 import { environment } from '../../../environments/environment';
 
@@ -24,8 +26,12 @@ const CONFIG: ConfigNegocio = {
 /** DIF-03 (Tarea 0B-B): si /api/config no cargó al iniciar, se avisa y se vuelve a pedir después del login. */
 describe('Shell — configuración de negocio', () => {
   let http: HttpTestingController;
+  let consultasCaja: number;
+  let catalogoIniciado: number;
 
   beforeEach(() => {
+    consultasCaja = 0;
+    catalogoIniciado = 0;
     TestBed.configureTestingModule({
       imports: [Shell],
       providers: [
@@ -34,6 +40,11 @@ describe('Shell — configuración de negocio', () => {
         provideRouter([]),
         { provide: AlertaService, useValue: { listarAlertas: () => of([]) } },
         { provide: ConexionService, useValue: { estado: signal('online') } },
+        {
+          provide: CatalogoOfflineService,
+          useValue: { mantenerActualizado: () => (catalogoIniciado++, () => {}) },
+        },
+        { provide: CajaService, useValue: { obtenerCajaDeHoy: () => (consultasCaja++, of(null)) } },
       ],
     });
     // Header, navegación y banner de conexión no son lo que se prueba acá.
@@ -82,5 +93,12 @@ describe('Shell — configuración de negocio', () => {
 
     await crear();
     http.expectNone(URL_CONFIG);
+  });
+
+  it('al nacer (después del login) deja listo lo de vender sin conexión: catálogo y caja abierta conocida', async () => {
+    await crear();
+    http.expectOne(URL_CONFIG).flush(CONFIG);
+    expect(catalogoIniciado).toBe(1);
+    expect(consultasCaja).toBe(1);
   });
 });
