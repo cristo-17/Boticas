@@ -1,8 +1,14 @@
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Injectable, inject, signal } from '@angular/core';
-import { Observable, throwError } from 'rxjs';
-import { catchError, finalize, tap } from 'rxjs/operators';
+import { Observable, defer, from, throwError } from 'rxjs';
+import { catchError, finalize, map, switchMap, tap, timeout } from 'rxjs/operators';
 import { NuevaVentaRequest, Venta } from '../models/venta.model';
+import { EntradaCola } from '../models/offline.model';
+import { AuthService } from './auth.service';
+import { CajaService } from './caja.service';
+import { ColaVentasService, TIEMPO_ESPERA_VENTA_MS } from './cola-ventas.service';
+import { ConexionService } from './conexion.service';
+import { esFalloDeRed } from '../utils/red.util';
 import { PaginaResponse } from '../models/pagina.model';
 import { ErrorTraducido } from '../interceptors/error.interceptor';
 import { AlertaService } from './alerta.service';
@@ -10,10 +16,32 @@ import { environment } from '../../../environments/environment';
 
 const BASE_URL = `${environment.apiUrl}/ventas`;
 
+/**
+ * Tarea 22: resultado de cobrar. `registrada` = el servidor respondió 200;
+ * `pendiente` = no hubo respuesta: la venta quedó en la cola del dispositivo
+ * (ya ocurrió en el mostrador) y se enviará sola.
+ */
+export type ResultadoCobro = { tipo: 'registrada'; venta: Venta } | { tipo: 'pendiente'; claveIdempotencia: string };
+
+/** Tarea 22: lo que la cola necesita además del cuerpo (§3, §7): sin montos. */
+export interface DetalleParaCola {
+  productos: string[];
+  unidadesPorProducto: Record<number, number>;
+}
+
+/** Error propio cuando ya se sabe que no hay conexión: ni se intenta el POST. */
+class SinConexionConocida extends Error {
+  override readonly name = 'TimeoutError';
+}
+
 @Injectable({ providedIn: 'root' })
 export class VentaService {
   private readonly http = inject(HttpClient);
   private readonly alertaService = inject(AlertaService);
+  private readonly auth = inject(AuthService);
+  private readonly cajaService = inject(CajaService);
+  private readonly cola = inject(ColaVentasService);
+  private readonly conexion = inject(ConexionService);
 
   private readonly _cargando = signal(false);
   readonly cargando = this._cargando.asReadonly();
@@ -39,7 +67,15 @@ export class VentaService {
   // requiereReceta, la receta es obligatoria → 400 RECETA_REQUERIDA (el mensaje del servidor
   // nombra los productos). 400 RECETA_INVALIDA (fecha de emisión futura), 400 FORMATO_INVALIDO
   // (sin número o CMP que no sean de 1 a 6 dígitos). La respuesta trae `receta` (o null).
-  registrarVenta(request: Omit<NuevaVentaRequest, 'claveIdempotencia'>): Observable<Venta> {
+  // Tarea 22 (§3): primero se escribe la venta en la cola (IndexedDB) y después se envía. Con
+  // respuesta del servidor, la entrada se borra (200 o error de negocio: la venta no ocurrió).
+  // Sin respuesta (red, 15 s, 502-504) o ya sin conexión, queda en la cola como venta sin
+  // conexión y el resultado es `pendiente`. items[].precioCobrado viaja siempre: en línea el
+  // servidor lo ignora. Sin una caja abierta conocida no hay cola: es el flujo de antes.
+  registrarVenta(
+    request: Omit<NuevaVentaRequest, 'claveIdempotencia' | 'sinConexion'>,
+    detalle: DetalleParaCola = { productos: [], unidadesPorProducto: {} },
+  ): Observable<ResultadoCobro> {
     this._cargando.set(true);
     this._error.set(null);
     let clave = this._claveIdempotencia();
@@ -47,15 +83,73 @@ export class VentaService {
       clave = crypto.randomUUID();
       this._claveIdempotencia.set(clave);
     }
-    const cuerpo: NuevaVentaRequest = { ...request, claveIdempotencia: clave };
-    return this.http.post<Venta>(BASE_URL, cuerpo).pipe(
-      tap(() => {
+    const claveFija = clave;
+    const cuerpo: Omit<NuevaVentaRequest, 'sinConexion'> = { ...request, claveIdempotencia: claveFija };
+
+    return defer(() => from(this.prepararEntrada(cuerpo, detalle))).pipe(
+      switchMap((entrada) => {
+        const envio$ =
+          entrada && !this.conexion.enLinea()
+            ? throwError(() => new SinConexionConocida())
+            : this.http.post<Venta>(BASE_URL, cuerpo).pipe(timeout(TIEMPO_ESPERA_VENTA_MS));
+        return envio$.pipe(
+          switchMap((venta) =>
+            from(entrada ? this.cola.quitar(claveFija) : Promise.resolve()).pipe(
+              map((): ResultadoCobro => ({ tipo: 'registrada', venta })),
+            ),
+          ),
+          catchError((err) => {
+            if (entrada && esFalloDeRed(err)) {
+              this.conexion.reportarSinRed(); // el tiempo de espera de rxjs no pasa por el interceptor
+              return from(this.cola.marcarSinConexion(claveFija)).pipe(
+                map((): ResultadoCobro => ({ tipo: 'pendiente', claveIdempotencia: claveFija })),
+              );
+            }
+            // Con respuesta del servidor la venta no ocurrió: fuera de la cola, error en pantalla (como antes).
+            return from(entrada ? this.cola.quitar(claveFija) : Promise.resolve()).pipe(
+              switchMap(() => this.manejarError(err, 'No se pudo registrar la venta.')),
+            );
+          }),
+        );
+      }),
+      tap((resultado) => {
+        // registrada o en la cola: en los dos casos este cobro terminó y el próximo lleva clave nueva.
         this._claveIdempotencia.set(null);
-        this.alertaService.obtenerResumen(true).subscribe({ error: () => {} });
-      }), // solo se limpia en éxito -- el reintento tras un error reusa la misma clave
-      catchError((err) => this.manejarError(err, 'No se pudo registrar la venta.')),
+        if (resultado.tipo === 'registrada') {
+          this.alertaService.obtenerResumen(true).subscribe({ error: () => {} });
+        }
+      }), // tras un error de negocio la clave se conserva: el reintento reusa la misma
       finalize(() => this._cargando.set(false)),
     );
+  }
+
+  /**
+   * La entrada de la cola, ya escrita en disco. null si no se puede vender sin
+   * conexión (sin caja abierta conocida o sin sesión vigente, §9): entonces la
+   * venta va solo en línea, como antes de la Tarea 22.
+   */
+  private async prepararEntrada(cuerpo: Omit<NuevaVentaRequest, 'sinConexion'>, detalle: DetalleParaCola): Promise<EntradaCola | null> {
+    const caja = this.cajaService.cajaAbiertaConocida();
+    const claims = this.auth.claims();
+    const usuario = this.auth.usuarioActual();
+    if (!caja || !claims || !usuario || !this.auth.sesionVigente()) return null;
+    const entrada: EntradaCola = {
+      claveIdempotencia: cuerpo.claveIdempotencia,
+      orden: await this.cola.siguienteOrden(),
+      usuarioId: claims.usuarioId,
+      usuarioNombre: usuario.nombre,
+      boticaId: claims.boticaId,
+      cajaId: caja.id,
+      horaDispositivo: horaLocalIso(new Date()),
+      sinConexion: false,
+      estado: 'PENDIENTE',
+      ultimoError: null,
+      cuerpo,
+      productos: detalle.productos,
+      unidadesPorProducto: detalle.unidadesPorProducto,
+    };
+    await this.cola.guardar(entrada);
+    return entrada;
   }
 
   // GET /api/ventas
@@ -89,4 +183,13 @@ export class VentaService {
     this._error.set(err.traducido?.mensaje ?? mensajeDefecto);
     return throwError(() => err);
   }
+}
+
+/** ISO con el desfase del reloj del dispositivo (p. ej. 2026-11-03T14:05:12.345-05:00): lo que dijo el aparato, tal cual. */
+function horaLocalIso(d: Date): string {
+  const off = -d.getTimezoneOffset();
+  const signo = off >= 0 ? '+' : '-';
+  const dos = (n: number) => String(Math.floor(Math.abs(n))).padStart(2, '0');
+  const local = new Date(d.getTime() + off * 60_000).toISOString().slice(0, 23);
+  return `${local}${signo}${dos(off / 60)}:${dos(off % 60)}`;
 }

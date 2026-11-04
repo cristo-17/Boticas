@@ -59,8 +59,10 @@ public class VentaDaoJdbc implements VentaDao {
 
     @Override
     public Venta insertarCabecera(Venta venta) {
-        String sql = "INSERT INTO ventas (botica_id, usuario_id, caja_id, subtotal, igv, igv_tasa, total, metodo_pago, clave_idempotencia, sincronizada) " +
-                "VALUES (:boticaId, :usuarioId, :cajaId, :subtotal, :igv, :igvTasa, :total, :metodoPago, :claveIdempotencia, :sincronizada)";
+        String sql = "INSERT INTO ventas (botica_id, usuario_id, caja_id, subtotal, igv, igv_tasa, total, metodo_pago, clave_idempotencia, sincronizada, " +
+                "vendida_sin_conexion, hora_dispositivo) " +
+                "VALUES (:boticaId, :usuarioId, :cajaId, :subtotal, :igv, :igvTasa, :total, :metodoPago, :claveIdempotencia, :sincronizada, " +
+                ":vendidaSinConexion, :horaDispositivo)";
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", venta.getBoticaId())
                 .addValue("usuarioId", venta.getUsuarioId())
@@ -71,7 +73,9 @@ public class VentaDaoJdbc implements VentaDao {
                 .addValue("total", venta.getTotal())
                 .addValue("metodoPago", venta.getMetodoPago())
                 .addValue("claveIdempotencia", venta.getClaveIdempotencia())
-                .addValue("sincronizada", venta.isSincronizada());
+                .addValue("sincronizada", venta.isSincronizada())
+                .addValue("vendidaSinConexion", venta.isVendidaSinConexion())
+                .addValue("horaDispositivo", venta.getHoraDispositivo());
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(sql, params, keyHolder, new String[]{"id"});
         Long id = keyHolder.getKey().longValue();

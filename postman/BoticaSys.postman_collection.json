@@ -5347,6 +5347,845 @@
       ]
     },
     {
+      "name": "Sin conexión (Tarea 22)",
+      "description": "D-E2-7: una venta con sinConexion ya ocurrió en el mostrador. Se registra siempre y cada problema queda como revisión, que resuelve el ADMINISTRADOR. Crea su propio producto y lote en cada corrida.",
+      "item": [
+        {
+          "name": "Limpieza: cerrar la caja que haya quedado abierta",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/cerrar",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"montoContado\": 0, \"observaciones\": \"Cierre de limpieza de la colección de Postman\" }"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"200 (había una) o 409 CAJA_NO_ABIERTA (no había)\", () => pm.expect([200, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Abrir caja (TECNICO)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/abrir",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"montoInicial\": 100.0, \"turno\": \"Tarde\" }"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set(\"scCajaId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Crear producto propio (ADMINISTRADOR)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nombre\": \"Sin conexión Postman {{scCodigo}}\",\n  \"laboratorio\": null,\n  \"categoria\": \"Otros\",\n  \"codigoBarras\": \"{{scCodigo}}\",\n  \"unidadNombre\": \"tableta\",\n  \"requiereReceta\": false,\n  \"presentaciones\": [ { \"etiqueta\": \"Unidad\", \"factorConversion\": 1, \"precio\": 2.00 } ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"scCodigo\", \"SC\" + Date.now());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const b = pm.response.json();",
+                  "pm.collectionVariables.set(\"scProductoId\", b.id);",
+                  "pm.collectionVariables.set(\"scUnidadId\", b.presentaciones[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Lote propio de 3 unidades",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/lotes",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"productoId\": {{scProductoId}}, \"codigo\": \"L-{{scCodigo}}\", \"fechaVencimiento\": \"{{scVence}}\", \"stock\": 3, \"ubicacion\": \"SC\", \"costoUnitario\": 0.5 }"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const d = new Date(Date.now() - 5 * 3600 * 1000);",
+                  "d.setUTCDate(d.getUTCDate() + 365);",
+                  "pm.collectionVariables.set(\"scVence\", d.toISOString().slice(0, 10));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catálogo sin conexión (TECNICO)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos/catalogo-offline"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const f = pm.response.json();",
+                  "pm.test(\"foto de la botica del token, con hora del servidor\", () => { pm.expect(f.boticaId).to.be.a(\"number\"); pm.expect(f.generadoEn).to.be.a(\"string\"); });",
+                  "const p = f.productos.find((x) => x.id === pm.collectionVariables.get(\"scProductoId\"));",
+                  "pm.test(\"trae el producto con sus lotes vendibles (fecha y stock, sin costo)\", () => {",
+                  "  pm.expect(p).to.be.an(\"object\");",
+                  "  pm.expect(p.lotesVendibles).to.eql([{ fechaVencimiento: pm.collectionVariables.get(\"scVence\"), stock: 3 }]);",
+                  "});",
+                  "pm.test(\"solo productos activos\", () => pm.expect(f.productos.every((x) => x.activo)).to.eql(true));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catálogo sin conexión (ADMINISTRADOR también vende)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/productos/catalogo-offline"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Catálogo sin conexión sin token",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/productos/catalogo-offline"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 401\", () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta sin conexión con stock insuficiente: se registra con revisión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{scClave}}\",\n  \"metodoPago\": \"efectivo\",\n  \"items\": [\n    { \"productoId\": {{scProductoId}}, \"presentacionId\": {{scUnidadId}}, \"cantidad\": 5, \"origenCaptura\": \"BUSQUEDA\", \"precioCobrado\": 2.00 }\n  ],\n  \"sinConexion\": { \"cajaId\": {{scCajaId}}, \"horaDispositivo\": \"2026-11-03T14:05:12-05:00\" }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"scClave\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const v = pm.response.json();",
+                  "pm.test(\"se cobró todo: 5 × 2.00\", () => pm.expect(Math.round(v.total * 100)).to.eql(1000));",
+                  "pm.test(\"marcada sin conexión, con la hora del dispositivo\", () => { pm.expect(v.vendidaSinConexion).to.eql(true); pm.expect(v.horaDispositivo).to.be.a(\"string\"); });",
+                  "pm.test(\"revisión STOCK_INSUFICIENTE por las 2 unidades que faltaron\", () => {",
+                  "  const r = v.revisiones.find((x) => x.tipo === \"STOCK_INSUFICIENTE\");",
+                  "  pm.expect(r.unidadesFaltantes).to.eql(2);",
+                  "  pm.expect(r.estado).to.eql(\"PENDIENTE\");",
+                  "});",
+                  "pm.collectionVariables.set(\"scVentaId\", v.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "La misma venta sin conexión con la misma clave",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{scClave}}\",\n  \"metodoPago\": \"efectivo\",\n  \"items\": [\n    { \"productoId\": {{scProductoId}}, \"presentacionId\": {{scUnidadId}}, \"cantidad\": 5, \"origenCaptura\": \"BUSQUEDA\", \"precioCobrado\": 2.00 }\n  ],\n  \"sinConexion\": { \"cajaId\": {{scCajaId}}, \"horaDispositivo\": \"2026-11-03T14:05:12-05:00\" }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"devuelve la misma venta, no una segunda\", () => pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get(\"scVentaId\")));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta sin conexión con precio distinto: se respeta el cobrado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{scClave2}}\",\n  \"metodoPago\": \"efectivo\",\n  \"items\": [\n    { \"productoId\": {{scProductoId}}, \"presentacionId\": {{scUnidadId}}, \"cantidad\": 1, \"origenCaptura\": \"BUSQUEDA\", \"precioCobrado\": 1.50 }\n  ],\n  \"sinConexion\": { \"cajaId\": {{scCajaId}}, \"horaDispositivo\": \"2026-11-03T14:05:12-05:00\" }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"scClave2\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const v = pm.response.json();",
+                  "pm.test(\"total con el precio cobrado\", () => pm.expect(Math.round(v.total * 100)).to.eql(150));",
+                  "pm.test(\"revisión PRECIO_DISTINTO con los dos precios\", () => {",
+                  "  const r = v.revisiones.find((x) => x.tipo === \"PRECIO_DISTINTO\");",
+                  "  pm.expect(Math.round(r.precioCobrado * 100)).to.eql(150);",
+                  "  pm.expect(Math.round(r.precioVigente * 100)).to.eql(200);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta sin conexión sin precioCobrado",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{scClave3}}\",\n  \"metodoPago\": \"efectivo\",\n  \"items\": [\n    { \"productoId\": {{scProductoId}}, \"presentacionId\": {{scUnidadId}}, \"cantidad\": 1, \"origenCaptura\": \"BUSQUEDA\" }\n  ],\n  \"sinConexion\": { \"cajaId\": {{scCajaId}}, \"horaDispositivo\": \"2026-11-03T14:05:12-05:00\" }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"scClave3\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FORMATO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FORMATO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Venta sin conexión en la caja de otro usuario",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"claveIdempotencia\": \"{{scClave4}}\",\n  \"metodoPago\": \"efectivo\",\n  \"items\": [\n    { \"productoId\": {{scProductoId}}, \"presentacionId\": {{scUnidadId}}, \"cantidad\": 1, \"origenCaptura\": \"BUSQUEDA\", \"precioCobrado\": 2.00 }\n  ],\n  \"sinConexion\": { \"cajaId\": {{scCajaId}}, \"horaDispositivo\": \"2026-11-03T14:05:12-05:00\" }\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.collectionVariables.set(\"scClave4\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resumen de cierre: cuántas sin conexión (sin monto)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/{{scCajaId}}/resumen-cierre"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"dos ventas, las dos sin conexión\", () => { pm.expect(r.cantidadVentas).to.eql(2); pm.expect(r.cantidadVentasSinConexion).to.eql(2); });",
+                  "pm.test(\"sigue sin montoEsperado (conteo ciego)\", () => pm.expect(r).to.not.have.property(\"montoEsperado\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO lista las revisiones",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/revisiones"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "TECNICO resuelve una revisión",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/revisiones/1/resolver",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"accion\": \"VISTA\" }"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 403\", () => pm.response.to.have.status(403));",
+                  "pm.test(\"error = SIN_PERMISO\", () => pm.expect(pm.response.json().error).to.eql(\"SIN_PERMISO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revisiones pendientes (ADMINISTRADOR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/revisiones?estado=PENDIENTE&pagina=0&tamano=100"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const p = pm.response.json();",
+                  "const r = p.contenido.find((x) => x.ventaId === pm.collectionVariables.get(\"scVentaId\") && x.tipo === \"STOCK_INSUFICIENTE\");",
+                  "pm.test(\"está la revisión de la venta, con los datos de la venta\", () => {",
+                  "  pm.expect(r).to.be.an(\"object\");",
+                  "  pm.expect(Math.round(r.ventaTotal * 100)).to.eql(1000);",
+                  "  pm.expect(r.vendedorNombre).to.be.a(\"string\");",
+                  "});",
+                  "pm.test(\"todas pendientes\", () => pm.expect(p.contenido.every((x) => x.estado === \"PENDIENTE\")).to.eql(true));",
+                  "pm.collectionVariables.set(\"scRevisionId\", r.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revisiones con un estado fuera de la lista",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/revisiones?estado=ABIERTA"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FILTRO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FILTRO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolver FALTANTE sin nota",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/revisiones/{{scRevisionId}}/resolver",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"accion\": \"FALTANTE\", \"nota\": \"  \" }"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = RESOLUCION_INVALIDA\", () => pm.expect(pm.response.json().error).to.eql(\"RESOLUCION_INVALIDA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolver con una acción que no existe",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/revisiones/{{scRevisionId}}/resolver",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"accion\": \"APLICAR_LOTE\" }"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 400\", () => pm.response.to.have.status(400));",
+                  "pm.test(\"error = FORMATO_INVALIDO\", () => pm.expect(pm.response.json().error).to.eql(\"FORMATO_INVALIDO\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolver FALTANTE con nota",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/revisiones/{{scRevisionId}}/resolver",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"accion\": \"FALTANTE\", \"nota\": \"No se registró un lote al recibir el pedido\" }"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "const r = pm.response.json();",
+                  "pm.test(\"resuelta como faltante, con quién y cuándo\", () => { pm.expect(r.estado).to.eql(\"RESUELTA\"); pm.expect(r.resolucion).to.eql(\"FALTANTE\"); pm.expect(r.resueltaPorNombre).to.be.a(\"string\"); pm.expect(r.resueltaEn).to.be.a(\"string\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolver otra vez (no se reabre)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/revisiones/{{scRevisionId}}/resolver",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"accion\": \"VISTA\" }"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error = REVISION_YA_RESUELTA\", () => pm.expect(pm.response.json().error).to.eql(\"REVISION_YA_RESUELTA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolver una revisión inexistente",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/ventas/revisiones/999999999/resolver",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"accion\": \"VISTA\" }"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"error = REVISION_NO_ENCONTRADA\", () => pm.expect(pm.response.json().error).to.eql(\"REVISION_NO_ENCONTRADA\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard: contador de ventas por revisar (ADMINISTRADOR)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenAdmin}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/dashboard/resumen"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ventasPorRevisar es un número\", () => pm.expect(pm.response.json().ventasPorRevisar).to.be.a(\"number\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Dashboard: el TECNICO no ve el contador",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/dashboard/resumen"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ventasPorRevisar = null\", () => pm.expect(pm.response.json().ventasPorRevisar).to.eql(null));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Limpieza: cerrar la caja del TECNICO",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{tokenTecnico}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/caja/cerrar",
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"montoContado\": 0, \"observaciones\": \"Cierre de limpieza de la colección de Postman\" }"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Solo lectura",
       "description": "No escribe nada (login no modifica datos). Es la ÚNICA carpeta que se corre contra producción, y solo con usuarios demo (R23): newman run ... --folder \"Solo lectura\".",
       "item": [

@@ -58,13 +58,6 @@
   white-space: nowrap;
 }
 
-.app-header__conn {
-  cursor: pointer;
-  border: 0;
-  background: transparent;
-  padding: 0;
-  border-radius: var(--r-pill);
-}
 
 .app-header__salir-icono {
   display: none;
@@ -93,7 +86,7 @@
     font-size: 16px;
   }
 
-  .app-header__conn,
+  app-header-cola,
   app-header-notificaciones,
   .app-header__salir-icono {
     flex: none;

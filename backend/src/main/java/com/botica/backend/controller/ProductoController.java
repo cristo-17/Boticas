@@ -1,5 +1,6 @@
 package com.botica.backend.controller;
 
+import com.botica.backend.dto.CatalogoOfflineResponse;
 import com.botica.backend.dto.EstadoProductoRequest;
 import com.botica.backend.dto.PaginaResponse;
 import com.botica.backend.dto.ProductoCatalogoResponse;
@@ -55,6 +56,12 @@ public class ProductoController {
     @GetMapping("/mas-vendidos")
     public ResponseEntity<List<ProductoResponse>> masVendidos() {
         return ResponseEntity.ok(productoService.masVendidos());
+    }
+
+    /** Tarea 22: foto del catálogo de mostrador para vender sin conexión (TECNICO y ADMINISTRADOR). */
+    @GetMapping("/catalogo-offline")
+    public ResponseEntity<CatalogoOfflineResponse> catalogoOffline() {
+        return ResponseEntity.ok(productoService.catalogoOffline());
     }
 
     @GetMapping("/catalogo")

@@ -16,7 +16,8 @@ public class VentaDetalleRowMapper implements RowMapper<VentaDetalle> {
                 .boticaId(rs.getLong("botica_id"))
                 .productoId(rs.getLong("producto_id"))
                 .presentacionId(rs.getLong("presentacion_id"))
-                .loteId(rs.getLong("lote_id"))
+                // Tarea 22: NULL en la línea sin lote de una venta sin conexión (getLong daría 0).
+                .loteId(rs.getObject("lote_id", Long.class))
                 .nombreProducto(rs.getString("nombre_producto"))
                 .etiquetaPresentacion(rs.getString("etiqueta_presentacion"))
                 .cantidad(rs.getInt("cantidad"))

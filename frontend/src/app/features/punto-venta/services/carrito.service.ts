@@ -18,6 +18,8 @@ export interface LineaCarrito {
   origenCaptura: OrigenCaptura;
   /** Tarea 20: el producto se vende solo con receta. */
   requiereReceta: boolean;
+  /** Tarea 22: unidades base por unidad de la presentación (aviso de stock sin conexión). */
+  factorConversion: number;
 }
 
 /** Fallback si /api/config no llegó a cargar todavía (no debería pasar: provideAppInitializer la espera antes de arrancar la app). */
@@ -69,6 +71,7 @@ export class CarritoService {
           alerta: textoAlertaVencimiento(producto.estadoVencimiento, producto.fechaVencimiento),
           origenCaptura: origen,
           requiereReceta: producto.requiereReceta,
+          factorConversion: presentacion.factorConversion,
         },
       ];
     });

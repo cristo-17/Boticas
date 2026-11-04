@@ -199,6 +199,18 @@ export class AlertasScreen implements OnInit, OnDestroy {
         variant: 'info',
         ruta: '/caja',
       },
+      // Tarea 22: solo ADMINISTRADOR (el servidor manda null al TECNICO) y solo si hay algo que revisar.
+      ...(r.ventasPorRevisar
+        ? [
+            {
+              label: 'Ventas por revisar',
+              valor: String(r.ventasPorRevisar),
+              nota: 'Cobradas sin conexión, con observaciones',
+              variant: 'warn' as SummaryCardVariant,
+              ruta: '/revisiones',
+            },
+          ]
+        : []),
     ];
   });
 

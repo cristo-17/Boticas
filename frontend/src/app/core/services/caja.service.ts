@@ -13,14 +13,18 @@ import {
 import { PaginaResponse } from '../models/pagina.model';
 import { ErrorTraducido } from '../interceptors/error.interceptor';
 import { AlertaService } from './alerta.service';
+import { AuthService } from './auth.service';
 import { environment } from '../../../environments/environment';
 
 const BASE_URL = `${environment.apiUrl}/caja`;
+/** Tarea 22: la última caja abierta conocida, por usuario, para vender sin conexión (la venta lleva su cajaId). */
+const PREFIJO_CAJA_CONOCIDA = 'boticasys_caja_';
 
 @Injectable({ providedIn: 'root' })
 export class CajaService {
   private readonly http = inject(HttpClient);
   private readonly alertaService = inject(AlertaService);
+  private readonly auth = inject(AuthService);
 
   private readonly _cajaActual = signal<CajaDiaria | null>(null);
   readonly cajaActual = this._cajaActual.asReadonly();
@@ -52,7 +56,10 @@ export class CajaService {
     this._cargando.set(true);
     this._error.set(null);
     return this.http.get<CajaDiaria | null>(`${BASE_URL}/hoy`).pipe(
-      tap((caja) => this._cajaActual.set(caja)),
+      tap((caja) => {
+        this._cajaActual.set(caja);
+        this.recordarCaja(caja);
+      }),
       catchError((err) => this.manejarError(err, 'No se pudo cargar la caja de hoy.')),
       // finalize corre en éxito Y en error -- tap() sola habría dejado
       // "cargando" en true para siempre ante un fallo (409, red caída, etc.).
@@ -67,6 +74,7 @@ export class CajaService {
     return this.http.post<CajaDiaria>(`${BASE_URL}/abrir`, request).pipe(
       tap((caja) => {
         this._cajaActual.set(caja);
+        this.recordarCaja(caja);
         this._resumenCierre.set(null);
         this._movimientos.set(null);
         this.alertaService.obtenerResumen(true).subscribe({ error: () => {} });
@@ -138,6 +146,7 @@ export class CajaService {
         // Sin cajaId es la propia; con cajaId puede ser la de otro usuario y no tocar cajaActual.
         if (request.cajaId === undefined || this._cajaActual()?.id === caja.id) {
           this._cajaActual.set(caja);
+          this.recordarCaja(caja);
         }
         this._abiertas.update((p) =>
           p ? { ...p, contenido: p.contenido.filter((c) => c.id !== caja.id), totalElementos: p.totalElementos - 1 } : p,
@@ -147,6 +156,36 @@ export class CajaService {
       catchError((err) => this.manejarError(err, 'No se pudo cerrar la caja.')),
       finalize(() => this._cargando.set(false)),
     );
+  }
+
+  /**
+   * Tarea 22 (§3, §9): la caja abierta del usuario de la sesión, para una venta
+   * sin conexión: la de memoria si está abierta, si no la última que el servidor
+   * dijo que estaba abierta (guardada al abrirla o al consultar /hoy). null si no
+   * hay ninguna conocida: sin caja abierta no se vende, ni con conexión ni sin ella.
+   */
+  cajaAbiertaConocida(): CajaDiaria | null {
+    const actual = this._cajaActual();
+    if (actual?.abierta) return actual;
+    const usuarioId = this.auth.claims()?.usuarioId;
+    if (usuarioId == null || typeof localStorage === 'undefined') return null;
+    try {
+      const texto = localStorage.getItem(PREFIJO_CAJA_CONOCIDA + usuarioId);
+      const caja = texto ? (JSON.parse(texto) as CajaDiaria) : null;
+      return caja?.abierta ? caja : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private recordarCaja(caja: CajaDiaria | null): void {
+    const usuarioId = this.auth.claims()?.usuarioId;
+    if (usuarioId == null || typeof localStorage === 'undefined') return;
+    if (caja?.abierta) {
+      localStorage.setItem(PREFIJO_CAJA_CONOCIDA + usuarioId, JSON.stringify(caja));
+    } else {
+      localStorage.removeItem(PREFIJO_CAJA_CONOCIDA + usuarioId);
+    }
   }
 
   /** Molde único de manejo de error (CLAUDE.md): guarda el mensaje traducido en el signal y vuelve a lanzar. */

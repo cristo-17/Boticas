@@ -33,6 +33,13 @@ public interface ProductoDao {
     /** Todas, activas e inactivas: el que llama decide (Punto de Venta filtra, el catálogo del administrador no). */
     Map<Long, List<PresentacionProducto>> listarPresentacionesPorProductos(List<Long> productoIds);
 
+    /**
+     * Tarea 22: lotes vendibles (stock > 0 y fecha_vencimiento >= hoy, la regla de FEFO) por producto,
+     * agrupados por fecha de vencimiento y en orden FEFO. Solo fecha y stock: es para el stock
+     * aproximado del dispositivo sin conexión.
+     */
+    Map<Long, List<com.botica.backend.dto.LoteVendibleResponse>> lotesVendiblesPorProductos(Long boticaId, List<Long> productoIds, LocalDate hoy);
+
     /** Catálogo del administrador (Tarea 17): activos e inactivos, paginado, orden validado contra lista blanca. */
     PaginaResponse<Producto> listarCatalogo(Long boticaId, String buscar, int pagina, int tamano, String orden);
 

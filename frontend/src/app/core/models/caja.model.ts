@@ -39,6 +39,8 @@ export interface ResumenCierre {
   totalVentasDigital: number;
   cantidadVentas: number;
   cantidadMovimientos: number;
+  /** Tarea 22: cuántas de cantidadVentas llegaron desde la cola sin conexión. Solo la cantidad (conteo ciego). */
+  cantidadVentasSinConexion?: number;
 }
 
 export interface AbrirCajaRequest {

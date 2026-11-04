@@ -118,7 +118,8 @@ class DatosDemoInvariantesTest {
 
     @Test
     void v12QuedaAplicada() {
-        assertThat(jdbc.queryForObject("SELECT max(version::int) FROM flyway_schema_history WHERE success", Integer.class)).isEqualTo(12);
+        // Desde la Tarea 22 hay migraciones después de V12 (V13): los invariantes corren con ellas encima.
+        assertThat(jdbc.queryForObject("SELECT count(*) FROM flyway_schema_history WHERE version = '12' AND success", Integer.class)).isEqualTo(1);
         System.out.println("V12 en " + BASE + ": " + msMigracion + " ms");
         for (Map<String, Object> fila : jdbc.queryForList("""
                 SELECT b.nombre,

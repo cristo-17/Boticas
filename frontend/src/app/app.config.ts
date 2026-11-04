@@ -6,6 +6,7 @@ import { catchError } from 'rxjs/operators';
 import { routes } from './app.routes';
 import { authInterceptor } from './core/interceptors/auth.interceptor';
 import { errorInterceptor } from './core/interceptors/error.interceptor';
+import { conexionInterceptor } from './core/interceptors/conexion.interceptor';
 import { AuthService } from './core/services/auth.service';
 import { ConfigService } from './core/services/config.service';
 import { provideServiceWorker } from '@angular/service-worker';
@@ -15,7 +16,8 @@ export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
     provideRouter(routes),
-    provideHttpClient(withInterceptors([authInterceptor, errorInterceptor])),
+    // Tarea 22: conexionInterceptor es el primero, para ver la respuesta cruda (status 0 / 502-504).
+    provideHttpClient(withInterceptors([conexionInterceptor, authInterceptor, errorInterceptor])),
     // GET /api/config una sola vez al iniciar la app, antes de que
     // arranque cualquier pantalla (Tarea 9) — no en cada componente.
     // catchError es obligatorio acá: un provideAppInitializer que falla

@@ -1,0 +1,61 @@
+/* Tarea 22: layout local de "Ventas por revisar". */
+.revisiones {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.revisiones__cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.revisiones__titulo {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.revisiones__filtros {
+  display: flex;
+  gap: 8px;
+}
+
+.revisiones__fila {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.revisiones__encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.revisiones__venta,
+.revisiones__dato {
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.revisiones__detalle {
+  margin: 0;
+}
+
+.revisiones__nota {
+  width: 100%;
+}
+
+.revisiones__nota-label {
+  font-size: 0.8rem;
+}
+
+.revisiones__acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}

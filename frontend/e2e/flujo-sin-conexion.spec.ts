@@ -1,0 +1,137 @@
+import { test, expect, Page, APIRequestContext } from '@playwright/test';
+import { login } from './helpers';
+
+/**
+ * Tarea 22 (docs/DISENO-OFFLINE.md): vender sin conexión y verificar EN EL
+ * SERVIDOR que hay UNA sola venta con esa clave. Dos casos:
+ * 1. context.setOffline(true): se cobra sin red, queda en la cola, y al volver
+ *    la conexión se envía sola.
+ * 2. La red se corta a la mitad del envío: el servidor registró la venta pero
+ *    la respuesta se pierde. La venta queda en la cola con la misma clave y el
+ *    reenvío devuelve la misma venta (idempotencia), no una segunda.
+ * Usa un técnico demo con su propia caja (no choca con los otros flujos).
+ */
+const TECNICO_DEMO = { usuario: 'demo_esperanza_andres', password: 'demo123' } as const;
+const API = process.env['E2E_API_URL'] ?? 'http://localhost:8080/api';
+const PRODUCTO = 'Cetirizina 10 mg';
+
+test.describe.configure({ mode: 'serial' });
+
+test('sin conexión: se cobra, queda en la cola y al volver la señal llega UNA sola venta', async ({ page, context, request }) => {
+  const enviadas = escucharPostVentas(page);
+  await prepararPuntoDeVenta(page);
+
+  await context.setOffline(true);
+  await expect(page.getByTestId('pos-sin-conexion')).toBeVisible();
+
+  await agregarAlCarrito(page);
+  await page.getByRole('button', { name: /Cobrar S\/ [\d.]+/ }).click();
+  await expect(page.getByText('Venta guardada sin conexión. Se enviará sola.')).toBeVisible();
+  await expect(page.getByTestId('contador-cola')).toHaveText('1');
+  expect(enviadas, 'sin red no sale ningún POST que llegue al servidor').toHaveLength(0);
+
+  // El panel muestra la venta sin montos (conteo ciego).
+  await page.getByTestId('indicador-conexion').click();
+  await expect(page.getByTestId('fila-cola')).toContainText(PRODUCTO);
+  await expect(page.getByTestId('fila-cola')).not.toContainText('S/');
+
+  await context.setOffline(false); // evento "online" → comprobación → se vacía la cola
+  await expect(page.getByTestId('contador-cola')).toHaveCount(0, { timeout: 30_000 });
+
+  expect(enviadas.length).toBeGreaterThanOrEqual(1);
+  const clave = enviadas[0].claveIdempotencia;
+  expect(enviadas[0].sinConexion?.cajaId).toBeGreaterThan(0);
+  const ventas = await ventasConClave(request, page, clave);
+  expect(ventas, 'una sola venta con esa clave en el servidor').toHaveLength(1);
+  expect(ventas[0].vendidaSinConexion).toBe(true);
+  expect(ventas[0].horaDispositivo).toBeTruthy();
+});
+
+test('la red se corta a la mitad del envío: el reenvío con la misma clave no duplica', async ({ page, request }) => {
+  const enviadas = escucharPostVentas(page);
+  await prepararPuntoDeVenta(page);
+
+  // El primer POST llega al servidor (se registra) y la respuesta se pierde en el camino.
+  let cortado = false;
+  await page.route('**/api/ventas', async (ruta) => {
+    if (ruta.request().method() === 'POST' && !cortado) {
+      cortado = true;
+      await ruta.fetch();
+      await ruta.abort('connectionreset');
+      return;
+    }
+    await ruta.continue();
+  });
+
+  await agregarAlCarrito(page);
+  await page.getByRole('button', { name: /Cobrar S\/ [\d.]+/ }).click();
+  await expect(page.getByText('Venta guardada sin conexión. Se enviará sola.')).toBeVisible();
+  await expect(page.getByTestId('contador-cola')).toHaveText('1');
+
+  // "Enviar ahora": comprueba la conexión y reenvía con la MISMA clave.
+  await page.getByTestId('indicador-conexion').click();
+  await page.getByRole('button', { name: 'Enviar ahora' }).click();
+  await expect(page.getByTestId('contador-cola')).toHaveCount(0, { timeout: 30_000 });
+
+  expect(enviadas.length).toBe(2);
+  expect(enviadas[1].claveIdempotencia).toBe(enviadas[0].claveIdempotencia);
+  const ventas = await ventasConClave(request, page, enviadas[0].claveIdempotencia);
+  expect(ventas, 'el reenvío devolvió la venta ya registrada, no una segunda').toHaveLength(1);
+  // La que quedó es la del primer envío (en línea): el reenvío solo la devolvió.
+  expect(ventas[0].vendidaSinConexion).toBe(false);
+});
+
+interface CuerpoVenta {
+  claveIdempotencia: string;
+  sinConexion?: { cajaId: number; horaDispositivo: string };
+}
+
+function escucharPostVentas(page: Page): CuerpoVenta[] {
+  const cuerpos: CuerpoVenta[] = [];
+  page.on('request', (r) => {
+    if (r.method() === 'POST' && r.url().endsWith('/api/ventas')) cuerpos.push(r.postDataJSON() as CuerpoVenta);
+  });
+  return cuerpos;
+}
+
+async function prepararPuntoDeVenta(page: Page): Promise<void> {
+  await login(page, 'Tarde', TECNICO_DEMO);
+  await cajaAbierta(page);
+  const foto = page.waitForResponse((r) => r.url().includes('/api/productos/catalogo-offline') && r.ok());
+  await page.goto('/punto-venta');
+  await foto; // la foto del catálogo ya está en el dispositivo
+}
+
+/** Como asegurarCajaAbierta, pero esperando a que la pantalla termine de cargar: el segundo test ya encuentra la caja abierta. */
+async function cajaAbierta(page: Page): Promise<void> {
+  await page.goto('/caja');
+  const bloqueada = page.getByText('Ya existe una caja abierta hoy');
+  const monto = page.locator('#apertura-monto');
+  await expect(bloqueada.or(monto)).toBeVisible();
+  if (await bloqueada.isVisible()) return;
+  await monto.fill('100.00');
+  await page.getByRole('button', { name: 'Abrir caja' }).click();
+  await expect(bloqueada).toBeVisible();
+}
+
+async function agregarAlCarrito(page: Page): Promise<void> {
+  await page.locator('#pos-query').fill('Cetirizina');
+  await page.locator('.pos__resultado', { hasText: PRODUCTO }).first().click();
+  await page.locator('.bs-option-row', { hasText: 'Unidad' }).first().click();
+  await expect(page.locator('.carrito-panel__qty-num').first()).toHaveText('1');
+}
+
+/** Consulta al servidor (fuera del navegador) las ventas de la caja del técnico con esa clave. */
+async function ventasConClave(
+  request: APIRequestContext,
+  page: Page,
+  clave: string,
+): Promise<{ claveIdempotencia: string; vendidaSinConexion: boolean; horaDispositivo: string | null }[]> {
+  const token = await page.evaluate(() => localStorage.getItem('boticasys_token'));
+  const r = await request.get(`${API}/ventas?pagina=0&tamano=100&orden=fecha,desc`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  expect(r.ok()).toBe(true);
+  const pagina = (await r.json()) as { contenido: { claveIdempotencia: string; vendidaSinConexion: boolean; horaDispositivo: string | null }[] };
+  return pagina.contenido.filter((v) => v.claveIdempotencia === clave);
+}

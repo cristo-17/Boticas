@@ -31,4 +31,6 @@ export interface ResumenDashboard {
   stockAgotado: number;
   cajaEstado: 'ABIERTA' | 'CERRADA';
   cajaHoraApertura: string | null; // ISO datetime
+  /** Tarea 22: ventas sin conexión con revisiones pendientes. Solo ADMINISTRADOR; null para TECNICO. */
+  ventasPorRevisar?: number | null;
 }

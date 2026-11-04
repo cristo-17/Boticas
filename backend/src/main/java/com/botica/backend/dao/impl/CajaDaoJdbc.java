@@ -132,7 +132,8 @@ public class CajaDaoJdbc implements CajaDao {
     public ResumenCierreResponse calcularResumen(Long boticaId, Long cajaId) {
         String sqlVentas = "SELECT " +
                 "COALESCE(SUM(total) FILTER (WHERE metodo_pago IN ('yape', 'tarjeta')), 0) AS total_digital, " +
-                "COUNT(*) AS cantidad_ventas " +
+                "COUNT(*) AS cantidad_ventas, " +
+                "COUNT(*) FILTER (WHERE vendida_sin_conexion) AS cantidad_sin_conexion " +
                 "FROM ventas WHERE botica_id = :boticaId AND caja_id = :cajaId";
         var params = new MapSqlParameterSource()
                 .addValue("boticaId", boticaId)
@@ -145,7 +146,8 @@ public class CajaDaoJdbc implements CajaDao {
         return new ResumenCierreResponse(
                 (BigDecimal) fila.get("total_digital"),
                 ((Number) fila.get("cantidad_ventas")).longValue(),
-                cantidadMovimientos == null ? 0L : cantidadMovimientos
+                cantidadMovimientos == null ? 0L : cantidadMovimientos,
+                ((Number) fila.get("cantidad_sin_conexion")).longValue()
         );
     }
 

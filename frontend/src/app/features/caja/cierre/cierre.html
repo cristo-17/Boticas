@@ -53,11 +53,27 @@
       <div class="cierre__nota-digital">
         No entran al conteo de efectivo del cajón — se cuentan aparte.
       </div>
+      @if (resumen.cantidadVentasSinConexion) {
+        <div class="cierre__nota-digital" data-testid="cierre-ventas-sin-conexion">
+          De las {{ resumen.cantidadVentas }} ventas, {{ resumen.cantidadVentasSinConexion }} se cobraron sin conexión.
+        </div>
+      }
     }
   </section>
 
   <aside class="cierre__panel">
-    @if (cajaActual()?.abierta) {
+    @if (cajaActual()?.abierta && pendientesDeCaja() > 0) {
+      <!-- Tarea 22 (§8): solo la cantidad, nunca el monto. No se cierra con ventas de esta caja en la cola. -->
+      <div class="cierre__bloqueo" role="status" data-testid="cierre-bloqueado">
+        <p class="cierre__bloqueo-texto">
+          Hay {{ pendientesDeCaja() }} {{ pendientesDeCaja() === 1 ? 'venta' : 'ventas' }} de esta caja sin enviar desde este
+          dispositivo. Envía las ventas pendientes antes de cerrar.
+        </p>
+        <button type="button" class="cierre__bloqueo-btn" [disabled]="cola.enviando()" (click)="enviarPendientes()">
+          {{ cola.enviando() ? 'Enviando…' : 'Enviar ahora' }}
+        </button>
+      </div>
+    } @else if (cajaActual()?.abierta) {
       <app-conteo-cierre [cerrando]="cerrando()" (confirmado)="cerrar($event)" />
     } @else {
       <app-resultado-cierre [caja]="cajaActual()" />

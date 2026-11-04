@@ -4,12 +4,14 @@ import com.botica.backend.config.ConfigNegocioProperties;
 import com.botica.backend.config.ContextoOperacion;
 import com.botica.backend.dao.AlertaDao;
 import com.botica.backend.dao.CajaDao;
+import com.botica.backend.dao.RevisionVentaDao;
 import com.botica.backend.dto.AlertaResponse;
 import com.botica.backend.dto.PaginaResponse;
 import com.botica.backend.dto.ResumenDashboardResponse;
 import com.botica.backend.model.CajaDiaria;
 import com.botica.backend.util.Dinero;
 import com.botica.backend.util.FechaNegocio;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -40,8 +42,18 @@ public class AlertaService {
     private final ConfigNegocioProperties config;
     private final FechaNegocio fechaNegocio;
 
+    private final RevisionVentaDao revisionDao;
+
     public AlertaService(AlertaDao alertaDao, CajaDao cajaDao, ContextoOperacion contexto,
                           ConfigNegocioProperties config, FechaNegocio fechaNegocio) {
+        this(alertaDao, cajaDao, contexto, config, fechaNegocio, null);
+    }
+
+    @Autowired
+    public AlertaService(AlertaDao alertaDao, CajaDao cajaDao, ContextoOperacion contexto,
+                          ConfigNegocioProperties config, FechaNegocio fechaNegocio,
+                          @Autowired(required = false) RevisionVentaDao revisionDao) {
+        this.revisionDao = revisionDao;
         this.alertaDao = alertaDao;
         this.cajaDao = cajaDao;
         this.contexto = contexto;
@@ -72,8 +84,12 @@ public class AlertaService {
         String cajaEstado = cajaPropia.isPresent() ? CajaDiaria.ABIERTA : CajaDiaria.CERRADA;
         OffsetDateTime cajaHoraApertura = cajaPropia.map(CajaDiaria::getHoraApertura).orElse(null);
 
+        // Tarea 22: el administrador resuelve las ventas sin conexión con revisiones; el técnico no las ve.
+        Long ventasPorRevisar = esAdministrador && revisionDao != null ? revisionDao.contarVentasConPendientes(boticaId) : null;
+
         return new ResumenDashboardResponse(ventasHoy, variacionPct, boletasHoy,
-                productosPorVencer, productosPorVencerCriticos, stockCritico, stockAgotado, cajaEstado, cajaHoraApertura);
+                productosPorVencer, productosPorVencerCriticos, stockCritico, stockAgotado, cajaEstado, cajaHoraApertura,
+                ventasPorRevisar);
     }
 
     public PaginaResponse<AlertaResponse> listar(int pagina, int tamano) {

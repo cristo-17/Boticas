@@ -6,6 +6,8 @@ import { AuthService } from '../../core/services/auth.service';
 import { ConexionService } from '../../core/services/conexion.service';
 import { Usuario } from '../../core/models/usuario.model';
 import { EstadoConexion } from '../../core/models/conexion.model';
+import { ColaVentasService } from '../../core/services/cola-ventas.service';
+import { colaFalsa } from './cola-falsa.testing';
 
 const USUARIO: Usuario = {
   id: 1,
@@ -29,7 +31,8 @@ describe('HeaderComponent', () => {
       imports: [HeaderComponent],
       providers: [
         { provide: AuthService, useValue: { usuarioActual, cerrarSesion: () => ({ subscribe: () => {} }) } },
-        { provide: ConexionService, useValue: { estado: estadoConexion, alternar: () => {} } },
+        { provide: ConexionService, useValue: { estado: estadoConexion, enLinea: () => true, comprobar: async () => true } },
+        { provide: ColaVentasService, useValue: colaFalsa() },
         { provide: Router, useValue: { navigateByUrl: () => {} } },
       ],
     });
@@ -46,20 +49,7 @@ describe('HeaderComponent', () => {
     expect(componente.sede()).toBe('Botica San Lucas · Av. Grau 412, Chiclayo');
   });
 
-  it('etiquetaConexion() reacciona al estado de ConexionService sin recrear el componente', () => {
-    const fixture = TestBed.createComponent(HeaderComponent);
-    const componente = fixture.componentInstance;
-
-    expect(componente.etiquetaConexion()).toBe('En línea');
-
-    estadoConexion.set('sync');
-    expect(componente.etiquetaConexion()).toBe('Sincronizando');
-
-    estadoConexion.set('offline');
-    expect(componente.etiquetaConexion()).toBe('Sin conexión');
-  });
-
-  it('el template refleja sede() y etiquetaConexion() tras detectChanges', () => {
+  it('el template refleja sede() tras detectChanges', () => {
     usuarioActual.set(USUARIO);
     const fixture = TestBed.createComponent(HeaderComponent);
     fixture.detectChanges();

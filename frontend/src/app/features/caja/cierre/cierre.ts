@@ -7,6 +7,8 @@ import { ErrorTraducido } from '../../../core/interceptors/error.interceptor';
 import { MovimientoCaja } from '../../../core/models/caja.model';
 import { CajaService } from '../../../core/services/caja.service';
 import { ConfigService } from '../../../core/services/config.service';
+import { ColaVentasService } from '../../../core/services/cola-ventas.service';
+import { ConexionService } from '../../../core/services/conexion.service';
 import { formatearMoneda } from '../../../core/utils/moneda.util';
 import { ConteoCierre, ConteoCierreComponent } from '../conteo-cierre/conteo-cierre';
 import { EgresoCajaComponent } from '../egreso-caja/egreso-caja';
@@ -44,6 +46,19 @@ const TAMANO_PAGINA_MOVIMIENTOS = 20;
 export class CierreComponent implements OnInit {
   private readonly caja = inject(CajaService);
   private readonly config = inject(ConfigService);
+  readonly cola = inject(ColaVentasService);
+  private readonly conexion = inject(ConexionService);
+
+  /**
+   * Tarea 22 (§8): ventas de ESTA caja que siguen en la cola de este dispositivo.
+   * Solo la cantidad, nunca su monto (conteo ciego). Mientras haya alguna no se
+   * puede cerrar: una venta en efectivo que llega después del cierre le deja un
+   * descuadre falso a una caja ya contada.
+   */
+  readonly pendientesDeCaja = computed(() => {
+    const caja = this.cajaActual();
+    return caja?.abierta ? this.cola.cantidadDeCaja(caja.id) : 0;
+  });
 
   readonly cajaActual = this.caja.cajaActual;
   readonly cerrando = this.caja.cargando;
@@ -102,9 +117,22 @@ export class CierreComponent implements OnInit {
     // El error ya queda en caja.error() (mostrado por app-error-banner);
     // los callbacks vacíos solo evitan el "unhandled error" de RxJS.
     this.caja.obtenerCajaDeHoy().subscribe({
-      next: () => this.cargarDatosDeCierre(),
+      next: () => {
+        this.cargarDatosDeCierre();
+        // Tarea 22 (§8): con la caja en mano, se intenta vaciar la cola primero.
+        void this.enviarPendientes();
+      },
       error: () => {},
     });
+  }
+
+  /** "Enviar ahora": comprueba la conexión, vacía la cola y recarga el resumen (que cuenta las que llegaron). */
+  async enviarPendientes(): Promise<void> {
+    await this.cola.cargar();
+    if (this.pendientesDeCaja() === 0) return;
+    await this.conexion.comprobar();
+    await this.cola.enviarPendientes();
+    this.cargarDatosDeCierre();
   }
 
   // POST /api/caja/cerrar sin cajaId: la caja propia (D-E2-1).

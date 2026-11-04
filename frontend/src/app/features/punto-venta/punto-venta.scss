@@ -31,6 +31,25 @@ $scan-breakpoint: 1400.98px;
   grid-column: 1 / -1;
 }
 
+/* Tarea 22: aviso de venta sin conexión (layout local; colores de los tokens). */
+.pos__sin-conexion {
+  grid-column: 1 / -1;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid var(--ambar-100);
+  border-radius: 8px;
+  background: var(--ambar-50);
+  color: var(--ambar-600);
+  font-size: 0.875rem;
+}
+
+.pos__sin-conexion-aviso {
+  display: block;
+  font-weight: 600;
+}
+
 .pos__main {
   display: flex;
   flex-direction: column;

@@ -48,6 +48,19 @@ y cuerpo zip `PK`), valida los errores (`desde > hasta` y rango mayor a 1 año �
 `400 RANGO_FECHAS_INVALIDO`; `agrupar=anio` → `400 FILTRO_INVALIDO`) y verifica el
 `403 SIN_PERMISO` del TECNICO en el JSON y en el Excel.
 
+**Sin conexión (Tarea 22)** abre una caja del TECNICO, crea su propio producto
+(`SC` + timestamp) con un lote de 3 unidades y pide la foto del catálogo
+(`GET /api/productos/catalogo-offline`, los dos roles; 401 sin token). Manda
+ventas con `sinConexion`: 5 unidades con 3 en stock se registran igual con la
+revisión `STOCK_INSUFICIENTE` (y el reenvío con la misma clave devuelve la misma
+venta); un `precioCobrado` distinto se respeta con su revisión `PRECIO_DISTINTO`;
+sin `precioCobrado` → 400; en la caja de otro usuario → 403. Comprueba
+`cantidadVentasSinConexion` en el resumen de cierre, lista y resuelve las
+revisiones como ADMINISTRADOR (`FALTANTE` sin nota → 400, con nota → 200, otra
+vez → 409, inexistente → 404), el contador `ventasPorRevisar` del dashboard
+(`null` para el TECNICO) y el 403 del TECNICO en las dos rutas de revisiones.
+Al final cierra la caja.
+
 **Solo lectura** no escribe nada y hace su propio login. Es la única carpeta
 que se corre contra producción, y solo con usuarios demo (R23).
 

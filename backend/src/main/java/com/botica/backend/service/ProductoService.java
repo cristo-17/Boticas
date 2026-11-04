@@ -3,7 +3,10 @@ package com.botica.backend.service;
 import com.botica.backend.config.ConfigNegocioProperties;
 import com.botica.backend.config.ContextoOperacion;
 import com.botica.backend.dao.ProductoDao;
+import com.botica.backend.dto.CatalogoOfflineResponse;
+import com.botica.backend.dto.LoteVendibleResponse;
 import com.botica.backend.dto.PresentacionResponse;
+import com.botica.backend.dto.ProductoOfflineResponse;
 import com.botica.backend.dto.ProductoResponse;
 import com.botica.backend.exception.ProductoInactivoException;
 import com.botica.backend.exception.ProductoNoEncontradoException;
@@ -23,6 +26,7 @@ public class ProductoService {
 
     private static final int LIMITE_BUSQUEDA = 20;
     private static final int LIMITE_MAS_VENDIDOS = 6;
+    private static final int LIMITE_CATALOGO_OFFLINE = 5000;
     /**
      * DIF-06: ventana de "más vendidos", hoy incluido. El Punto de Venta la rotula
      * "Más vendidos (últimos 30 días)" (punto-venta.html): si cambia, cambia también el rótulo.
@@ -60,6 +64,23 @@ public class ProductoService {
     public List<ProductoResponse> masVendidos() {
         List<Producto> productos = productoDao.masVendidos(contexto.boticaId(), LIMITE_MAS_VENDIDOS, fechaNegocio.hoy().minusDays(DIAS_MAS_VENDIDOS - 1));
         return construirRespuestas(productos);
+    }
+
+    /**
+     * Tarea 22: GET /api/productos/catalogo-offline. Todos los productos activos de la botica
+     * (sin el límite de 20 de la búsqueda), con sus lotes vendibles. LIMITE_CATALOGO_OFFLINE es una
+     * guardia: una botica independiente tiene cientos de productos, no miles.
+     */
+    public CatalogoOfflineResponse catalogoOffline() {
+        Long boticaId = contexto.boticaId();
+        List<Producto> productos = productoDao.buscar(boticaId, "", false, LIMITE_CATALOGO_OFFLINE);
+        List<ProductoResponse> respuestas = construirRespuestas(productos);
+        Map<Long, List<LoteVendibleResponse>> lotes = productoDao.lotesVendiblesPorProductos(
+                boticaId, productos.stream().map(Producto::getId).toList(), fechaNegocio.hoy());
+        List<ProductoOfflineResponse> conLotes = respuestas.stream()
+                .map(p -> ProductoOfflineResponse.desde(p, lotes.getOrDefault(p.id(), List.of())))
+                .toList();
+        return new CatalogoOfflineResponse(boticaId, fechaNegocio.ahora(), conLotes);
     }
 
     private List<ProductoResponse> construirRespuestas(List<Producto> productos) {

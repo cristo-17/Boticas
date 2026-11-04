@@ -9,19 +9,8 @@
 
   <app-header-notificaciones></app-header-notificaciones>
 
-  <button
-    type="button"
-    class="app-header__conn"
-    title="Cambiar estado de conexión"
-    (click)="alternarConexion()"
-  >
-    <app-conn-status
-      mode="chip"
-      [state]="estadoConexion()"
-      [label]="etiquetaConexion()"
-      [compactoEnMovil]="true"
-    ></app-conn-status>
-  </button>
+  <!-- Tarea 22: estado real de la conexión y la cola de ventas sin enviar (reemplaza el botón de demostración). -->
+  <app-header-cola></app-header-cola>
 
   <app-button variant="secondary" class="app-header__salir-texto" (clicked)="cerrarSesion()">Salir</app-button>
   <app-button variant="secondary" class="app-header__salir-icono" [icon]="true" ariaLabel="Salir" (clicked)="cerrarSesion()">

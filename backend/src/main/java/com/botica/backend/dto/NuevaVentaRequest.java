@@ -13,12 +13,20 @@ import java.util.UUID;
  * carrito, no en cada intento HTTP -- se reusa en cada reintento de
  * red del mismo POST. Si ya existe una venta con esa clave, el
  * servidor devuelve esa venta con 200 en vez de crear otra.
+ * Tarea 22: la cola sin conexión guarda la clave en el dispositivo antes
+ * del primer envío, así que un reintento horas después tampoco duplica.
  */
 public record NuevaVentaRequest(
         @NotNull(message = "claveIdempotencia es obligatoria") UUID claveIdempotencia,
         @NotEmpty(message = "items no puede estar vacío") @Valid List<ItemVentaRequest> items,
         @Pattern(regexp = "efectivo|yape|tarjeta", message = "metodoPago debe ser efectivo, yape o tarjeta") String metodoPago,
         /** Tarea 20: obligatoria si alguna línea es de un producto con requiereReceta (400 RECETA_REQUERIDA); si ninguna lo es, se ignora. */
-        @Valid RecetaRequest receta
+        @Valid RecetaRequest receta,
+        /** Tarea 22: solo en una venta cobrada sin conexión; null en línea. */
+        @Valid SinConexionRequest sinConexion
 ) {
+    /** Venta en línea (sin el bloque sinConexion). */
+    public NuevaVentaRequest(UUID claveIdempotencia, List<ItemVentaRequest> items, String metodoPago, RecetaRequest receta) {
+        this(claveIdempotencia, items, metodoPago, receta, null);
+    }
 }

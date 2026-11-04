@@ -21,6 +21,8 @@ export const NAV_ITEMS: NavItem[] = [
   { path: '/kardex', label: 'Kardex', shortLabel: 'Kardex', icon: 'bi-list-columns-reverse', roles: ['ADMINISTRADOR'] },
   { path: '/usuarios', label: 'Usuarios', shortLabel: 'Usuarios', icon: 'bi-people', roles: ['ADMINISTRADOR'] },
   { path: '/reportes', label: 'Resultados', shortLabel: 'Resultados', icon: 'bi-bar-chart-line', roles: ['ADMINISTRADOR'] },
+  // Tarea 22: ventas sin conexión con problemas al llegar (D-E2-7).
+  { path: '/revisiones', label: 'Ventas por revisar', shortLabel: 'Revisar', icon: 'bi-clipboard-check', roles: ['ADMINISTRADOR'] },
 ];
 
 /** Items que ve ese rol (sin sesión, solo los de todos). */

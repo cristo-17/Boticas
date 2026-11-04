@@ -4,6 +4,9 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { CierreComponent } from './cierre';
 import { CajaDiaria, MovimientoCaja } from '../../../core/models/caja.model';
 import { environment } from '../../../../environments/environment';
+import { signal } from '@angular/core';
+import { ColaVentasService } from '../../../core/services/cola-ventas.service';
+import { ConexionService } from '../../../core/services/conexion.service';
 
 const BASE_URL = `${environment.apiUrl}/caja`;
 
@@ -164,5 +167,87 @@ describe('CierreComponent — conteo ciego del TECNICO (revisión 2026-10-14)', 
 
     expect(el().textContent).toContain('Servicios básicos');
     expect(el().textContent).toContain('Recibo de agua');
+  });
+});
+
+describe('CierreComponent — ventas sin enviar en este dispositivo (Tarea 22, §8)', () => {
+  let fixture: ComponentFixture<CierreComponent>;
+  let http: HttpTestingController;
+  const el = () => fixture.nativeElement as HTMLElement;
+  let pendientes = 2;
+  let envios = 0;
+
+  async function render(): Promise<void> {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  beforeEach(async () => {
+    pendientes = 2;
+    envios = 0;
+    TestBed.configureTestingModule({
+      imports: [CierreComponent],
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        {
+          provide: ColaVentasService,
+          useValue: {
+            cargar: async () => {},
+            cantidadDeCaja: (cajaId: number) => (cajaId === 3 ? pendientes : 0),
+            enviando: signal(false),
+            enviarPendientes: async () => {
+              envios++;
+            },
+          },
+        },
+        { provide: ConexionService, useValue: { comprobar: async () => false } },
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
+    fixture = TestBed.createComponent(CierreComponent);
+    await render();
+    http.expectOne(`${BASE_URL}/hoy`).flush(CAJA_ABIERTA);
+    await render();
+    http.expectOne(`${BASE_URL}/3/resumen-cierre`)
+      .flush({ totalVentasDigital: 4.44, cantidadVentas: 2, cantidadMovimientos: 3, cantidadVentasSinConexion: 1 });
+    http.expectOne((r) => r.url === `${BASE_URL}/3/movimientos`)
+      .flush({ contenido: [movimiento(5, 8.88, true)], pagina: 0, tamano: 20, totalElementos: 1, totalPaginas: 1 });
+    await render();
+    // Al entrar intentó vaciar la cola y recarga el resumen (cuenta las que hayan llegado).
+    await flushRecarga();
+  });
+
+  async function flushRecarga(): Promise<void> {
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    http.expectOne(`${BASE_URL}/3/resumen-cierre`)
+      .flush({ totalVentasDigital: 4.44, cantidadVentas: 2, cantidadMovimientos: 3, cantidadVentasSinConexion: 1 });
+    http.expectOne((r) => r.url === `${BASE_URL}/3/movimientos`)
+      .flush({ contenido: [movimiento(5, 8.88, true)], pagina: 0, tamano: 20, totalElementos: 1, totalPaginas: 1 });
+    await render();
+  }
+
+  afterEach(() => http.verify());
+
+  it('con ventas de esta caja en la cola no deja contar ni cerrar, y dice cuántas son sin ningún monto', () => {
+    const bloqueo = el().querySelector('[data-testid="cierre-bloqueado"]') as HTMLElement;
+    expect(bloqueo).not.toBeNull();
+    expect(bloqueo.textContent).toContain('2 ventas de esta caja sin enviar');
+    expect(bloqueo.textContent).not.toMatch(/S\//);
+    expect(el().querySelector('#cierre-contado')).toBeNull();
+    // Únicas cifras de dinero: el total digital (como siempre) — nada del efectivo en cola.
+    expect(montosEnPantalla(el())).toEqual(['S/ 4.44']);
+  });
+
+  it('al entrar intenta enviar la cola, y el botón "Enviar ahora" vuelve a intentarlo', async () => {
+    expect(envios).toBe(1);
+    [...el().querySelectorAll('button')].find((b) => b.textContent?.includes('Enviar ahora'))!.click();
+    await flushRecarga();
+    expect(envios).toBe(2);
+  });
+
+  it('el resumen dice cuántas ventas se cobraron sin conexión (cantidad, no monto)', () => {
+    expect(el().querySelector('[data-testid="cierre-ventas-sin-conexion"]')?.textContent).toContain('1 se cobraron sin conexión');
   });
 });

@@ -129,6 +129,23 @@ public class ProductoDaoJdbc implements ProductoDao {
         return resultado;
     }
     @Override
+    public Map<Long, List<com.botica.backend.dto.LoteVendibleResponse>> lotesVendiblesPorProductos(Long boticaId, List<Long> productoIds, LocalDate hoy) {
+        if (productoIds.isEmpty()) {
+            return Map.of();
+        }
+        String sql = "SELECT producto_id, fecha_vencimiento, SUM(stock) AS stock FROM lotes " +
+                "WHERE botica_id = :boticaId AND producto_id IN (:ids) AND stock > 0 AND fecha_vencimiento >= :hoy " +
+                "GROUP BY producto_id, fecha_vencimiento ORDER BY producto_id, fecha_vencimiento";
+        var params = new MapSqlParameterSource().addValue("boticaId", boticaId).addValue("ids", productoIds).addValue("hoy", hoy);
+        Map<Long, List<com.botica.backend.dto.LoteVendibleResponse>> resultado = new HashMap<>();
+        jdbc.query(sql, params, rs -> {
+            resultado.computeIfAbsent(rs.getLong("producto_id"), k -> new ArrayList<>())
+                    .add(new com.botica.backend.dto.LoteVendibleResponse(rs.getObject("fecha_vencimiento", LocalDate.class), rs.getInt("stock")));
+        });
+        return resultado;
+    }
+
+    @Override
     public PaginaResponse<Producto> listarCatalogo(Long boticaId, String buscar, int pagina, int tamano, String orden) {
         int paginaSegura = Math.max(pagina, 0);
         int tamanoSeguro = Math.min(Math.max(tamano, 1), 100);

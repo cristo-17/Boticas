@@ -36,4 +36,8 @@ public class Venta {
     private String metodoPago;
     private UUID claveIdempotencia;
     private boolean sincronizada;
+    /** Tarea 22. */
+    private boolean vendidaSinConexion;
+    /** Tarea 22: solo auditoría; null en línea. */
+    private OffsetDateTime horaDispositivo;
 }

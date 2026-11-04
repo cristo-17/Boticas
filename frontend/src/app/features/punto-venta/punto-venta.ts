@@ -11,6 +11,9 @@ import { PresentacionProducto, Producto } from '../../core/models/producto.model
 import { MetodoPago, OrigenCaptura, RecetaVenta } from '../../core/models/venta.model';
 import { ProductoService } from '../../core/services/producto.service';
 import { VentaService } from '../../core/services/venta.service';
+import { CatalogoOfflineService } from '../../core/services/catalogo-offline.service';
+import { ColaVentasService } from '../../core/services/cola-ventas.service';
+import { ConexionService } from '../../core/services/conexion.service';
 import { ConfigService } from '../../core/services/config.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
 import { textoAlertaVencimiento } from '../../core/utils/fecha.util';
@@ -43,6 +46,36 @@ export class PuntoVentaScreen implements OnInit {
   readonly ventaService = inject(VentaService);
   private readonly configService = inject(ConfigService);
   readonly carrito = inject(CarritoService);
+  private readonly conexion = inject(ConexionService);
+  private readonly catalogoOffline = inject(CatalogoOfflineService);
+  private readonly cola = inject(ColaVentasService);
+
+  readonly sinConexion = computed(() => !this.conexion.enLinea());
+
+  /**
+   * Tarea 22 (§7): sin conexión manda el estante. Si el carrito supera el stock
+   * aproximado del dispositivo (foto del catálogo menos lo que ya está en cola),
+   * se avisa pero no se bloquea: la venta se enviará para revisión. En línea no
+   * hay aviso: decide el servidor, como siempre.
+   */
+  readonly avisosStock = computed(() => {
+    if (!this.sinConexion()) return [];
+    const porProducto = new Map<number, { nombre: string; unidades: number }>();
+    for (const l of this.carrito.lineas()) {
+      const previo = porProducto.get(l.productoId);
+      porProducto.set(l.productoId, { nombre: l.nombre, unidades: (previo?.unidades ?? 0) + l.cantidad * l.factorConversion });
+    }
+    const avisos: string[] = [];
+    for (const [productoId, { nombre, unidades }] of porProducto) {
+      const stock = this.catalogoOffline.stockVendible(productoId);
+      if (stock === null) continue;
+      const disponible = Math.max(stock - this.cola.unidadesEnCola(productoId), 0);
+      if (unidades > disponible) {
+        avisos.push(`${nombre}: el sistema tiene ${disponible}; se enviará para revisión.`);
+      }
+    }
+    return avisos;
+  });
 
   readonly resultados = this.productoService.resultados;
   readonly masVendidos = this.productoService.masVendidos;
@@ -107,6 +140,9 @@ export class PuntoVentaScreen implements OnInit {
   }
 
   ngOnInit(): void {
+    // Tarea 22: la foto del catálogo, para seguir vendiendo si se corta la señal (§1).
+    void this.catalogoOffline.cargarGuardado();
+    if (this.conexion.enLinea()) this.catalogoOffline.refrescarSiHaceFalta();
     this.productoService.obtenerMasVendidos().subscribe({ error: () => {} });
     this.busqueda$.next('');
   }
@@ -194,20 +230,31 @@ export class PuntoVentaScreen implements OnInit {
   }
 
   private enviarVenta(metodo: MetodoPago, receta: RecetaVenta | null): void {
-    const items = this.carrito.lineas().map((l) => ({
+    const lineas = this.carrito.lineas();
+    const items = lineas.map((l) => ({
       productoId: l.productoId,
       presentacionId: l.presentacionId,
       cantidad: l.cantidad,
       origenCaptura: l.origenCaptura,
+      // Tarea 22 (D-E2-7): el precio que vio el cajero. En línea el servidor lo ignora.
+      precioCobrado: l.precioUnitario,
     }));
-    this.ventaService.registrarVenta({ items, metodoPago: metodo, receta }).subscribe({
-      next: (venta) => {
+    const unidadesPorProducto: Record<number, number> = {};
+    for (const l of lineas) {
+      unidadesPorProducto[l.productoId] = (unidadesPorProducto[l.productoId] ?? 0) + l.cantidad * l.factorConversion;
+    }
+    const detalle = {
+      productos: lineas.map((l) => `${l.nombre} × ${l.cantidad} ${l.presentacion}`),
+      unidadesPorProducto,
+    };
+    this.ventaService.registrarVenta({ items, metodoPago: metodo, receta }, detalle).subscribe({
+      next: (resultado) => {
         this.metodoConReceta.set(null);
         this.carrito.vaciar();
         this.mostrarToast(
-          venta.sincronizada
-            ? `Venta cobrada (${metodo.toUpperCase()}) · ${formatearMoneda(venta.total)}`
-            : `Venta guardada localmente · ${formatearMoneda(venta.total)}`,
+          resultado.tipo === 'registrada'
+            ? `Venta cobrada (${metodo.toUpperCase()}) · ${formatearMoneda(resultado.venta.total)}`
+            : 'Venta guardada sin conexión. Se enviará sola.',
         );
       },
       error: () => {}, // el error ya queda en ventaService.error(): banner de la pantalla y, si está abierto, el modal de receta

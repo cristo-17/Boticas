@@ -1,0 +1,103 @@
+<app-error-banner [mensaje]="error()"></app-error-banner>
+
+<div class="revisiones">
+  <div class="revisiones__cabecera">
+    <div>
+      <h1 class="revisiones__titulo">Ventas por revisar</h1>
+      <p class="field-hint">
+        Ventas cobradas sin conexión que tuvieron un problema al llegar. Ya ocurrieron en el mostrador: se registraron
+        igual y no se pierden.
+      </p>
+    </div>
+    <div class="revisiones__filtros" role="group" aria-label="Estado">
+      <app-button [variant]="filtro() === 'PENDIENTE' ? 'primary' : 'secondary'" (clicked)="elegirFiltro('PENDIENTE')">
+        Pendientes
+      </app-button>
+      <app-button [variant]="filtro() === 'RESUELTA' ? 'primary' : 'secondary'" (clicked)="elegirFiltro('RESUELTA')">
+        Resueltas
+      </app-button>
+    </div>
+  </div>
+
+  @if (pagina(); as p) {
+    @if (p.contenido.length === 0) {
+      <app-empty-state
+        title="Nada por revisar"
+        [text]="filtro() === 'PENDIENTE' ? 'Todas las ventas sin conexión llegaron sin problemas.' : 'Todavía no se resolvió ninguna.'"
+      ></app-empty-state>
+    }
+    @for (r of p.contenido; track r.id) {
+      <app-card class="revisiones__item">
+        <div class="revisiones__fila" data-testid="revision">
+          <div class="revisiones__encabezado">
+            <app-badge [variant]="varianteTipo(r.tipo)">{{ etiquetaTipo(r.tipo) }}</app-badge>
+            <span class="revisiones__venta">
+              Venta #{{ r.ventaId }}
+              @if (r.ventaFecha) {
+                · {{ fechaHora(r.ventaFecha) }}
+              }
+              @if (r.vendedorNombre) {
+                · {{ r.vendedorNombre }}
+              }
+              @if (r.ventaTotal !== null) {
+                · {{ formatearMoneda(r.ventaTotal) }}
+              }
+            </span>
+          </div>
+          <p class="revisiones__detalle">{{ r.detalle }}</p>
+          @if (r.tipo === 'PRECIO_DISTINTO' && r.precioCobrado !== null && r.precioVigente !== null) {
+            <p class="revisiones__dato">
+              Cobrado {{ formatearMoneda(r.precioCobrado) }} · vigente {{ formatearMoneda(r.precioVigente) }}
+            </p>
+          }
+          @if (r.unidadesFaltantes) {
+            <p class="revisiones__dato">Unidades sin stock en el sistema: {{ r.unidadesFaltantes }}</p>
+          }
+
+          @if (r.estado === 'PENDIENTE') {
+            <label class="revisiones__nota-label" [attr.for]="'nota-' + r.id">Nota</label>
+            <textarea
+              class="bs-field-compact revisiones__nota"
+              [id]="'nota-' + r.id"
+              rows="2"
+              maxlength="300"
+              [value]="notaDe(r.id)"
+              (input)="escribirNota(r.id, $event)"
+              [placeholder]="r.tipo === 'STOCK_INSUFICIENTE' ? 'Obligatoria para dar por faltante' : 'Opcional'"
+            ></textarea>
+            <div class="revisiones__acciones">
+              <app-button variant="secondary" [disabled]="cargando()" (clicked)="marcarVista(r)">Marcar vista</app-button>
+              @if (r.tipo === 'STOCK_INSUFICIENTE') {
+                <app-button [disabled]="cargando() || !notaDe(r.id).trim()" (clicked)="darPorFaltante(r)">
+                  Dar por faltante
+                </app-button>
+              }
+            </div>
+          } @else {
+            <p class="revisiones__dato">
+              {{ r.resolucion === 'FALTANTE' ? 'Faltante de inventario' : 'Vista' }}
+              @if (r.resueltaPorNombre) {
+                · {{ r.resueltaPorNombre }}
+              }
+              @if (r.resueltaEn) {
+                · {{ fechaHora(r.resueltaEn) }}
+              }
+              @if (r.notaResolucion) {
+                · {{ r.notaResolucion }}
+              }
+            </p>
+          }
+        </div>
+      </app-card>
+    }
+    @if (p.totalPaginas > 1) {
+      <app-paginacion
+        [pagina]="p.pagina"
+        [totalPaginas]="p.totalPaginas"
+        [totalElementos]="p.totalElementos"
+        (anterior)="cargar(p.pagina - 1)"
+        (siguiente)="cargar(p.pagina + 1)"
+      ></app-paginacion>
+    }
+  }
+</div>

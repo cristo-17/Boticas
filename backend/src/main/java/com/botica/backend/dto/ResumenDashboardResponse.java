@@ -19,6 +19,14 @@ public record ResumenDashboardResponse(
         long stockCritico,
         long stockAgotado,
         String cajaEstado,
-        OffsetDateTime cajaHoraApertura
+        OffsetDateTime cajaHoraApertura,
+        /** Tarea 22: ventas sin conexión con revisiones pendientes. Solo ADMINISTRADOR (las resuelve); null para TECNICO. */
+        Long ventasPorRevisar
 ) {
+    public ResumenDashboardResponse(BigDecimal ventasHoy, Integer ventasHoyVariacionPct, long boletasHoy, long productosPorVencer,
+                                    long productosPorVencerCriticos, long stockCritico, long stockAgotado, String cajaEstado,
+                                    OffsetDateTime cajaHoraApertura) {
+        this(ventasHoy, ventasHoyVariacionPct, boletasHoy, productosPorVencer, productosPorVencerCriticos, stockCritico,
+                stockAgotado, cajaEstado, cajaHoraApertura, null);
+    }
 }

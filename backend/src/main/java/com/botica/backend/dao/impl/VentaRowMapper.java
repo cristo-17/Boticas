@@ -25,6 +25,8 @@ public class VentaRowMapper implements RowMapper<Venta> {
                 .metodoPago(rs.getString("metodo_pago"))
                 .claveIdempotencia(UUID.fromString(rs.getString("clave_idempotencia")))
                 .sincronizada(rs.getBoolean("sincronizada"))
+                .vendidaSinConexion(rs.getBoolean("vendida_sin_conexion"))
+                .horaDispositivo(rs.getObject("hora_dispositivo", OffsetDateTime.class))
                 .build();
     }
 }

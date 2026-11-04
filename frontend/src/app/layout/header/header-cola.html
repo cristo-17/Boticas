@@ -1,0 +1,70 @@
+<div class="header-cola">
+  <button
+    type="button"
+    class="header-cola__btn"
+    [attr.aria-expanded]="abierto()"
+    aria-label="Estado de conexión y ventas sin enviar"
+    title="Conexión y ventas sin enviar"
+    data-testid="indicador-conexion"
+    (click)="alternar()"
+  >
+    <app-conn-status mode="chip" [state]="estado()" [label]="etiqueta()" [compactoEnMovil]="true"></app-conn-status>
+    @if (cola.cantidadPropias() > 0) {
+      <span class="header-cola__badge" data-testid="contador-cola">{{ cola.cantidadPropias() }}</span>
+    }
+  </button>
+
+  @if (abierto()) {
+    <div class="header-cola__panel" role="dialog" aria-label="Ventas sin enviar">
+      <div class="header-cola__titulo">Ventas sin enviar</div>
+
+      @if (!hayAlgo()) {
+        <p class="header-cola__vacio">No hay ventas pendientes en este dispositivo.</p>
+      }
+
+      @for (e of cola.propias(); track e.claveIdempotencia) {
+        <div class="header-cola__fila" data-testid="fila-cola">
+          <span class="header-cola__hora">{{ hora(e.horaDispositivo) }} · {{ metodo(e.cuerpo.metodoPago) }}</span>
+          <span class="header-cola__productos">{{ e.productos.join(', ') }}</span>
+          <span class="header-cola__estado" [class.header-cola__estado--detenida]="e.estado === 'DETENIDA'">
+            @if (e.estado === 'DETENIDA') {
+              Detenida: {{ e.ultimoError }}
+            } @else if (cola.enviando()) {
+              Enviando
+            } @else {
+              Esperando conexión
+            }
+          </span>
+        </div>
+      }
+
+      @for (o of cola.deOtrosUsuarios(); track o.nombre) {
+        <p class="header-cola__otros">
+          Hay {{ o.cantidad }} {{ o.cantidad === 1 ? 'venta' : 'ventas' }} de {{ o.nombre }} en este dispositivo.
+          Se enviarán cuando esa persona vuelva a entrar aquí.
+        </p>
+      }
+
+      @for (o of cola.conObservaciones(); track o.claveIdempotencia) {
+        <div class="header-cola__fila header-cola__fila--observada">
+          <span class="header-cola__productos">{{ o.productos.join(', ') }}</span>
+          <span class="header-cola__estado">
+            Enviada con observaciones:
+            @for (r of o.revisiones; track r.id; let ultimo = $last) {
+              {{ textoRevision(r.tipo) }}{{ ultimo ? '' : ', ' }}
+            }
+            . El administrador la revisa.
+          </span>
+          <button type="button" class="header-cola__link" (click)="cola.descartarObservacion(o.claveIdempotencia)">Entendido</button>
+        </div>
+      }
+
+      @if (cola.cantidadPropias() > 0) {
+        <button type="button" class="header-cola__enviar" [disabled]="cola.enviando()" (click)="enviarAhora()">
+          {{ cola.enviando() ? 'Enviando…' : 'Enviar ahora' }}
+        </button>
+        <p class="header-cola__nota">Quedan guardadas aunque cierres sesión: se envían cuando vuelvas a entrar en este dispositivo.</p>
+      }
+    </div>
+  }
+</div>

@@ -62,6 +62,11 @@ export const routes: Routes = [
         loadComponent: () => import('./features/usuarios/usuarios').then((m) => m.UsuariosScreen),
       },
       {
+        path: 'revisiones',
+        canActivate: [rolGuard('ADMINISTRADOR')],
+        loadComponent: () => import('./features/revisiones/revisiones').then((m) => m.RevisionesScreen),
+      },
+      {
         path: 'reportes',
         canActivate: [rolGuard('ADMINISTRADOR')],
         loadComponent: () => import('./features/reportes/reportes').then((m) => m.ReportesScreen),

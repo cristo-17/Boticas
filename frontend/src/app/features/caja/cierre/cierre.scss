@@ -141,3 +141,26 @@ $cierre-breakpoint: 899.98px;
   padding: var(--s-3) var(--s-5);
   border-top: 1px solid var(--line);
 }
+
+/* Tarea 22: cierre bloqueado mientras haya ventas de esta caja en la cola (layout local). */
+.cierre__bloqueo {
+  padding: 16px;
+  border: 1px solid var(--ambar-100);
+  border-radius: 12px;
+  background: var(--ambar-50);
+  color: var(--ambar-600);
+}
+
+.cierre__bloqueo-texto {
+  margin: 0 0 12px;
+}
+
+.cierre__bloqueo-btn {
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--ambar-500);
+  color: #fff;
+  cursor: pointer;
+}

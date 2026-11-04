@@ -83,6 +83,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/reportes", "/api/reportes/**").hasRole("ADMINISTRADOR")
                         // Tarea 20: Kardex por producto y su .xlsx, solo ADMINISTRADOR.
                         .requestMatchers("/api/kardex", "/api/kardex/**").hasRole("ADMINISTRADOR")
+                        // Tarea 22: las revisiones de ventas sin conexión las resuelve el administrador.
+                        .requestMatchers("/api/ventas/revisiones", "/api/ventas/revisiones/**").hasRole("ADMINISTRADOR")
                         .anyRequest().authenticated())
                 .exceptionHandling(eh -> eh
                         .authenticationEntryPoint(authenticationEntryPoint)
