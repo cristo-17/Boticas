@@ -15,6 +15,9 @@ import { AlertaService } from './alerta.service';
 import { environment } from '../../../environments/environment';
 
 const BASE_URL = `${environment.apiUrl}/ventas`;
+/** offline-fix (punto 2): sin caja abierta conocida en este equipo no hay venta sin conexión. */
+export const MENSAJE_SIN_CAJA_SIN_CONEXION = 'Abre la caja con conexión antes de vender sin conexión.';
+export const MENSAJE_SESION_SIN_CONEXION = 'Tu sesión venció: vuelve a entrar con conexión para vender sin conexión.';
 
 /**
  * Tarea 22: resultado de cobrar. `registrada` = el servidor respondió 200;
@@ -88,6 +91,9 @@ export class VentaService {
 
     return defer(() => from(this.prepararEntrada(cuerpo, detalle))).pipe(
       switchMap((entrada) => {
+        // offline-fix (punto 2): sin cola posible (sin caja abierta conocida o sin sesión vigente) y
+        // sin conexión, la venta no sale: se dice qué hacer y el carrito queda como estaba.
+        if (!entrada && !this.conexion.enLinea()) return this.sinColaPosible();
         const envio$ =
           entrada && !this.conexion.enLinea()
             ? throwError(() => new SinConexionConocida())
@@ -99,6 +105,7 @@ export class VentaService {
             ),
           ),
           catchError((err) => {
+            if (!entrada && esFalloDeRed(err)) return this.sinColaPosible();
             if (entrada && esFalloDeRed(err)) {
               this.conexion.reportarSinRed(); // el tiempo de espera de rxjs no pasa por el interceptor
               return from(this.cola.marcarSinConexion(claveFija)).pipe(
@@ -121,6 +128,13 @@ export class VentaService {
       }), // tras un error de negocio la clave se conserva: el reintento reusa la misma
       finalize(() => this._cargando.set(false)),
     );
+  }
+
+  /** El cobro no puede quedar en la cola: error en pantalla con lo que hay que hacer; el carrito no se toca. */
+  private sinColaPosible(): Observable<never> {
+    const sinCaja = !this.cajaService.cajaAbiertaConocida();
+    this._error.set(sinCaja ? MENSAJE_SIN_CAJA_SIN_CONEXION : MENSAJE_SESION_SIN_CONEXION);
+    return throwError(() => new Error(sinCaja ? 'SIN_CAJA_SIN_CONEXION' : 'SESION_SIN_CONEXION'));
   }
 
   /**

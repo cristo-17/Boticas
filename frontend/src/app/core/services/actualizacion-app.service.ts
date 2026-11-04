@@ -5,6 +5,7 @@ import { SwUpdate, VersionReadyEvent } from '@angular/service-worker';
 import { filter } from 'rxjs/operators';
 import { ColaVentasService } from './cola-ventas.service';
 import { VentaEnCursoService } from './venta-en-curso.service';
+import { ConexionService } from './conexion.service';
 
 /** Cada cuánto se pregunta por una versión nueva mientras la app está abierta. */
 export const INTERVALO_BUSQUEDA_VERSION_MS = 15 * 60_000;
@@ -30,7 +31,8 @@ export const RECARGAR_PAGINA = new InjectionToken<() => void>('RECARGAR_PAGINA',
  *   recarga sola; si no, deja `hayVersionNueva` en true y la app muestra
  *   "Hay una versión nueva · Actualizar". Nunca recarga en medio de una venta.
  * - Estado irrecuperable (el worker ya no tiene los archivos de esta versión):
- *   recarga, porque la app ya no puede cargar sus pantallas diferidas.
+ *   la misma regla (recarga sola solo si no interrumpe nada; si no, el aviso).
+ * - Sin conexión nunca recarga sola (offline-fix, [FE-016]).
  *
  * La cola de ventas sin conexión está en IndexedDB: una recarga no la toca
  * (ver cola-ventas.service.spec.ts y e2e/flujo-sin-conexion.spec.ts).
@@ -42,14 +44,19 @@ export class ActualizacionAppService {
   private readonly destroyRef = inject(DestroyRef);
   private readonly ventaEnCurso = inject(VentaEnCursoService);
   private readonly cola = inject(ColaVentasService);
+  private readonly conexion = inject(ConexionService);
   private readonly recargarPagina = inject(RECARGAR_PAGINA);
 
   private readonly _hayVersionNueva = signal(false);
   readonly hayVersionNueva = this._hayVersionNueva.asReadonly();
 
-  /** Recargar ahora no interrumpe nada: ni una venta a medio hacer ni un envío de la cola. */
+  /**
+   * Recargar ahora no interrumpe nada: ni una venta a medio hacer, ni un envío de la
+   * cola, ni se recarga sin conexión (offline-fix: sin red, una recarga depende de que
+   * el service worker tenga todo; mejor seguir con lo que ya está cargado).
+   */
   readonly puedeRecargarSola = computed(
-    () => !this.ventaEnCurso.enCurso() && !this.cola.enviando(),
+    () => !this.ventaEnCurso.enCurso() && !this.cola.enviando() && this.conexion.enLinea(),
   );
 
   private iniciado = false;
@@ -65,9 +72,10 @@ export class ActualizacionAppService {
         takeUntilDestroyed(this.destroyRef),
       )
       .subscribe(() => this.versionLista());
+    // Irrecuperable: misma regla que una versión nueva (offline-fix: nunca en medio de una venta ni sin red).
     this.sw.unrecoverable
       .pipe(takeUntilDestroyed(this.destroyRef))
-      .subscribe(() => this.recargarPagina());
+      .subscribe(() => this.versionLista());
 
     const alVolver = () => {
       if (this.documento.visibilityState === 'visible') this.buscarVersion();

@@ -49,6 +49,15 @@ describe('CarritoPanelComponent', () => {
     expect(vaciado).toBe(1);
   });
 
+  it('el error del cobro se ve dentro del panel, junto a "Cobrar", y las líneas siguen (offline-fix)', async () => {
+    expect(el().querySelector('[data-testid="error-cobro"] [role="alert"]')).toBeNull();
+    fixture.componentRef.setInput('errorCobro', 'Abre la caja con conexión antes de vender sin conexión.');
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(el().querySelector('[data-testid="error-cobro"]')?.textContent).toContain('Abre la caja con conexión');
+    expect(el().textContent).toContain('Paracetamol');
+  });
+
   it('con el carrito vacío no ofrece vaciar', async () => {
     fixture.componentRef.setInput('lineas', []);
     fixture.detectChanges();

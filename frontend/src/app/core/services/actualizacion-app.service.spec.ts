@@ -10,6 +10,7 @@ import {
 } from './actualizacion-app.service';
 import { ColaVentasService } from './cola-ventas.service';
 import { VentaEnCursoService } from './venta-en-curso.service';
+import { ConexionService } from './conexion.service';
 
 const LISTA: VersionEvent = {
   type: 'VERSION_READY',
@@ -25,6 +26,7 @@ describe('ActualizacionAppService', () => {
   let recargas: number;
   let enviando: ReturnType<typeof signal<boolean>>;
   let habilitado: boolean;
+  let enLinea: ReturnType<typeof signal<boolean>>;
 
   beforeEach(() => {
     vi.useFakeTimers();
@@ -34,6 +36,7 @@ describe('ActualizacionAppService', () => {
     recargas = 0;
     enviando = signal(false);
     habilitado = true;
+    enLinea = signal(true);
     TestBed.configureTestingModule({
       providers: [
         {
@@ -51,6 +54,7 @@ describe('ActualizacionAppService', () => {
           },
         },
         { provide: ColaVentasService, useValue: { enviando } },
+        { provide: ConexionService, useValue: { enLinea } },
         { provide: RECARGAR_PAGINA, useValue: () => void recargas++ },
       ],
     });
@@ -119,7 +123,23 @@ describe('ActualizacionAppService', () => {
     expect(servicio.hayVersionNueva()).toBe(false);
   });
 
-  it('estado irrecuperable del service worker: recarga', () => {
+  it('sin conexión NUNCA recarga sola, aunque el carrito esté vacío: muestra el aviso ([FE-016])', () => {
+    const servicio = iniciar();
+    enLinea.set(false);
+    versiones.next(LISTA);
+    expect(recargas).toBe(0);
+    expect(servicio.hayVersionNueva()).toBe(true);
+  });
+
+  it('estado irrecuperable con una venta en curso o sin conexión: aviso, no recarga en medio de la venta', () => {
+    const servicio = iniciar();
+    TestBed.inject(VentaEnCursoService).marcar(true);
+    irrecuperable.next({ type: 'UNRECOVERABLE_STATE', reason: 'x' });
+    expect(recargas).toBe(0);
+    expect(servicio.hayVersionNueva()).toBe(true);
+  });
+
+  it('estado irrecuperable del service worker sin venta en curso y con conexión: recarga', () => {
     iniciar();
     irrecuperable.next({ type: 'UNRECOVERABLE_STATE', reason: 'faltan archivos de esta versión' });
     expect(recargas).toBe(1);

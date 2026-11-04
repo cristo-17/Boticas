@@ -13,6 +13,7 @@ import {
 import { ButtonComponent } from '../../../shared/components/button/button';
 import { BadgeComponent } from '../../../shared/components/badge/badge';
 import { ModalComponent } from '../../../shared/components/modal/modal';
+import { ErrorBannerComponent } from '../../../shared/components/error-banner/error-banner';
 import { MetodoPago } from '../../../core/models/venta.model';
 import { formatearMoneda } from '../../../core/utils/moneda.util';
 import { totalLinea } from '../../../core/utils/dinero.util';
@@ -30,7 +31,7 @@ import { LineaCarrito } from '../services/carrito.service';
  */
 @Component({
   selector: 'app-carrito-panel',
-  imports: [ButtonComponent, BadgeComponent, ModalComponent],
+  imports: [ButtonComponent, BadgeComponent, ModalComponent, ErrorBannerComponent],
   templateUrl: './carrito-panel.html',
   styleUrl: './carrito-panel.scss',
   host: { '[class.carrito-panel--expandido]': 'expandido()' },
@@ -44,6 +45,8 @@ export class CarritoPanelComponent {
   @Input() mostrarIgv = true;
   @Input() igvLabel = 'IGV 18%';
   @Input() cobrando = false;
+  /** El error del cobro, junto al botón: en el celular la hoja del carrito tapa el banner de arriba (offline-fix). */
+  @Input() errorCobro: string | null = null;
 
   @Output() incrementar = new EventEmitter<string>();
   @Output() decrementar = new EventEmitter<string>();

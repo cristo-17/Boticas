@@ -13,6 +13,7 @@ import { ProductoService } from '../../core/services/producto.service';
 import { VentaService } from '../../core/services/venta.service';
 import { CatalogoOfflineService } from '../../core/services/catalogo-offline.service';
 import { VentaEnCursoService } from '../../core/services/venta-en-curso.service';
+import { CajaService } from '../../core/services/caja.service';
 import { ColaVentasService } from '../../core/services/cola-ventas.service';
 import { ConexionService } from '../../core/services/conexion.service';
 import { ConfigService } from '../../core/services/config.service';
@@ -50,6 +51,7 @@ export class PuntoVentaScreen implements OnInit {
   private readonly conexion = inject(ConexionService);
   private readonly catalogoOffline = inject(CatalogoOfflineService);
   private readonly cola = inject(ColaVentasService);
+  private readonly cajaService = inject(CajaService);
 
   readonly sinConexion = computed(() => !this.conexion.enLinea());
 
@@ -85,7 +87,14 @@ export class PuntoVentaScreen implements OnInit {
   readonly cobrando = this.ventaService.cargando;
 
   /** Regla de frontend (CLAUDE.md): toda pantalla que llama a un servicio muestra su error — acá hay dos servicios, un solo banner combinado. */
-  readonly error = computed(() => this.productoService.error() ?? this.ventaService.error());
+  // El error del cobro va en el panel del carrito, junto a "Cobrar" (en el celular la hoja tapa este banner).
+  readonly error = this.productoService.error;
+
+  /** offline-fix: sin caja abierta conocida en este equipo no se puede vender sin conexión; el aviso lo dice. */
+  readonly cajaConocida = computed(() => {
+    this.cajaService.cajaActual(); // se recalcula cuando cambia la caja (abrir, cerrar, /hoy)
+    return this.cajaService.cajaAbiertaConocida() !== null;
+  });
 
   readonly query = signal('');
   readonly estadoEscaneo = signal<EstadoEscaneo>('idle');

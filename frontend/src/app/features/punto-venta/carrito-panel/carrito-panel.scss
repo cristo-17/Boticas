@@ -379,3 +379,9 @@ $movil: 1023.98px;
     display: none;
   }
 }
+
+// offline-fix: el error del cobro, junto al botón.
+.carrito-panel__error {
+  display: block;
+  margin-bottom: var(--s-2);
+}

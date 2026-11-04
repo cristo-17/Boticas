@@ -127,6 +127,7 @@
     </div>
   </div>
 
+  <app-error-banner [mensaje]="errorCobro" class="carrito-panel__error" data-testid="error-cobro"></app-error-banner>
   <div class="carrito-panel__total">
     <span class="carrito-panel__total-label">Total</span>
     <span class="num carrito-panel__total-valor">{{ formatearMoneda(total) }}</span>

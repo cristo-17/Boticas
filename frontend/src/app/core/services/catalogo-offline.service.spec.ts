@@ -149,4 +149,21 @@ describe('CatalogoOfflineService', () => {
     await s.cargarGuardado();
     expect(s.catalogo()).toBeNull();
   });
+
+  it('un producto agotado (sin lotes vendibles) igual se encuentra por código y por nombre; su stock vendible es 0', async () => {
+    const s = TestBed.inject(CatalogoOfflineService);
+    const f = foto(1, 1);
+    f.productos[0] = {
+      ...f.productos[0],
+      codigoBarras: '7757002030179',
+      nombre: 'Diclofenaco 50 mg',
+      lotesVendibles: [],
+    };
+    s.descargar().subscribe();
+    http.expectOne(URL).flush(f);
+    await tick();
+    expect(s.porCodigo('7757002030179')?.nombre).toBe('Diclofenaco 50 mg');
+    expect(s.buscar('diclo').map((p) => p.nombre)).toEqual(['Diclofenaco 50 mg']);
+    expect(s.stockVendible(f.productos[0].id)).toBe(0); // Punto de Venta avisa "el sistema tiene 0"
+  });
 });

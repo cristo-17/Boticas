@@ -14,7 +14,7 @@ import { CajaService } from '../../core/services/caja.service';
 const MENSAJE_BANNER = {
   sync: 'Sincronizando ventas guardadas localmente…',
   offline:
-    'Sin conexión. Puedes seguir vendiendo: todo se guarda en el equipo y se sube al reconectar.',
+    'Sin conexión. Con la caja abierta puedes seguir vendiendo: las ventas se guardan en el equipo y se envían al reconectar. Lo demás necesita conexión.',
 } as const;
 
 @Component({

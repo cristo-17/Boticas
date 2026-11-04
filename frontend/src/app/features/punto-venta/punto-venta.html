@@ -4,7 +4,11 @@
     <div class="pos__sin-conexion" role="status" data-testid="pos-sin-conexion">
       <i class="bi bi-wifi-off" aria-hidden="true"></i>
       <span>
-        Sin conexión: puedes seguir vendiendo con el catálogo guardado. Las ventas se envían solas al volver la señal.
+        @if (cajaConocida()) {
+          Sin conexión: puedes seguir vendiendo con el catálogo guardado. Las ventas se envían solas al volver la señal.
+        } @else {
+          Sin conexión y sin caja abierta en este equipo: abre la caja con conexión para poder vender.
+        }
         @for (aviso of avisosStock(); track aviso) {
           <span class="pos__sin-conexion-aviso">{{ aviso }}</span>
         }
@@ -101,6 +105,7 @@
     [unidades]="carrito.unidades()"
     [igvLabel]="igvLabel()"
     [cobrando]="cobrando()"
+    [errorCobro]="ventaService.error()"
     (incrementar)="carrito.incrementar($event)"
     (decrementar)="carrito.decrementar($event)"
     (lineaQuitada)="carrito.quitar($event)"

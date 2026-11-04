@@ -30,6 +30,23 @@ export interface ErrorTraducido {
  */
 const CODIGOS_SILENCIOSOS = new Set<string>(['PRODUCTO_NO_ENCONTRADO', 'CREDENCIALES_INVALIDAS', 'CUENTA_BLOQUEADA']);
 
+/** Lo que ve el cajero cuando una acción no llegó al servidor (offline-fix, punto 3). */
+export const MENSAJE_SIN_CONEXION = 'Esta acción necesita conexión.';
+
+/**
+ * El error que conexionInterceptor devuelve SIN mandar la petición (sin conexión) o
+ * cuando el servidor no contesta a tiempo: status 0 (esFalloDeRed lo reconoce, así que
+ * los servicios con respaldo local siguen igual) y ya traducido, porque nace afuera de
+ * este interceptor.
+ */
+export function errorSinConexion(url: string): HttpErrorResponse & { traducido: ErrorTraducido } {
+  const err = new HttpErrorResponse({ status: 0, statusText: 'Sin conexión', url, error: null }) as HttpErrorResponse & {
+    traducido: ErrorTraducido;
+  };
+  err.traducido = { codigo: 'SIN_CONEXION', mensaje: MENSAJE_SIN_CONEXION, silencioso: false };
+  return err;
+}
+
 /** Traduce el código "error" del backend al mensaje que cada pantalla muestra. Un solo lugar, no ifs desperdigados. */
 const MENSAJES_POR_CODIGO: Record<string, string> = {
   CREDENCIALES_INVALIDAS: 'Usuario o contraseña incorrectos.',
@@ -60,7 +77,7 @@ function traducir(respuesta: HttpErrorResponse): ErrorTraducido {
   const codigo = cuerpo?.error ?? null;
   if (!codigo) {
     // Sin cuerpo de error del backend: red caída, timeout, backend apagado.
-    return { codigo: null, mensaje: 'No se pudo conectar con el servidor. Verifica tu conexión.', silencioso: false };
+    return { codigo: null, mensaje: MENSAJE_SIN_CONEXION, silencioso: false };
   }
   return {
     codigo,

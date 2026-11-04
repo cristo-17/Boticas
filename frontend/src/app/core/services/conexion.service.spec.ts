@@ -22,7 +22,7 @@ describe('ConexionService', () => {
 
   afterEach(() => http.verify());
 
-  it('una petición sin respuesta (status 0) pasa a offline; cualquier respuesta del backend vuelve a online y avisa', () => {
+  it('una petición sin respuesta (status 0) pasa a offline; cualquier respuesta del backend vuelve a online y avisa', async () => {
     let reconexiones = 0;
     servicio.reconectado$.subscribe(() => reconexiones++);
 
@@ -30,11 +30,20 @@ describe('ConexionService', () => {
     http.expectOne(`${environment.apiUrl}/productos?`.replace('?', '')).error(new ProgressEvent('error'), { status: 0 });
     expect(servicio.estado()).toBe('offline');
 
-    // Un 409 de negocio también prueba que hay conexión.
+    // offline-fix: sin conexión, la acción no sale (falla al instante) y dispara una comprobación;
+    // la comprobación que responde vuelve a online y avisa.
+    cliente.post(`${environment.apiUrl}/caja/abrir`, {}).subscribe({ error: () => {} });
+    http.expectNone(`${environment.apiUrl}/caja/abrir`);
+    http.expectOne(`${environment.apiUrl}/config`).flush({ version: 'local' });
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(servicio.estado()).toBe('online');
+    expect(reconexiones).toBe(1);
+
+    // En línea, un 409 de negocio también prueba que hay conexión.
     cliente.post(`${environment.apiUrl}/caja/abrir`, {}).subscribe({ error: () => {} });
     http.expectOne(`${environment.apiUrl}/caja/abrir`).flush({ error: 'CAJA_YA_ABIERTA' }, { status: 409, statusText: 'Conflict' });
     expect(servicio.estado()).toBe('online');
-    expect(reconexiones).toBe(1);
   });
 
   it('502, 503 y 504 (el proxy sin backend detrás) cuentan como sin conexión', () => {

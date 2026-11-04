@@ -18,6 +18,7 @@ import { login } from './helpers';
 const TECNICO_DEMO = { usuario: 'demo_esperanza_andres', password: 'demo123' } as const;
 const API = process.env['E2E_API_URL'] ?? 'http://localhost:8080/api';
 const TECNICO_OTRO_EQUIPO = { usuario: 'demo_sanmartin_karina', password: 'demo123' } as const;
+const TECNICO_SIN_CAJA = { usuario: 'demo_carmen_miguel', password: 'demo123' } as const;
 const PRODUCTO = 'Cetirizina 10 mg';
 
 test.describe.configure({ mode: 'serial' });
@@ -128,6 +129,40 @@ test('caja abierta en otro equipo: directo a Punto de Venta, vende sin conexión
   const ventas = await ventasConClave(request, page, enviadas[0].claveIdempotencia);
   expect(ventas, 'una sola venta con esa clave en el servidor').toHaveLength(1);
   expect(ventas[0].vendidaSinConexion).toBe(true);
+});
+
+test('sin caja abierta y sin conexión: Cobrar avisa y no pierde el carrito; "Abrir caja" falla al instante', async ({ page, context }) => {
+  const foto = page.waitForResponse((r) => r.url().includes('/api/productos/catalogo-offline') && r.ok());
+  await login(page, 'Tarde', TECNICO_SIN_CAJA);
+  await foto;
+  // El build de los E2E no tiene service worker: la pantalla Caja (diferida) se carga una vez con red.
+  await page.goto('/caja');
+  await expect(page.locator('#apertura-monto')).toBeVisible();
+  await page.locator('a[href="/punto-venta"]').first().click();
+  await agregarAlCarrito(page);
+
+  await context.setOffline(true);
+  await expect(page.getByTestId('pos-sin-conexion')).toContainText('sin caja abierta en este equipo');
+  const enviadas = escucharPostVentas(page);
+  let navegaciones = 0;
+  page.on('framenavigated', (f) => {
+    if (f === page.mainFrame()) navegaciones++;
+  });
+  await page.getByRole('button', { name: /Cobrar S\/ [\d.]+/ }).click();
+  await expect(page.getByTestId('error-cobro')).toContainText('Abre la caja con conexión antes de vender sin conexión.');
+  await expect(page.locator('.carrito-panel__qty-num')).toHaveText('1'); // el carrito sigue
+  expect(navegaciones, 'la pantalla no se recarga').toBe(0);
+  expect(enviadas, 'sin caja no sale ninguna venta').toHaveLength(0);
+
+  // "Abrir caja" sin red: falla al instante, con un mensaje, y el botón no queda cargando.
+  await page.locator('a[href="/caja"]').first().click(); // navegación de la app: sin red no se recarga la página
+  await page.locator('#apertura-monto').fill('50.00');
+  const inicio = Date.now();
+  await page.getByRole('button', { name: 'Abrir caja' }).click();
+  await expect(page.getByText('Esta acción necesita conexión.').first()).toBeVisible({ timeout: 3_000 });
+  expect(Date.now() - inicio).toBeLessThan(3_000);
+  await expect(page.getByRole('button', { name: 'Abrir caja' })).toBeEnabled();
+  await context.setOffline(false);
 });
 
 async function tokenDe(request: APIRequestContext, cred: { usuario: string; password: string }): Promise<string> {
