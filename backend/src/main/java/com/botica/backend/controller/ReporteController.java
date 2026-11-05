@@ -56,7 +56,8 @@ public class ReporteController {
                 .body(xlsx);
     }
 
-    private static LocalDate parsearFecha(String raw, String nombreParametro) {
+    /** Obligatoria (YYYY-MM-DD); también la usa {@link DigemidController}. */
+    static LocalDate parsearFecha(String raw, String nombreParametro) {
         if (raw == null || raw.isBlank()) {
             throw new RangoFechasInvalidoException("El parámetro '" + nombreParametro + "' es obligatorio (YYYY-MM-DD)");
         }

@@ -1,0 +1,106 @@
+// Layout local de la pestaña DIGEMID (RF-54). Lo compartido vive en styles/ y shared/.
+.digemid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-4);
+}
+
+.digemid__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: var(--s-3);
+}
+
+.digemid__titulo {
+  margin: 0 0 var(--s-2);
+  font-size: 24px;
+  font-weight: var(--fw-black);
+}
+
+.digemid__rotulo {
+  margin: 0 0 var(--s-1);
+  font-weight: var(--fw-bold, 700);
+  color: var(--ink-2);
+}
+
+.digemid__campo {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-1);
+}
+
+.digemid__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s-2);
+}
+
+.digemid__filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: var(--s-3);
+  align-items: end;
+  margin-top: var(--s-3);
+}
+
+.digemid__kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: var(--s-3);
+}
+
+.digemid__card {
+  display: block;
+  margin-bottom: var(--s-2);
+}
+
+.digemid__card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--s-2);
+}
+
+.digemid__card-meta {
+  margin: var(--s-1) 0;
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.digemid__subtitulo {
+  margin: 0 0 var(--s-3);
+  font-size: 16px;
+  font-weight: var(--fw-black);
+}
+
+.digemid__totales {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.digemid__totales th,
+.digemid__totales td {
+  padding: var(--s-2) var(--s-3);
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+
+.digemid__totales th {
+  font-size: 12px;
+  font-weight: var(--fw-black);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.digemid__totales .align-end {
+  text-align: right;
+}
+
+.digemid__fila-total td {
+  font-weight: var(--fw-black);
+  border-top: 2px solid var(--line);
+}

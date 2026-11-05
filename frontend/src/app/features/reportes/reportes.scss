@@ -1,3 +1,9 @@
+.reportes__pestanas {
+  display: flex;
+  gap: var(--s-2);
+  margin-bottom: var(--s-4);
+}
+
 .reportes {
   display: flex;
   flex-direction: column;

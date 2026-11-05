@@ -194,7 +194,7 @@ Al entrar se elige el turno (Mañana, Tarde o Noche).
 
 ## Funcionalidades
 
-**53 requerimientos: 51 implementados, 1 parcial y 1 planificado.** Cada uno tiene su evidencia
+**54 requerimientos: 52 implementados, 1 parcial y 1 planificado.** Cada uno tiene su evidencia
 ejecutable (el test JUnit, Vitest, E2E o la petición de Postman que lo prueba) en la matriz de evidencias,
 `docs/EVIDENCIAS.md`, que se entrega junto con el informe (la carpeta `docs/` es la documentación de trabajo
 del equipo y no está en este repositorio).
@@ -220,6 +220,9 @@ del equipo y no está en este repositorio).
 - **Alertas y notificaciones:** dashboard, vencimientos y stock bajo, avisos en tiempo real (SSE) e historial.
 - **Reporte de resultados (administrador):** ventas, costo, mermas, egresos y resultado neto por día, semana o
   mes, con gráfico y descarga a Excel.
+- **Reporte DIGEMID (administrador):** cada dispensación con receta del rango (lote y vencimiento, receta, CMP,
+  médico y técnico) con totales por producto y Excel. Es un reporte interno: no reemplaza los formatos
+  oficiales de DIGEMID.
 - **Celular y tablet:** desde 360 px de ancho, sin desplazamiento horizontal.
 - **Venta sin conexión:** el catálogo queda guardado en el dispositivo, la venta se encola y se envía sola al
   volver la señal, una sola vez; lo que no cuadró al recibirla (por ejemplo, stock insuficiente) queda para el administrador en "Ventas por

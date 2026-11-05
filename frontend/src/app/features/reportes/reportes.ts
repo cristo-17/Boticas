@@ -13,21 +13,12 @@ import { AgrupacionReporte } from '../../core/models/reporte.model';
 import { ReporteService } from '../../core/services/reporte.service';
 import { formatearMoneda } from '../../core/utils/moneda.util';
 import { RangoRapido, rangoRapido } from '../../core/utils/fecha-lima.util';
+import { ACCESOS_RAPIDOS, fechaCorta } from './accesos-rapidos';
+import { ReporteDigemidComponent } from './reporte-digemid/reporte-digemid';
+
+type PestanaReporte = 'resultados' | 'digemid';
+
 import { GraficoResultadosComponent } from '../../shared/components/grafico-resultados/grafico-resultados';
-
-interface AccesoRapido {
-  id: RangoRapido;
-  label: string;
-}
-
-const ACCESOS_RAPIDOS: AccesoRapido[] = [
-  { id: 'hoy', label: 'Hoy' },
-  { id: 'semana', label: 'Esta semana' },
-  { id: 'mes', label: 'Este mes' },
-  { id: 'mes-anterior', label: 'Mes anterior' },
-  { id: 'ultimos-30', label: 'Últimos 30 días' },
-  { id: 'personalizado', label: 'Personalizado' },
-];
 
 @Component({
   selector: 'app-reportes',
@@ -40,6 +31,7 @@ const ACCESOS_RAPIDOS: AccesoRapido[] = [
     EmptyStateComponent,
     ErrorBannerComponent,
     GraficoResultadosComponent,
+    ReporteDigemidComponent,
     SkeletonComponent,
     SummaryCardComponent,
     ToastComponent,
@@ -61,6 +53,8 @@ export class ReportesScreen implements OnInit {
   readonly agrupar = signal<AgrupacionReporte>('dia');
   readonly rangoActivo = signal<RangoRapido>('mes');
   readonly accesosRapidos = ACCESOS_RAPIDOS;
+  /** RF-54: la pestaña DIGEMID consulta recién al abrirse. */
+  readonly pestana = signal<PestanaReporte>('resultados');
 
   readonly toastVisible = signal(false);
   readonly toastMensaje = signal('');
@@ -119,11 +113,7 @@ export class ReportesScreen implements OnInit {
     });
   }
 
-  /** YYYY-MM-DD → dd/MM/yyyy (solo presentación). */
-  fechaCorta(iso: string): string {
-    const [y, m, d] = iso.split('-');
-    return y && m && d ? `${d}/${m}/${y}` : iso;
-  }
+  readonly fechaCorta = fechaCorta;
 
   formatearConSigno(valor: number): string {
     if (valor < 0) {

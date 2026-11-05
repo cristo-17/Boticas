@@ -84,12 +84,11 @@ public class ReporteService {
         return ReporteExcel.generar(nombreBotica, reporte, egresos, fechaNegocio.ahora());
     }
 
-    /** Nombre de descarga: {@code reporte-resultados_<desde>_<hasta>.xlsx}. */
-    public static String nombreArchivoExcel(LocalDate desde, LocalDate hasta) {
-        return "reporte-resultados_" + desde + "_" + hasta + ".xlsx";
-    }
-
-    private String validarParametros(LocalDate desde, LocalDate hasta, String agrupar) {
+    /**
+     * Rango de todo reporte por fechas (Resultados y DIGEMID): ambas obligatorias,
+     * desde &lt;= hasta y máximo 1 año. 400 RANGO_FECHAS_INVALIDO.
+     */
+    public static void validarRango(LocalDate desde, LocalDate hasta) {
         if (desde == null || hasta == null) {
             throw new RangoFechasInvalidoException("Las fechas desde y hasta son obligatorias");
         }
@@ -99,6 +98,15 @@ public class ReporteService {
         if (hasta.isAfter(desde.plusYears(1))) {
             throw new RangoFechasInvalidoException("El rango máximo permitido es de 1 año");
         }
+    }
+
+    /** Nombre de descarga: {@code reporte-resultados_<desde>_<hasta>.xlsx}. */
+    public static String nombreArchivoExcel(LocalDate desde, LocalDate hasta) {
+        return "reporte-resultados_" + desde + "_" + hasta + ".xlsx";
+    }
+
+    private String validarParametros(LocalDate desde, LocalDate hasta, String agrupar) {
+        validarRango(desde, hasta);
         String norm = (agrupar == null || agrupar.isBlank()) ? "dia" : agrupar.trim().toLowerCase();
         if (!AGRUPACIONES_VALIDAS.contains(norm)) {
             throw new FiltroInvalidoException("agrupar", agrupar);

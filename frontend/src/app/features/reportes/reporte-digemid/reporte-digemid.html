@@ -1,0 +1,192 @@
+<div class="digemid">
+  <header class="digemid__header">
+    <div>
+      <h1 class="digemid__titulo">Dispensación con receta (DIGEMID)</h1>
+      <p class="digemid__rotulo"><i class="bi bi-info-circle"></i> {{ rotulo }}</p>
+      <span class="field-hint">Fechas y horas de Lima · Cantidades en unidades</span>
+    </div>
+    <app-button variant="secondary" [loading]="descargandoExcel()" (clicked)="descargarExcel()">
+      <i class="bi bi-file-earmark-excel"></i> Descargar Excel
+    </app-button>
+  </header>
+
+  <app-error-banner [mensaje]="error()" />
+
+  <app-card>
+    <div class="digemid__campo">
+      <span class="field-label">Rango</span>
+      <div class="digemid__chips" role="group" aria-label="Accesos rápidos de fecha">
+        @for (r of accesosRapidos; track r.id) {
+          <app-chip [activo]="rangoActivo() === r.id" (clicked)="elegirRango(r.id)">{{ r.label }}</app-chip>
+        }
+      </div>
+    </div>
+
+    <form class="digemid__filtros" (ngSubmit)="consultar()">
+      @if (rangoActivo() === 'personalizado') {
+        <div class="digemid__campo">
+          <label class="field-label" for="digemid-desde">Desde</label>
+          <input id="digemid-desde" type="date" class="input num" name="desde"
+                 [ngModel]="desde()" (ngModelChange)="desde.set($event)" />
+        </div>
+        <div class="digemid__campo">
+          <label class="field-label" for="digemid-hasta">Hasta</label>
+          <input id="digemid-hasta" type="date" class="input num" name="hasta"
+                 [ngModel]="hasta()" (ngModelChange)="hasta.set($event)" />
+        </div>
+        <div class="digemid__campo digemid__campo--boton">
+          <app-button type="submit" variant="primary" [loading]="cargando()">
+            <i class="bi bi-funnel"></i> Consultar
+          </app-button>
+        </div>
+      } @else {
+        <div class="digemid__campo">
+          <span class="field-label">Período</span>
+          <span class="num">{{ fechaCorta(desde()) }} al {{ fechaCorta(hasta()) }}</span>
+        </div>
+      }
+    </form>
+  </app-card>
+
+  @if (cargando() && !reporte()) {
+    <app-skeleton [count]="4" />
+  } @else if (reporte(); as rep) {
+    <section class="digemid__kpis" aria-label="Totales del período">
+      <app-summary-card label="Recetas" [value]="'' + rep.totales.recetas" note="Cada receta cuenta una vez" />
+      <app-summary-card label="Unidades dispensadas" [value]="'' + rep.totales.unidades" variant="info"
+                        note="En la unidad de cada producto" />
+      <app-summary-card label="Líneas" [value]="'' + rep.totales.lineas" note="Una por lote dispensado" />
+    </section>
+
+    @if (rep.lineas.contenido.length === 0) {
+      <app-card>
+        <app-empty-state title="Sin dispensaciones con receta en el rango" text="Ajusta las fechas y vuelve a consultar." />
+      </app-card>
+    } @else {
+      <app-table>
+        <thead>
+          <tr>
+            <th>Fecha y hora</th>
+            <th>Venta</th>
+            <th>Producto</th>
+            <th>Presentación</th>
+            <th class="align-end">Cantidad</th>
+            <th>Lote</th>
+            <th>Vencimiento</th>
+            <th>N.º receta</th>
+            <th>CMP</th>
+            <th>Médico</th>
+            <th>Emisión</th>
+            <th>Técnico</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (f of rep.lineas.contenido; track f.id) {
+            <tr>
+              <td class="num">{{ fechaHora(f.fecha) }}</td>
+              <td class="num">#{{ f.ventaId }}</td>
+              <td>{{ f.producto }}</td>
+              <td>{{ f.presentacion }}</td>
+              <td class="num align-end">{{ f.cantidad }} {{ f.unidadNombre }}</td>
+              <td class="num">
+                @if (f.loteId === null) {
+                  <app-badge variant="warn">{{ sinLote }}</app-badge>
+                } @else {
+                  {{ f.loteCodigo }}
+                }
+              </td>
+              <td class="num">{{ fechaCorta(f.loteVencimiento) }}</td>
+              <td class="num">
+                @if (f.recetaNumero === null) {
+                  <app-badge variant="warn">{{ sinReceta }}</app-badge>
+                } @else {
+                  {{ f.recetaNumero }}
+                }
+              </td>
+              <td class="num">{{ f.recetaCmp ?? '' }}</td>
+              <td>{{ f.medicoNombre ?? '' }}</td>
+              <td class="num">{{ fechaCorta(f.fechaEmision) }}</td>
+              <td>{{ f.tecnico }}</td>
+            </tr>
+          }
+        </tbody>
+        <div cards>
+          @for (f of rep.lineas.contenido; track f.id) {
+            <app-card [flat]="true" class="digemid__card">
+              <div class="digemid__card-top">
+                <strong>{{ f.producto }}</strong>
+                <span class="num">{{ f.cantidad }} {{ f.unidadNombre }}</span>
+              </div>
+              <div class="digemid__card-meta">
+                <span class="num">{{ fechaHora(f.fecha) }}</span> · Venta <span class="num">#{{ f.ventaId }}</span>
+                · {{ f.presentacion }}
+              </div>
+              <div class="digemid__card-meta">
+                Lote <span class="num">{{ lote(f) }}</span>
+                @if (f.loteVencimiento) {
+                  · vence <span class="num">{{ fechaCorta(f.loteVencimiento) }}</span>
+                }
+              </div>
+              <div class="digemid__card-meta">
+                Receta <span class="num">{{ f.recetaNumero ?? sinReceta }}</span>
+                @if (f.recetaCmp) {
+                  · CMP <span class="num">{{ f.recetaCmp }}</span>
+                }
+                @if (f.medicoNombre) {
+                  · {{ f.medicoNombre }}
+                }
+                · {{ f.tecnico }}
+              </div>
+            </app-card>
+          }
+        </div>
+      </app-table>
+
+      <app-paginacion
+        [pagina]="rep.lineas.pagina"
+        [totalPaginas]="rep.lineas.totalPaginas"
+        [totalElementos]="rep.lineas.totalElementos"
+        (anterior)="irAPagina(rep.lineas.pagina - 1)"
+        (siguiente)="irAPagina(rep.lineas.pagina + 1)"
+      ></app-paginacion>
+
+      <app-card>
+        <h2 class="digemid__subtitulo">Totales por producto</h2>
+        <div class="table-responsive">
+          <table class="digemid__totales">
+            <thead>
+              <tr>
+                <th>Producto</th>
+                <th class="align-end">Recetas</th>
+                <th class="align-end">Unidades dispensadas</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (t of rep.totalesPorProducto; track t.productoId) {
+                <tr>
+                  <td>{{ t.producto }}</td>
+                  <td class="num align-end">{{ t.recetas }}</td>
+                  <td class="num align-end">{{ t.unidades }} {{ t.unidadNombre }}</td>
+                </tr>
+              }
+            </tbody>
+            <tfoot>
+              <tr class="digemid__fila-total">
+                <td>TOTAL</td>
+                <td class="num align-end">{{ rep.totales.recetas }}</td>
+                <td class="num align-end">{{ rep.totales.unidades }}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </app-card>
+    }
+  }
+</div>
+
+<app-toast
+  [visible]="toastVisible()"
+  [variant]="toastVariant()"
+  [message]="toastMensaje()"
+  (closed)="toastVisible.set(false)"
+></app-toast>

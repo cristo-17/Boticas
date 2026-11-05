@@ -1,3 +1,11 @@
+<div class="reportes__pestanas" role="tablist" aria-label="Reportes">
+  <app-chip [activo]="pestana() === 'resultados'" (clicked)="pestana.set('resultados')">Resultados</app-chip>
+  <app-chip [activo]="pestana() === 'digemid'" (clicked)="pestana.set('digemid')">DIGEMID</app-chip>
+</div>
+
+@if (pestana() === 'digemid') {
+  <app-reporte-digemid />
+} @else {
 <div class="reportes">
   <header class="reportes__header">
     <div>
@@ -224,6 +232,7 @@
     </app-card>
   }
 </div>
+}
 
 <app-toast
   [visible]="toastVisible()"
