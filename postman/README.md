@@ -1,19 +1,21 @@
 # Pruebas de API con Postman
 
-Colección de BoticaSys: una carpeta por módulo, con todos los endpoints de
-`docs/API-CONTRATO.md`. Cada petición prueba el código HTTP y lo que importa
-del cuerpo. Además, a nivel de colección se verifica que todo error tenga el
+Colección de BoticaSys: **220 peticiones en 17 carpetas**, una por módulo, con
+todos los endpoints de la API (el contrato completo está en
+`docs/API-CONTRATO.md`, en la documentación de trabajo del equipo, fuera de
+este repositorio). Cada petición prueba el código HTTP y lo que importa del
+cuerpo. Además, a nivel de colección se verifica que todo error tenga el
 formato uniforme (`timestamp`, `status`, `error`, `mensaje`, `path`).
 
-| Archivo | Qué es |
-|---|---|
-| `BoticaSys.postman_collection.json` | La colección (formato v2.1). |
-| `local.postman_environment.json` | `baseUrl` local y usuarios del seed de desarrollo. |
-| `produccion.postman_environment.json` | `baseUrl` de Render. Los usuarios demo se cargan en la Tarea D; hasta entonces van vacíos. |
-| `reportes/` | Reportes HTML de Newman. Git los ignora porque incluyen tokens. |
+| Archivo                               | Qué es                                                                                                                                              |
+| ------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BoticaSys.postman_collection.json`   | La colección (formato v2.1).                                                                                                                        |
+| `local.postman_environment.json`      | `baseUrl` local (`http://localhost:8080`) y usuarios del seed de desarrollo (`rosa.quispe`, `carlos.mendoza`, `jorge.fernandez` de la otra botica). |
+| `produccion.postman_environment.json` | `baseUrl` de Render. Los usuarios van vacíos: se usan los usuarios demo de la `V12` (ver la tabla de boticas demo en el `README.md` de la raíz).    |
+| `reportes/`                           | Reportes HTML de Newman. Git los ignora porque incluyen tokens.                                                                                     |
 
 **Ninguna contraseña está en estos archivos.** Las variables `password*` están
-vacías: se cargan como *current value* en Postman (que no se exporta ni se
+vacías: se cargan como _current value_ en Postman (que no se exporta ni se
 sincroniza) o con `--env-var` en Newman.
 
 ## Orden y datos
@@ -33,7 +35,7 @@ su 403 para el TECNICO.
 corrida (`pu.` + timestamp), verifica que `password_hash` no salga en el JSON,
 degrada su rol para comprobar que el token viejo queda invalidado (`401`),
 verifica que un administrador no pueda desactivarse ni quitarse el rol, prueba
- el bloqueo por 5 intentos fallidos (`423 CUENTA_BLOQUEADA`), el desbloqueo, el
+el bloqueo por 5 intentos fallidos (`423 CUENTA_BLOQUEADA`), el desbloqueo, el
 restablecimiento de clave y la baja lógica (que invalida el token activo). Cada
 ruta tiene su 403 para el TECNICO.
 
@@ -48,6 +50,28 @@ y cuerpo zip `PK`), valida los errores (`desde > hasta` y rango mayor a 1 año �
 `400 RANGO_FECHAS_INVALIDO`; `agrupar=anio` → `400 FILTRO_INVALIDO`) y verifica el
 `403 SIN_PERMISO` del TECNICO en el JSON y en el Excel.
 
+**Receta y Kardex (Tarea 20)** crea un producto que requiere receta (y
+comprueba que sin declarar `requiereReceta` el alta da 400), registra su lote
+y verifica que el Kardex muestre la ENTRADA. Abre una caja del TECNICO y prueba
+la venta: sin receta → `400 RECETA_REQUERIDA`, CMP que no son dígitos → 400,
+fecha de emisión futura → `400 RECETA_INVALIDA`, y con receta → 200 (la venta
+por id trae su receta). Después el Kardex muestra la `SALIDA_RECETA`; con
+`desde` = mañana solo queda la fila del saldo anterior; descarga el `.xlsx`, y
+valida los errores (sin `productoId` → 400, `desde > hasta` → 400, producto
+inexistente o de otra botica → 404, TECNICO → 403 en el JSON y en el Excel,
+sin token → 401). Al final cierra la caja.
+
+**Reporte DIGEMID (RF-54)** consulta como ADMINISTRADOR el reporte de hoy y
+verifica la línea de la venta con receta de la carpeta anterior (producto,
+cantidad, lote y vencimiento, número de receta, CMP, médico y técnico), el
+total por producto al pie, el rótulo de reporte interno y que la paginación
+cuadre con los totales; descarga el `.xlsx`
+(tipo, nombre `reporte-digemid_<desde>_<hasta>.xlsx` y cuerpo zip `PK`),
+valida los errores de rango (`desde > hasta`, rango mayor a 1 año, sin
+`desde` → `400 RANGO_FECHAS_INVALIDO`) y comprueba el `403 SIN_PERMISO` del
+TECNICO en el JSON y en el Excel y el 401 sin token. Por eso va después de
+**Receta y Kardex**.
+
 **Sin conexión (Tarea 22)** abre una caja del TECNICO, crea su propio producto
 (`SC` + timestamp) con un lote de 3 unidades y pide la foto del catálogo
 (`GET /api/productos/catalogo-offline`, los dos roles; 401 sin token). Manda
@@ -61,12 +85,15 @@ vez → 409, inexistente → 404), el contador `ventasPorRevisar` del dashboard
 (`null` para el TECNICO) y el 403 del TECNICO en las dos rutas de revisiones.
 Al final cierra la caja.
 
-**Solo lectura** no escribe nada y hace su propio login. Es la única carpeta
-que se corre contra producción, y solo con usuarios demo (R23).
+**Solo lectura** (20 peticiones) no escribe nada y hace su propio login:
+config, sesión, caja de hoy, productos, lotes, ventas, mermas, dashboard,
+alertas, notificaciones, cajas abiertas, Kardex, los 403 del TECNICO y los 401
+sin token o con el JWT en la URL. Es la única carpeta que se corre contra
+producción, y solo con usuarios demo (R23).
 
 ## Producción es de solo lectura (R23)
 
-Un script *pre-request* a nivel de colección corre antes de cada petición:
+Un script _pre-request_ a nivel de colección corre antes de cada petición:
 fuera del entorno local, toda petición que no sea `GET` (salvo
 `POST /api/auth/login`) **no se envía** y queda como aserción fallida
 `R23: bloqueada, …`. Se decide por el entorno, no por `baseUrl`: solo puede
@@ -76,16 +103,24 @@ producción, la caja real no se cierra ni se crea ningún lote.
 
 ## Postman de escritorio
 
-1. *Import* → arrastra los tres `.json` de esta carpeta.
+1. _Import_ → arrastra los tres `.json` de esta carpeta.
 2. Arriba a la derecha, elige el entorno **BoticaSys local**.
-3. *Environments* → BoticaSys local → en **Current value** (no en *Initial
-   value*) escribe `passwordTecnico`, `passwordAdmin` y
-   `passwordAdminOtraBotica`. Guarda.
-4. Con el backend local corriendo (`./mvnw spring-boot:run`, seed de
-   desarrollo), clic derecho en la colección → **Run collection** → *Run
-   BoticaSys*.
+3. _Environments_ → BoticaSys local → en **Current value** (no en _Initial
+   value_) escribe `passwordTecnico`, `passwordAdmin` y
+   `passwordAdminOtraBotica`: son las contraseñas del seed de desarrollo
+   (están en el comentario de cabecera de
+   `backend/src/main/resources/db/seed/dev/V4__seed.sql`). Guarda.
+4. Con el backend local corriendo (`./mvnw spring-boot:run` contra
+   `botica_db`, ver "Cómo levantarlo en local" en el `README.md` de la raíz),
+   clic derecho en la colección → **Run collection** → _Run BoticaSys_.
 5. **Captura:** el resumen del Runner (peticiones, aserciones, 0 fallidas) con
    el reloj del sistema visible en la barra de tareas, para que se vea la fecha.
+
+Contra producción, solo la carpeta **Solo lectura**: entorno **BoticaSys
+producción**, en _Current value_ `usuarioTecnico`, `passwordTecnico`,
+`usuarioAdmin` y `passwordAdmin` de una botica demo, y clic en la carpeta →
+_Run_. Si se corre la colección completa contra producción, las peticiones que
+escriben salen como fallidas `R23: bloqueada` (es lo esperado).
 
 ## Newman (línea de comandos)
 

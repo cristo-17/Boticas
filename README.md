@@ -10,23 +10,23 @@ propios datos.
 
 ## En producción
 
-| Parte | URL |
-|---|---|
-| Aplicación (Vercel) | https://boticas.vercel.app |
-| API (Render) | https://botica-vbzh.onrender.com/api |
-| Versión desplegada | https://botica-vbzh.onrender.com/api/config (campo `"version"` = commit que sirve Render) |
+| Parte               | URL                                                                                       |
+| ------------------- | ----------------------------------------------------------------------------------------- |
+| Aplicación (Vercel) | https://boticas.vercel.app                                                                |
+| API (Render)        | https://botica-vbzh.onrender.com/api                                                      |
+| Versión desplegada  | https://botica-vbzh.onrender.com/api/config (campo `"version"` = commit que sirve Render) |
 
 Render en el plan gratuito se duerme tras 15 minutos sin tráfico: la primera petición después tarda
 alrededor de un minuto. La base de datos es PostgreSQL en Neon.
 
 ## Stack y arquitectura
 
-| Capa | Tecnología |
-|---|---|
-| Frontend | Angular 22, PWA zoneless con signals, service worker de Angular, IndexedDB para vender sin conexión, Bootstrap 5 solo para grid y layout |
-| Backend | Spring Boot 4.1.1 (Java 25), Spring Security con JWT, **JDBC puro** (`NamedParameterJdbcTemplate`) con patrón DAO, sin JPA ni Hibernate |
-| Base de datos | PostgreSQL, esquema versionado con **Flyway** (migraciones `V1` a `V13`, corren solas al arrancar) |
-| Despliegue | Vercel (frontend), Render con Docker (backend, `backend/Dockerfile`), Neon (PostgreSQL) |
+| Capa          | Tecnología                                                                                                                               |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| Frontend      | Angular 22, PWA zoneless con signals, service worker de Angular, IndexedDB para vender sin conexión, Bootstrap 5 solo para grid y layout |
+| Backend       | Spring Boot 4.1.1 (Java 25), Spring Security con JWT, **JDBC puro** (`NamedParameterJdbcTemplate`) con patrón DAO, sin JPA ni Hibernate  |
+| Base de datos | PostgreSQL, esquema versionado con **Flyway** (migraciones `V1` a `V13`, corren solas al arrancar)                                       |
+| Despliegue    | Vercel (frontend), Render con Docker (backend, `backend/Dockerfile`), Neon (PostgreSQL)                                                  |
 
 ```
   Celular / tablet / PC
@@ -110,55 +110,57 @@ contraseña de PostgreSQL.
 
 **Backend, en local y en producción**
 
-| Variable | Para qué sirve | En local |
-|---|---|---|
-| `DB_USERNAME` | Usuario de PostgreSQL | Obligatoria |
-| `DB_PASSWORD` | Contraseña de PostgreSQL | Obligatoria |
-| `DB_HOST` | Host de PostgreSQL | Opcional (`localhost`) |
-| `DB_PORT` | Puerto de PostgreSQL | Opcional (`5432`) |
-| `DB_NAME` | Nombre de la base | Opcional (`botica_db`) |
-| `JWT_SECRET` | Clave con la que se firman los tokens (mínimo 32 bytes de entropía) | Opcional (hay una de desarrollo); **en producción, si falta, la app no arranca** |
-| `JWT_EXPIRACION_HORAS` | Horas de validez del token | Opcional (12) |
-| `CORS_ORIGEN` | Origen del frontend autorizado a llamar a la API | Opcional (`http://localhost:4200`) |
-| `DEMO_PASSWORD_HASH` | Hash BCrypt de la contraseña de los usuarios de las boticas demo (se genera con `backend/tools/GenerarHashDemo.java`) | Opcional; **obligatoria en producción** |
-| `DEMO_HOY` | Fecha "de hoy" para generar la historia de las boticas demo (solo para pruebas; vacío = hoy) | Opcional |
+| Variable               | Para qué sirve                                                                                                        | En local                                                                         |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `DB_USERNAME`          | Usuario de PostgreSQL                                                                                                 | Obligatoria                                                                      |
+| `DB_PASSWORD`          | Contraseña de PostgreSQL                                                                                              | Obligatoria                                                                      |
+| `DB_HOST`              | Host de PostgreSQL                                                                                                    | Opcional (`localhost`)                                                           |
+| `DB_PORT`              | Puerto de PostgreSQL                                                                                                  | Opcional (`5432`)                                                                |
+| `DB_NAME`              | Nombre de la base                                                                                                     | Opcional (`botica_db`)                                                           |
+| `JWT_SECRET`           | Clave con la que se firman los tokens (mínimo 32 bytes de entropía)                                                   | Opcional (hay una de desarrollo); **en producción, si falta, la app no arranca** |
+| `JWT_EXPIRACION_HORAS` | Horas de validez del token                                                                                            | Opcional (12)                                                                    |
+| `CORS_ORIGEN`          | Origen del frontend autorizado a llamar a la API                                                                      | Opcional (`http://localhost:4200`)                                               |
+| `DEMO_PASSWORD_HASH`   | Hash BCrypt de la contraseña de los usuarios de las boticas demo (se genera con `backend/tools/GenerarHashDemo.java`) | Opcional; **obligatoria en producción**                                          |
+| `DEMO_HOY`             | Fecha "de hoy" para generar la historia de las boticas demo (solo para pruebas; vacío = hoy)                          | Opcional                                                                         |
 
 **Backend, solo en producción**
 
-| Variable | Para qué sirve |
-|---|---|
-| `SPRING_PROFILES_ACTIVE` | `prod`: activa la conexión con SSL y el seed de producción |
-| `BOTICA_NOMBRE` | Nombre de la botica real que crea el seed de producción |
-| `ADMIN_NOMBRE`, `ADMIN_USUARIO`, `ADMIN_TURNO` | Nombre, usuario y turno del administrador inicial |
-| `ADMIN_PASSWORD_HASH` | Hash BCrypt de su contraseña |
-| `TECNICO_NOMBRE`, `TECNICO_USUARIO` | Nombre y usuario del técnico inicial |
-| `TECNICO_PASSWORD_HASH` | Hash BCrypt de su contraseña |
-| `RENDER_GIT_COMMIT` | La define Render sola: es el commit que se muestra en `/api/config` (`local` si no existe) |
+| Variable                                       | Para qué sirve                                                                             |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `SPRING_PROFILES_ACTIVE`                       | `prod`: activa la conexión con SSL y el seed de producción                                 |
+| `BOTICA_NOMBRE`                                | Nombre de la botica real que crea el seed de producción                                    |
+| `ADMIN_NOMBRE`, `ADMIN_USUARIO`, `ADMIN_TURNO` | Nombre, usuario y turno del administrador inicial                                          |
+| `ADMIN_PASSWORD_HASH`                          | Hash BCrypt de su contraseña                                                               |
+| `TECNICO_NOMBRE`, `TECNICO_USUARIO`            | Nombre y usuario del técnico inicial                                                       |
+| `TECNICO_PASSWORD_HASH`                        | Hash BCrypt de su contraseña                                                               |
+| `RENDER_GIT_COMMIT`                            | La define Render sola: es el commit que se muestra en `/api/config` (`local` si no existe) |
 
 **Frontend y pruebas**
 
-| Variable | Para qué sirve |
-|---|---|
+| Variable                | Para qué sirve                                                                              |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
 | `VERCEL_GIT_COMMIT_SHA` | La define Vercel sola en el build: es la versión de la app que muestra el panel de conexión |
-| `E2E_BASE_URL` | URL de la app contra la que corre Playwright (por defecto `http://localhost:4200`) |
+| `E2E_BASE_URL`          | URL de la app contra la que corre Playwright (por defecto `http://localhost:4200`)          |
 
-El detalle del despliegue (Render, Vercel y Neon, paso a paso) está en la documentación del equipo.
+El detalle del despliegue (Render, Vercel y Neon, paso a paso) está en la documentación de trabajo del equipo (`docs/`, fuera del repositorio).
 
 ## Pruebas
 
-Números de la QA final del 2026-11-04 (dos corridas seguidas de cada suite, 0 fallos).
+QA final del 2026-11-04: dos corridas seguidas de cada suite, 0 fallos. Después de la QA se agregó el
+reporte DIGEMID (RF-54) con sus propias pruebas: 11 tests JUnit, 5 tests Vitest y 8 peticiones de Postman;
+la tabla ya las suma.
 
-| Suite | Herramienta | Resultado | Cómo se corre |
-|---|---|---|---|
-| Backend | JUnit 5 + Mockito, contra **PostgreSQL real** (`botica_test`) | **378/378** | `cd backend && ./mvnw test` (con `DB_USERNAME` y `DB_PASSWORD`) |
-| Cobertura del backend | JaCoCo | **93 %** de instrucciones | Sale con `./mvnw test` en `backend/target/site/jacoco/index.html` |
-| Frontend | Vitest | **248/248** (40 archivos) | `cd frontend && npm test` |
-| De punta a punta | Playwright | **20/20** (9 flujos) | Backend y frontend levantados, `botica_db` con datos limpios; `cd frontend && npm run e2e` |
-| API | Postman + Newman | **212 peticiones, 548 aserciones** | Ver abajo |
+| Suite                 | Herramienta                                                   | Cantidad                                                        | Cómo se corre                                                                              |
+| --------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Backend               | JUnit 5 + Mockito, contra **PostgreSQL real** (`botica_test`) | **389 tests** (378 de la QA + 11 de DIGEMID)                    | `cd backend && ./mvnw test` (con `DB_USERNAME` y `DB_PASSWORD`)                            |
+| Cobertura del backend | JaCoCo                                                        | **93 %** de instrucciones (QA final)                            | Sale con `./mvnw test` en `backend/target/site/jacoco/index.html`                          |
+| Frontend              | Vitest                                                        | **253 tests** en 41 archivos (248 de la QA + 5 de DIGEMID)      | `cd frontend && npm test`                                                                  |
+| De punta a punta      | Playwright                                                    | **20 tests** (9 flujos)                                         | Backend y frontend levantados, `botica_db` con datos limpios; `cd frontend && npm run e2e` |
+| API                   | Postman + Newman                                              | **220 peticiones** en 17 carpetas (212 de la QA + 8 de DIGEMID) | Ver abajo                                                                                  |
 
 Qué cubren, en corto:
 
-- **Backend:** reglas de negocio (FEFO, stock, receta, caja, merma), dinero con vectores compartidos,
+- **Backend:** reglas de negocio (FEFO, stock, receta, caja, merma), reportes (resultados, Kardex, DIGEMID), dinero con vectores compartidos,
   controladores (401, 403 y la forma del error), DAOs contra la base real, aislamiento entre boticas,
   idempotencia concurrente de la venta, venta sin conexión y que los datos demo cumplan sus invariantes.
 - **Frontend:** servicios, interceptores, carrito, cola de ventas sin conexión, búsqueda con
@@ -184,20 +186,20 @@ Más detalle en [`postman/README.md`](./postman/README.md).
 La migración `V12` carga tres boticas con 60 días de historia (ventas, lotes, mermas, cajas y egresos),
 en local y en producción. Las contraseñas no están en el repositorio.
 
-| Botica | Dirección | Administrador | Técnicos |
-|---|---|---|---|
-| Botica Virgen del Carmen (24 horas) | Av. Las Palmeras 3120, Los Olivos, Lima | `demo_carmen_patricia` | `demo_carmen_luis`, `demo_carmen_rocio`, `demo_carmen_miguel` (`demo_carmen_jose`, desactivado) |
-| Botica San Martín | Jr. Huiracocha 1585, Jesús María, Lima | `demo_sanmartin_elena` | `demo_sanmartin_diego`, `demo_sanmartin_karina` (`demo_sanmartin_hugo`, desactivado) |
-| Botica La Esperanza | Av. Los Próceres 742, Santiago de Surco, Lima | `demo_esperanza_victor` | `demo_esperanza_sofia`, `demo_esperanza_andres` (`demo_esperanza_lucia`, desactivada) |
+| Botica                              | Dirección                                     | Administrador           | Técnicos                                                                                        |
+| ----------------------------------- | --------------------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------- |
+| Botica Virgen del Carmen (24 horas) | Av. Las Palmeras 3120, Los Olivos, Lima       | `demo_carmen_patricia`  | `demo_carmen_luis`, `demo_carmen_rocio`, `demo_carmen_miguel` (`demo_carmen_jose`, desactivado) |
+| Botica San Martín                   | Jr. Huiracocha 1585, Jesús María, Lima        | `demo_sanmartin_elena`  | `demo_sanmartin_diego`, `demo_sanmartin_karina` (`demo_sanmartin_hugo`, desactivado)            |
+| Botica La Esperanza                 | Av. Los Próceres 742, Santiago de Surco, Lima | `demo_esperanza_victor` | `demo_esperanza_sofia`, `demo_esperanza_andres` (`demo_esperanza_lucia`, desactivada)           |
 
 Al entrar se elige el turno (Mañana, Tarde o Noche).
 
 ## Funcionalidades
 
 **54 requerimientos: 52 implementados, 1 parcial y 1 planificado.** Cada uno tiene su evidencia
-ejecutable (el test JUnit, Vitest, E2E o la petición de Postman que lo prueba) en la matriz de evidencias,
-`docs/EVIDENCIAS.md`, que se entrega junto con el informe (la carpeta `docs/` es la documentación de trabajo
-del equipo y no está en este repositorio).
+ejecutable (el test JUnit, Vitest, E2E o la petición de Postman que lo prueba) en la matriz de evidencias
+`docs/EVIDENCIAS.md`. La carpeta `docs/` (contrato de API, decisiones, bitácora de errores, evidencias) es la
+documentación de trabajo del equipo y se mantiene fuera de este repositorio.
 
 ### Implementadas
 
@@ -225,8 +227,8 @@ del equipo y no está en este repositorio).
   oficiales de DIGEMID.
 - **Celular y tablet:** desde 360 px de ancho, sin desplazamiento horizontal.
 - **Venta sin conexión:** el catálogo queda guardado en el dispositivo, la venta se encola y se envía sola al
-  volver la señal, una sola vez; lo que no cuadró al recibirla (por ejemplo, stock insuficiente) queda para el administrador en "Ventas por
-  revisar".
+  volver la señal, una sola vez; lo que no cuadró al recibirla (por ejemplo, stock insuficiente) queda para
+  el administrador en "Ventas por revisar".
 - **PWA:** se instala como app y se actualiza sola sin cortar una venta en curso.
 
 ### Parcial y planificado
@@ -242,5 +244,5 @@ la venta sin conexión la hora registrada es la del servidor al recibirla.
 
 ## Más información
 
-- [`INFORME-AVANCE.md`](./INFORME-AVANCE.md): informe de avance del proyecto.
+- [`INFORME-AVANCE.md`](./INFORME-AVANCE.md): informe de avance del proyecto, criterio por criterio.
 - [`postman/README.md`](./postman/README.md): cómo correr la colección en Postman y Newman.
